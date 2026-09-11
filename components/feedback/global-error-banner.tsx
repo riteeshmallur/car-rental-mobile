@@ -1,13 +1,29 @@
 import { X } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useErrorStore } from '@/store/error-store';
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 
 export function GlobalErrorBanner() {
   const insets = useSafeAreaInsets();
   const currentError = useErrorStore((state) => state.currentError);
   const clearError = useErrorStore((state) => state.clearError);
+  useWebBackGuard({ active: Boolean(currentError), onBack: clearError });
+
+  useEffect(() => {
+    if (!currentError) {
+      return;
+    }
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      clearError();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [clearError, currentError]);
 
   if (!currentError) {
     return null;

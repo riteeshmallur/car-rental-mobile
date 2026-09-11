@@ -1,5 +1,5 @@
-import { CustomerPlaceholderScreen } from '@/features/customer/screens/customer-placeholder-screen';
+import { ProfileScreen } from '@/features/profile/screens/profile-screen';
 
 export default function CustomerProfileRoute() {
-  return <CustomerPlaceholderScreen title="Profile" />;
+  return <ProfileScreen mode="customer" />;
 }

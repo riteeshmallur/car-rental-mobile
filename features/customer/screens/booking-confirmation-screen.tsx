@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -9,6 +10,7 @@ import {
 } from '@/features/customer/screens/booking-summary-screen';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
 import { bookingsApi } from '@/services/bookings/bookings-api';
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
 function getParam(value: string | string[] | undefined) {
@@ -27,6 +29,15 @@ export function BookingConfirmationScreen() {
   const bookingId = getParam(params.bookingId);
   const storedBooking = useBookingFlowStore((state) => state.booking);
   const clearBookingFlow = useBookingFlowStore((state) => state.clear);
+  const exitConfirmation = useCallback(() => {
+    clearBookingFlow();
+    router.replace('/(customer)/trips');
+  }, [clearBookingFlow]);
+  useWebBackGuard({
+    active: true,
+    onBack: exitConfirmation,
+    pushEntry: false,
+  });
 
   const bookingQuery = useQuery({
     enabled: Boolean(bookingId && !storedBooking),
@@ -37,7 +48,12 @@ export function BookingConfirmationScreen() {
   const booking = storedBooking ?? bookingQuery.data;
 
   return (
-    <BookingShell title="Booking confirmation">
+    <BookingShell
+      fallback="/(customer)/trips"
+      onBeforeBack={clearBookingFlow}
+      preferFallback
+      title="Booking confirmation"
+    >
       {!bookingId ? (
         <StateMessage
           body="The booking reference is missing."
@@ -75,10 +91,7 @@ export function BookingConfirmationScreen() {
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => {
-              clearBookingFlow();
-              router.replace('/(customer)/trips');
-            }}
+            onPress={exitConfirmation}
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>View trips</Text>

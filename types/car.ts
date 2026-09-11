@@ -179,6 +179,85 @@ export type VehicleDetailsParams = {
   endsAt?: string;
 };
 
+export type HostVehicleListingStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'CHANGES_REQUIRED'
+  | 'PUBLISHED'
+  | 'PAUSED'
+  | 'REJECTED'
+  | 'ARCHIVED';
+
+export type HostVehicleListing = {
+  id: string;
+  hostId: string;
+  locationId: string | null;
+  make: string | null;
+  model: string | null;
+  manufacturingYear: number | null;
+  registrationNumber: string | null;
+  pricePerDay: string | null;
+  vehicleType: string | null;
+  transmission: string | null;
+  fuelType: string | null;
+  seats: number | null;
+  doors: number | null;
+  colour: string | null;
+  securityDeposit: string | null;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  mileageLimitPerDay: number | null;
+  minimumRentalDays: number | null;
+  maximumRentalDays: number | null;
+  status: HostVehicleListingStatus;
+  available: boolean;
+  draftStep: string | null;
+  features: string[];
+  imageUrls: string[];
+  listingDocuments: Record<string, unknown>;
+  availabilitySettings: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertHostVehiclePayload = Partial<{
+  locationId: string | null;
+  make: string | null;
+  model: string | null;
+  manufacturingYear: number | null;
+  registrationNumber: string | null;
+  vehicleType: string | null;
+  transmission: string | null;
+  fuelType: string | null;
+  seats: number | null;
+  doors: number | null;
+  colour: string | null;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  pricePerDay: number | null;
+  securityDeposit: number | null;
+  mileageLimitPerDay: number | null;
+  minimumRentalDays: number | null;
+  maximumRentalDays: number | null;
+  features: string[];
+  imageUrls: string[];
+  listingDocuments: Record<string, unknown>;
+  availabilitySettings: Record<string, unknown>;
+  draftStep: string | null;
+  available: boolean;
+  status: 'published' | 'paused';
+}>;
+
 export type BookingQuote = {
   id: string;
   carId: string;
@@ -247,6 +326,78 @@ export type RenterBooking = Booking & {
     name: string;
     phoneNumber: string | null;
   };
+};
+
+export type HostBookingPhase =
+  | 'requests'
+  | 'upcoming'
+  | 'active'
+  | 'completed'
+  | 'cancelled';
+
+export type HostBooking = Booking & {
+  reference: string;
+  hostPhase: HostBookingPhase;
+  amount: string;
+  manualApprovalRequired: boolean;
+  customer: {
+    id: string;
+    name: string;
+    phoneNumber: string | null;
+    profileImageUrl: string | null;
+  };
+  vehicle: {
+    id: string;
+    make: string;
+    model: string;
+    imageUrl: string | null;
+  };
+};
+
+export type HostPayoutStatus = 'pending' | 'completed' | 'cancelled' | 'failed';
+
+export type HostEarningEntry = {
+  id: string;
+  bookingId: string;
+  bookingReference: string;
+  grossRentalAmount: string;
+  platformCommission: string;
+  hostNetAmount: string;
+  payoutStatus: HostPayoutStatus;
+  paidAt: string;
+  vehicle: {
+    id: string;
+    make: string;
+    model: string;
+    imageUrl: string | null;
+  };
+};
+
+export type HostEarningsParams = {
+  startsAt?: string;
+  endsAt?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type HostEarningsResponse = {
+  totalEarnings: string;
+  thisMonthEarnings: string;
+  pendingPayouts: string;
+  completedPayouts: string;
+  items: HostEarningEntry[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+};
+
+export type HostPayoutsResponse = {
+  items: HostEarningEntry[];
+  meta: HostEarningsResponse['meta'];
 };
 
 export type CreateQuotePayload = {

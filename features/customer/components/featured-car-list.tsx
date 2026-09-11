@@ -7,12 +7,14 @@ type FeaturedCarListProps = {
   title: string;
   cars: Car[];
   isLoading?: boolean;
+  onCarPress?: (vehicleId: string) => void;
   variant?: 'featured' | 'popular';
 };
 
 export function FeaturedCarList({
   cars,
   isLoading,
+  onCarPress,
   title,
   variant = 'featured',
 }: FeaturedCarListProps) {
@@ -28,6 +30,11 @@ export function FeaturedCarList({
           <ActivityIndicator color="#111827" />
           <Text style={styles.loadingText}>Loading cars</Text>
         </View>
+      ) : cars.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No cars available</Text>
+          <Text style={styles.emptyBody}>Try another location or rental window.</Text>
+        </View>
       ) : (
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -35,7 +42,11 @@ export function FeaturedCarList({
           horizontal
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <CarCard car={item} size={variant === 'featured' ? 'large' : 'compact'} />
+            <CarCard
+              car={item}
+              onPress={() => onCarPress?.(item.id)}
+              size={variant === 'featured' ? 'large' : 'compact'}
+            />
           )}
           showsHorizontalScrollIndicator={false}
         />
@@ -82,5 +93,27 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     fontWeight: '700',
+  },
+  emptyState: {
+    minHeight: 112,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  emptyTitle: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  emptyBody: {
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

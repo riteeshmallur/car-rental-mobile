@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,9 +15,9 @@ import {
 import { FeaturedCarList } from '@/features/customer/components/featured-car-list';
 import { PromotionalSection } from '@/features/customer/components/promotional-section';
 import { RentalSearchCard } from '@/features/customer/components/rental-search-card';
-import { mockCustomerCars } from '@/features/customer/data/mock-cars';
 import { useAuthStore } from '@/store/auth-store';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   getRentalWindowError,
 } from '@/features/customer/utils/rental-window';
@@ -34,6 +34,15 @@ export function HomeScreen() {
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const closePickerBeforeBack = useCallback(() => {
+    if (!activeDateTimeField) {
+      return false;
+    }
+
+    setActiveDateTimeField(null);
+    return true;
+  }, [activeDateTimeField]);
+  useSafeBack({ onBeforeBack: closePickerBeforeBack });
 
   const defaultLocationQuery = useQuery({
     queryKey: ['locations', 'default', 'bengaluru'],
@@ -67,9 +76,8 @@ export function HomeScreen() {
   });
 
   const availableCars = carsQuery.data ?? [];
-  const displayCars = availableCars.length > 0 ? availableCars : mockCustomerCars;
-  const featuredCars = useMemo(() => displayCars.slice(0, 3), [displayCars]);
-  const popularCars = useMemo(() => displayCars.slice(1, 4), [displayCars]);
+  const featuredCars = useMemo(() => availableCars.slice(0, 3), [availableCars]);
+  const popularCars = useMemo(() => availableCars.slice(1, 4), [availableCars]);
   const isRefreshing = defaultLocationQuery.isFetching || carsQuery.isFetching;
 
   const refreshHome = () => {
@@ -95,6 +103,19 @@ export function HomeScreen() {
       pathname: '/(customer)/results',
       params: {
         locationId: location.id,
+        pickupDateTime: rentalWindow.pickupAt.toISOString(),
+        returnDateTime: rentalWindow.returnAt.toISOString(),
+      },
+    });
+  };
+
+  const openVehicle = (vehicleId: string) => {
+    router.push({
+      pathname: '/(customer)/vehicles/[id]',
+      params: {
+        id: vehicleId,
+        locationId: location?.id ?? '',
+        origin: 'home',
         pickupDateTime: rentalWindow.pickupAt.toISOString(),
         returnDateTime: rentalWindow.returnAt.toISOString(),
       },
@@ -137,20 +158,24 @@ export function HomeScreen() {
 
         <View style={styles.sectionNote}>
           <Text style={styles.sectionNoteText}>
-            {availableCars.length > 0
-              ? `${availableCars.length} cars available for your selected time`
-              : 'Showing sample cars until featured and popular feeds are available'}
+            {`${availableCars.length} cars available for your selected time`}
           </Text>
         </View>
 
         <FeaturedCarList
           cars={featuredCars}
           isLoading={carsQuery.isLoading || defaultLocationQuery.isLoading}
+          onCarPress={openVehicle}
           title="Featured cars"
           variant="featured"
         />
 
-        <FeaturedCarList cars={popularCars} title="Popular cars" variant="popular" />
+        <FeaturedCarList
+          cars={popularCars}
+          onCarPress={openVehicle}
+          title="Popular cars"
+          variant="popular"
+        />
 
         <PromotionalSection />
       </ScrollView>

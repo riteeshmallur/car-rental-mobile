@@ -9,16 +9,18 @@ import { type Car } from '@/types/car';
 
 type CarCardProps = {
   car: Car;
+  onPress?: () => void;
   size?: 'compact' | 'large';
 };
 
-export function CarCard({ car, size = 'compact' }: CarCardProps) {
+export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
   const imageUrl = getCarImageUrl(car.imageUrl);
   const isLarge = size === 'large';
 
   return (
     <Pressable
       accessibilityRole="button"
+      onPress={onPress}
       style={({ pressed }) => [
         styles.card,
         isLarge ? styles.cardLarge : styles.cardCompact,

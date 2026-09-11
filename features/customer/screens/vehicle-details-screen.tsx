@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   CalendarClock,
@@ -37,6 +37,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { type VehicleDetail } from '@/types/car';
 
@@ -54,16 +55,40 @@ function formatDateTime(value: string) {
 export function VehicleDetailsScreen() {
   const params = useLocalSearchParams<{
     id?: string;
+    locationId?: string;
+    origin?: string;
     pickupDateTime?: string;
     returnDateTime?: string;
   }>();
   const vehicleId = getParam(params.id);
+  const locationId = getParam(params.locationId);
+  const origin = getParam(params.origin);
   const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
   const pickupDateTime =
     getParam(params.pickupDateTime) ?? rentalWindow.pickupAt.toISOString();
   const returnDateTime =
     getParam(params.returnDateTime) ?? rentalWindow.returnAt.toISOString();
   const [isFavorite, setIsFavorite] = useState(false);
+  const backFallback = useMemo<Href>(() => {
+    if (
+      origin === 'search-results' &&
+      locationId &&
+      pickupDateTime &&
+      returnDateTime
+    ) {
+      return {
+        pathname: '/(customer)/results',
+        params: { locationId, pickupDateTime, returnDateTime },
+      };
+    }
+
+    if (origin === 'host-cars') {
+      return '/(host)/cars';
+    }
+
+    return '/(customer)/home';
+  }, [locationId, origin, pickupDateTime, returnDateTime]);
+  const goBack = useSafeBack({ fallback: backFallback });
 
   const detailsQuery = useQuery({
     enabled: Boolean(vehicleId),
@@ -100,6 +125,8 @@ export function VehicleDetailsScreen() {
       pathname: '/(customer)/booking/summary',
       params: {
         vehicleId,
+        locationId: locationId ?? '',
+        origin: origin ?? 'home',
         pickupDateTime,
         returnDateTime,
       },
@@ -109,6 +136,18 @@ export function VehicleDetailsScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
+        {!detailsQuery.data ? (
+          <View style={styles.stateHeader}>
+            <Pressable
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              onPress={goBack}
+              style={styles.heroButton}
+            >
+              <ArrowLeft color="#111827" size={21} />
+            </Pressable>
+          </View>
+        ) : null}
         {!vehicleId ? (
           <StateMessage
             body="Go back to search and choose a vehicle."
@@ -131,7 +170,7 @@ export function VehicleDetailsScreen() {
             >
               <VehicleHero
                 isFavorite={isFavorite}
-                onBack={() => router.back()}
+                onBack={goBack}
                 onFavoritePress={() => setIsFavorite((value) => !value)}
                 onSharePress={shareVehicle}
                 vehicle={detailsQuery.data}
@@ -551,6 +590,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  stateHeader: {
+    minHeight: 64,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   scrollContent: {
     paddingBottom: 118,

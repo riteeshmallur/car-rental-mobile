@@ -2,12 +2,15 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
+import { useSafeBack } from '@/hooks/use-safe-back';
 
 type CustomerPlaceholderScreenProps = {
   title: string;
 };
 
 export function CustomerPlaceholderScreen({ title }: CustomerPlaceholderScreenProps) {
+  useSafeBack({ fallback: '/(customer)/home' });
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>

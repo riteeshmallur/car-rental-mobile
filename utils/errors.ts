@@ -4,9 +4,12 @@ import { type AppError } from '@/types/api';
 
 type BackendErrorPayload = {
   code?: string;
-  error?: string;
   message?: string | string[];
   statusCode?: number;
+  error?: string | {
+    code?: string;
+    statusCode?: number;
+  };
 };
 
 function messageFromPayload(payload: BackendErrorPayload) {
@@ -14,7 +17,7 @@ function messageFromPayload(payload: BackendErrorPayload) {
     return payload.message.join('\n');
   }
 
-  return payload.message || payload.error;
+  return payload.message || (typeof payload.error === 'string' ? payload.error : undefined);
 }
 
 export function normalizeApiError(error: unknown): AppError {
@@ -24,8 +27,13 @@ export function normalizeApiError(error: unknown): AppError {
 
     return {
       message: message || 'Unable to complete the request.',
-      statusCode: payload?.statusCode || error.response?.status,
-      code: payload?.code,
+      statusCode:
+        payload?.statusCode ||
+        (typeof payload?.error === 'object' ? payload.error.statusCode : undefined) ||
+        error.response?.status,
+      code:
+        payload?.code ||
+        (typeof payload?.error === 'object' ? payload.error.code : undefined),
       raw: error,
     };
   }

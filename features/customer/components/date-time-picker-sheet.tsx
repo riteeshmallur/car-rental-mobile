@@ -6,6 +6,7 @@ import {
   formatTime,
   type RentalWindow,
 } from '@/features/customer/utils/rental-window';
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 
 export type DateTimeField = 'pickupDate' | 'pickupTime' | 'returnDate' | 'returnTime';
 
@@ -76,6 +77,7 @@ export function DateTimePickerSheet({
   rentalWindow,
 }: DateTimePickerSheetProps) {
   const isOpen = field !== null;
+  useWebBackGuard({ active: isOpen, onBack: onClose });
   const targetDate =
     field === 'returnDate' || field === 'returnTime'
       ? rentalWindow.returnAt
@@ -103,7 +105,7 @@ export function DateTimePickerSheet({
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={isOpen}>
       <Pressable onPress={onClose} style={styles.backdrop}>
-        <Pressable style={styles.sheet}>
+        <Pressable onPress={(event) => event.stopPropagation()} style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <Pressable

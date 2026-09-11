@@ -13,6 +13,7 @@ import {
   type VerifyOtpFormValues,
 } from '@/features/auth/schemas/auth-schemas';
 import { authApi } from '@/features/auth/services/auth-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { useAuthStore } from '@/store/auth-store';
 import { normalizeApiError } from '@/utils/errors';
 
@@ -32,6 +33,7 @@ export function OtpVerificationScreen() {
   const setSession = useAuthStore((state) => state.setSession);
   const [resendSeconds, setResendSeconds] = useState(resendDelaySeconds);
   const [screenError, setScreenError] = useState<string | null>(null);
+  const goBack = useSafeBack({ fallback: '/(auth)/login' });
 
   const {
     control,
@@ -75,6 +77,9 @@ export function OtpVerificationScreen() {
     onSuccess: async (session) => {
       setScreenError(null);
       await setSession(session);
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
       router.replace('/(customer)/home');
     },
   });
@@ -149,7 +154,7 @@ export function OtpVerificationScreen() {
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace('/(auth)/login')}
+            onPress={goBack}
             style={({ pressed }) => [
               styles.secondaryButton,
               pressed && styles.secondaryButtonPressed,

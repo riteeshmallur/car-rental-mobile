@@ -14,6 +14,12 @@ export type SafeUser = {
   phoneVerifiedAt: string | null;
   profileImageUrl: string | null;
   role: UserRole;
+  hostEnabled: boolean;
+  hostOnboardingCompletedAt: string | null;
+  capabilities: {
+    canRent: boolean;
+    canHost: boolean;
+  };
   isEmailVerified: boolean;
   isActive: boolean;
   createdAt: string;

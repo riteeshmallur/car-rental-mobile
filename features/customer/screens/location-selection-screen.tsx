@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search, X } from 'lucide-react-native';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { locationsApi } from '@/services/locations/locations-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { type LocationSearchResult } from '@/types/location';
 
@@ -23,6 +23,7 @@ export function LocationSelectionScreen() {
     (state) => state.setSelectedLocation,
   );
   const normalizedQuery = query.trim();
+  const goBack = useSafeBack({ fallback: '/(customer)/home' });
 
   const locationsQuery = useQuery({
     enabled: normalizedQuery.length >= 2,
@@ -34,7 +35,7 @@ export function LocationSelectionScreen() {
 
   const selectLocation = (location: LocationSearchResult) => {
     setSelectedLocation(location);
-    router.back();
+    goBack();
   };
 
   return (
@@ -48,7 +49,7 @@ export function LocationSelectionScreen() {
           <Pressable
             accessibilityLabel="Close location selection"
             accessibilityRole="button"
-            onPress={() => router.back()}
+            onPress={goBack}
             style={styles.closeButton}
           >
             <X color="#111827" size={20} />

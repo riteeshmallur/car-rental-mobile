@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   CalendarClock,
@@ -26,6 +26,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { bookingsApi } from '@/services/bookings/bookings-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { type Booking, type RenterBooking, type RenterTripPhase } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 
@@ -69,9 +70,16 @@ function isRenterBooking(booking: Booking | RenterBooking): booking is RenterBoo
 }
 
 export function TripDetailsScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; origin?: string }>();
   const bookingId = getParam(params.id);
+  const origin = getParam(params.origin);
   const queryClient = useQueryClient();
+  const goBack = useSafeBack({
+    fallback:
+      origin === 'host-bookings'
+        ? '/(host)/bookings'
+        : '/(customer)/trips',
+  });
 
   const renterBookingsQuery = useQuery({
     queryKey: ['renters', 'me', 'bookings'],
@@ -83,7 +91,9 @@ export function TripDetailsScreen() {
   );
 
   const bookingQuery = useQuery({
-    enabled: Boolean(bookingId && !cachedBooking),
+    enabled: Boolean(
+      bookingId && !cachedBooking && !renterBookingsQuery.isPending,
+    ),
     queryKey: ['bookings', bookingId],
     queryFn: () => bookingsApi.findById(bookingId ?? ''),
   });
@@ -135,7 +145,7 @@ export function TripDetailsScreen() {
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.iconButton}
         >
           <ArrowLeft color="#111827" size={22} />

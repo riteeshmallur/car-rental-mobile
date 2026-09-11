@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -13,6 +13,7 @@ import {
   type RequestOtpFormValues,
 } from '@/features/auth/schemas/auth-schemas';
 import { authApi } from '@/features/auth/services/auth-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { normalizeApiError } from '@/utils/errors';
 
 const defaultCountryCode = '+91';
@@ -24,6 +25,15 @@ function normalizePhoneNumber(countryCode: string, localNumber: string) {
 export function PhoneLoginScreen() {
   const [countryCode, setCountryCode] = useState(defaultCountryCode);
   const [isCountrySelectorOpen, setIsCountrySelectorOpen] = useState(false);
+  const closeSelectorBeforeBack = useCallback(() => {
+    if (!isCountrySelectorOpen) {
+      return false;
+    }
+
+    setIsCountrySelectorOpen(false);
+    return true;
+  }, [isCountrySelectorOpen]);
+  useSafeBack({ onBeforeBack: closeSelectorBeforeBack });
 
   const {
     control,

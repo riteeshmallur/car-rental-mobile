@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { CreditCard, ShieldCheck } from 'lucide-react-native';
 import { useRef } from 'react';
 import {
@@ -23,10 +23,29 @@ function createIdempotencyKey() {
   return `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function getParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export function PaymentScreen() {
+  const params = useLocalSearchParams<{
+    locationId?: string;
+    origin?: string;
+  }>();
+  const locationId = getParam(params.locationId);
+  const origin = getParam(params.origin);
   const quote = useBookingFlowStore((state) => state.quote);
   const setBooking = useBookingFlowStore((state) => state.setBooking);
   const idempotencyKeyRef = useRef(createIdempotencyKey());
+  const backFallback: Href = quote
+    ? {
+        pathname: '/(customer)/booking/breakdown',
+        params: {
+          locationId: locationId ?? '',
+          origin: origin ?? 'home',
+        },
+      }
+    : '/(customer)/home';
 
   const bookingMutation = useMutation({
     mutationFn: () => {
@@ -53,7 +72,7 @@ export function PaymentScreen() {
 
   if (!quote) {
     return (
-      <BookingShell title="Payment">
+      <BookingShell fallback={backFallback} title="Payment">
         <StateMessage
           body="Create a fresh quote before continuing to payment."
           title="Quote unavailable"
@@ -63,7 +82,7 @@ export function PaymentScreen() {
   }
 
   return (
-    <BookingShell title="Payment">
+    <BookingShell fallback={backFallback} title="Payment">
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.paymentCard}>
           <View style={styles.iconFrame}>

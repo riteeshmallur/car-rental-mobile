@@ -4,6 +4,8 @@ import {
   type VehicleDetail,
   type VehicleDetailsParams,
   type VehicleReviewsResponse,
+  type HostVehicleListing,
+  type UpsertHostVehiclePayload,
 } from '@/types/car';
 
 export const vehiclesApi = {
@@ -26,6 +28,47 @@ export const vehiclesApi = {
       method: 'GET',
       url: `/vehicles/${vehicleId}/availability`,
       params,
+    });
+  },
+  createDraft(payload: UpsertHostVehiclePayload) {
+    return apiRequest<HostVehicleListing>({
+      method: 'POST',
+      url: '/vehicles',
+      data: payload,
+    });
+  },
+  updateDraft(vehicleId: string, payload: UpsertHostVehiclePayload) {
+    return apiRequest<HostVehicleListing>({
+      method: 'PATCH',
+      url: `/vehicles/${vehicleId}`,
+      data: payload,
+    });
+  },
+  uploadImage(vehicleId: string, imageUri: string) {
+    const extension = imageUri.split('.').pop()?.toLowerCase();
+    const normalizedExtension = extension === 'png' ? 'png' : 'jpg';
+    const formData = new FormData();
+
+    formData.append(
+      'image',
+      {
+        name: `vehicle-${Date.now()}.${normalizedExtension}`,
+        type: normalizedExtension === 'png' ? 'image/png' : 'image/jpeg',
+        uri: imageUri,
+      } as unknown as Blob,
+    );
+
+    return apiRequest<HostVehicleListing>({
+      method: 'POST',
+      url: `/vehicles/${vehicleId}/images`,
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  submit(vehicleId: string) {
+    return apiRequest<HostVehicleListing>({
+      method: 'POST',
+      url: `/vehicles/${vehicleId}/submit`,
     });
   },
 };

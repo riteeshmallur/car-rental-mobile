@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react-native';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { countryCodes } from '@/features/auth/constants/country-codes';
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 
 type CountryCodeSelectorProps = {
   value: string;
@@ -19,6 +20,7 @@ export function CountryCodeSelector({
   value,
 }: CountryCodeSelectorProps) {
   const selectedCountry = countryCodes.find((country) => country.dialCode === value);
+  useWebBackGuard({ active: isOpen, onBack: onClose });
 
   return (
     <>
@@ -35,7 +37,7 @@ export function CountryCodeSelector({
 
       <Modal animationType="fade" onRequestClose={onClose} transparent visible={isOpen}>
         <Pressable onPress={onClose} style={styles.backdrop}>
-          <View style={styles.sheet}>
+          <Pressable onPress={(event) => event.stopPropagation()} style={styles.sheet}>
             <Text style={styles.sheetTitle}>Country code</Text>
             {countryCodes.map((country) => (
               <Pressable
@@ -57,7 +59,7 @@ export function CountryCodeSelector({
                 <Text style={styles.optionCode}>{country.dialCode}</Text>
               </Pressable>
             ))}
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>

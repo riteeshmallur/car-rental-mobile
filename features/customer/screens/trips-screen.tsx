@@ -29,6 +29,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { bookingsApi } from '@/services/bookings/bookings-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { type RenterBooking, type RenterTripPhase } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 
@@ -68,6 +69,7 @@ function getLocationLabel(booking: RenterBooking) {
 export function TripsScreen() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<RenterTripPhase>('upcoming');
+  useSafeBack({ fallback: '/(customer)/home' });
 
   const bookingsQuery = useQuery({
     queryKey: ['renters', 'me', 'bookings'],
@@ -229,7 +231,7 @@ export function TripsScreen() {
                 onViewDetails={() =>
                   router.push({
                     pathname: '/(customer)/booking/[id]',
-                    params: { id: item.id },
+                    params: { id: item.id, origin: 'customer-trips' },
                   })
                 }
               />

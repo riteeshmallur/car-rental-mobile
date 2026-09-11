@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   formatDailyPrice,
   formatMoney,
@@ -109,6 +110,7 @@ export function SearchResultsScreen() {
   const [filters, setFilters] = useState<VehicleFilters>({});
   const [sort, setSort] = useState<VehicleSearchSort>('recommended');
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const goBack = useSafeBack({ fallback: '/(customer)/home' });
 
   const vehiclesQuery = useInfiniteQuery({
     enabled: hasParams,
@@ -171,7 +173,7 @@ export function SearchResultsScreen() {
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            onPress={() => router.back()}
+            onPress={goBack}
             style={styles.iconButton}
           >
             <ArrowLeft color="#111827" size={22} />
@@ -241,6 +243,8 @@ export function SearchResultsScreen() {
                     pathname: '/(customer)/vehicles/[id]',
                     params: {
                       id: item.id,
+                      locationId: locationId ?? '',
+                      origin: 'search-results',
                       pickupDateTime: pickupDateTime ?? '',
                       returnDateTime: returnDateTime ?? '',
                     },

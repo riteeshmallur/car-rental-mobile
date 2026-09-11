@@ -14,5 +14,13 @@ export default function CustomerLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="become-host" options={{ gestureEnabled: false }} />
+      <Stack.Screen
+        name="booking/confirmation"
+        options={{ gestureEnabled: false }}
+      />
+    </Stack>
+  );
 }

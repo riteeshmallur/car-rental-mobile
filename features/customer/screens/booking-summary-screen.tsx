@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CalendarClock, MapPin } from 'lucide-react-native';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -18,6 +18,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { quotesApi } from '@/services/quotes/quotes-api';
+import { useSafeBack } from '@/hooks/use-safe-back';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
 function getParam(value: string | string[] | undefined) {
@@ -34,15 +35,43 @@ function formatDateTime(value: string) {
 export function BookingSummaryScreen() {
   const params = useLocalSearchParams<{
     vehicleId?: string;
+    locationId?: string;
+    origin?: string;
     pickupDateTime?: string;
     returnDateTime?: string;
   }>();
   const vehicleId = getParam(params.vehicleId);
+  const locationId = getParam(params.locationId);
+  const origin = getParam(params.origin);
   const pickupDateTime = getParam(params.pickupDateTime);
   const returnDateTime = getParam(params.returnDateTime);
   const setQuote = useBookingFlowStore((state) => state.setQuote);
   const quote = useBookingFlowStore((state) => state.quote);
   const didRequestQuote = useRef(false);
+  const backFallback = useMemo<Href>(() => {
+    if (!vehicleId) {
+      return '/(customer)/home';
+    }
+
+    return {
+      pathname: '/(customer)/vehicles/[id]',
+      params: {
+        id: vehicleId,
+        locationId: locationId ?? '',
+        origin: origin ?? 'home',
+        pickupDateTime: pickupDateTime ?? '',
+        returnDateTime: returnDateTime ?? '',
+      },
+    };
+  }, [locationId, origin, pickupDateTime, returnDateTime, vehicleId]);
+  const currentQuote =
+    quote &&
+    quote.carId === vehicleId &&
+    quote.pickupAt === pickupDateTime &&
+    quote.returnAt === returnDateTime &&
+    Date.parse(quote.expiresAt) > Date.now()
+      ? quote
+      : null;
 
   const quoteMutation = useMutation({
     mutationFn: () =>
@@ -60,17 +89,19 @@ export function BookingSummaryScreen() {
     }
 
     didRequestQuote.current = true;
+    setQuote(null);
     quoteMutation.mutate();
-  }, [pickupDateTime, quoteMutation, returnDateTime, vehicleId]);
+  }, [pickupDateTime, quoteMutation, returnDateTime, setQuote, vehicleId]);
 
   const retryQuote = () => {
     didRequestQuote.current = true;
+    setQuote(null);
     quoteMutation.mutate();
   };
 
   if (!vehicleId || !pickupDateTime || !returnDateTime) {
     return (
-      <BookingShell title="Booking summary">
+      <BookingShell fallback={backFallback} title="Booking summary">
         <StateMessage
           body="Return to vehicle details and continue with selected rental dates."
           title="Booking details missing"
@@ -80,8 +111,8 @@ export function BookingSummaryScreen() {
   }
 
   return (
-    <BookingShell title="Booking summary">
-      {quoteMutation.isPending && !quote ? (
+    <BookingShell fallback={backFallback} title="Booking summary">
+      {quoteMutation.isPending && !currentQuote ? (
         <View style={styles.centerState}>
           <ActivityIndicator color="#111827" />
           <Text style={styles.mutedText}>Preparing your quote</Text>
@@ -93,29 +124,29 @@ export function BookingSummaryScreen() {
           onAction={retryQuote}
           title="Quote failed"
         />
-      ) : quote ? (
+      ) : currentQuote ? (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.vehicleRow}>
-            {quote.vehicle.imageUrl ? (
+            {currentQuote.vehicle.imageUrl ? (
               <Image
-                source={{ uri: getCarImageUrl(quote.vehicle.imageUrl) ?? '' }}
+                source={{ uri: getCarImageUrl(currentQuote.vehicle.imageUrl) ?? '' }}
                 style={styles.vehicleImage}
               />
             ) : (
               <View style={styles.vehicleImageFallback}>
                 <Text style={styles.vehicleInitial}>
-                  {quote.vehicle.make.slice(0, 1)}
+                  {currentQuote.vehicle.make.slice(0, 1)}
                 </Text>
               </View>
             )}
             <View style={styles.vehicleCopy}>
               <Text style={styles.vehicleTitle}>
-                {quote.vehicle.make} {quote.vehicle.model}
+                {currentQuote.vehicle.make} {currentQuote.vehicle.model}
               </Text>
               <View style={styles.inlineRow}>
                 <MapPin color="#6B7280" size={15} />
                 <Text numberOfLines={1} style={styles.mutedText}>
-                  {quote.vehicle.locationName ?? 'Pickup location'}
+                  {currentQuote.vehicle.locationName ?? 'Pickup location'}
                 </Text>
               </View>
             </View>
@@ -128,25 +159,36 @@ export function BookingSummaryScreen() {
               <View style={styles.tripCopy}>
                 <Text style={styles.bodyText}>{formatDateTime(pickupDateTime)}</Text>
                 <Text style={styles.bodyText}>{formatDateTime(returnDateTime)}</Text>
-                <Text style={styles.mutedText}>{quote.rentalDays} day rental</Text>
+                <Text style={styles.mutedText}>{currentQuote.rentalDays} day rental</Text>
               </View>
             </View>
           </View>
 
           <PriceRows
             rows={[
-              ['Base price', quote.basePrice],
-              ['Service fee', quote.serviceFee],
-              ['Taxes', quote.taxes],
-              ['Security deposit', quote.securityDeposit],
-              ['Discounts', quote.discounts],
+              ['Base price', currentQuote.basePrice],
+              ['Service fee', currentQuote.serviceFee],
+              ['Taxes', currentQuote.taxes],
+              ['Security deposit', currentQuote.securityDeposit],
+              ['Discounts', currentQuote.discounts],
             ]}
-            total={quote.totalAmount}
+            total={currentQuote.totalAmount}
           />
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push('/(customer)/booking/breakdown')}
+            onPress={() =>
+              router.push({
+                pathname: '/(customer)/booking/breakdown',
+                params: {
+                  vehicleId,
+                  locationId: locationId ?? '',
+                  origin: origin ?? 'home',
+                  pickupDateTime,
+                  returnDateTime,
+                },
+              })
+            }
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>Continue</Text>
@@ -159,18 +201,26 @@ export function BookingSummaryScreen() {
 
 export function BookingShell({
   children,
+  fallback,
+  onBeforeBack,
+  preferFallback,
   title,
 }: {
   children: ReactNode;
+  fallback: Href;
+  onBeforeBack?: () => boolean | void;
+  preferFallback?: boolean;
   title: string;
 }) {
+  const goBack = useSafeBack({ fallback, onBeforeBack, preferFallback });
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.header}>
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={goBack}
           style={styles.backButton}
         >
           <ArrowLeft color="#111827" size={22} />

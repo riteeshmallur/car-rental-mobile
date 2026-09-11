@@ -8,6 +8,7 @@ import {
 } from '@/services/storage/secure-token-storage';
 import { useErrorStore } from '@/store/error-store';
 import { type AuthResponse, type AuthTokens, type SafeUser } from '@/types/auth';
+import { queryClient } from '@/utils/query-client';
 
 import { useLoadingStore } from './loading-store';
 
@@ -20,6 +21,8 @@ type AuthState = {
   isAuthenticated: boolean;
   bootstrap: () => Promise<void>;
   setSession: (session: AuthResponse) => Promise<void>;
+  applyRefreshedSession: (session: AuthResponse) => void;
+  setUser: (user: SafeUser) => void;
   clearSession: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -46,22 +49,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      try {
-        const user = await authApi.me();
-        useErrorStore.getState().clearError();
-        set({
-          status: 'authenticated',
-          user,
-          tokens,
-          isAuthenticated: true,
-        });
-      } catch {
-        const refreshedSession = await authApi.refresh(tokens.refreshToken);
-        await get().setSession(refreshedSession);
-        useErrorStore.getState().clearError();
-      }
+      const user = await authApi.me();
+      const activeTokens = (await getStoredAuthTokens()) ?? tokens;
+      useErrorStore.getState().clearError();
+      set({
+        status: 'authenticated',
+        user,
+        tokens: activeTokens,
+        isAuthenticated: true,
+      });
     } catch {
       await clearStoredAuthTokens();
+      queryClient.clear();
       set({
         status: 'unauthenticated',
         user: null,
@@ -82,10 +81,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const user = await authApi.me();
+      const activeTokens = (await getStoredAuthTokens()) ?? tokens;
       set({
         status: 'authenticated',
         user,
-        tokens,
+        tokens: activeTokens,
         isAuthenticated: true,
       });
     } catch (error) {
@@ -99,8 +99,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw error;
     }
   },
+  applyRefreshedSession(session) {
+    set({
+      status: 'authenticated',
+      user: session.user,
+      tokens: {
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+      },
+      isAuthenticated: true,
+    });
+  },
+  setUser(user) {
+    set({ user });
+  },
   async clearSession() {
     await clearStoredAuthTokens();
+    queryClient.clear();
+    useErrorStore.getState().clearError();
     set({
       status: 'unauthenticated',
       user: null,
