@@ -1,5 +1,10 @@
-import { CalendarDays, Clock, MapPin, Search } from 'lucide-react-native';
-import { type ReactNode } from 'react';
+import {
+  ArrowLeftRight,
+  CalendarDays,
+  ChevronRight,
+  Clock,
+  Search,
+} from 'lucide-react-native';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -9,6 +14,7 @@ import {
 } from '@/features/customer/utils/rental-window';
 import { type DateTimeField } from '@/features/customer/components/date-time-picker-sheet';
 import { type LocationSearchResult } from '@/types/location';
+import { colors, radii, shadows } from '@/utils/theme';
 
 type RentalSearchCardProps = {
   location?: LocationSearchResult | null;
@@ -29,47 +35,66 @@ export function RentalSearchCard({
   rentalWindow,
   validationError,
 }: RentalSearchCardProps) {
+  const rentalDays = Math.max(
+    1,
+    Math.ceil(
+      (rentalWindow.returnAt.getTime() - rentalWindow.pickupAt.getTime()) /
+        (24 * 60 * 60 * 1000),
+    ),
+  );
+
   return (
-    <View style={styles.card}>
+    <View style={styles.container}>
       <Pressable
         accessibilityRole="button"
         onPress={onLocationPress}
-        style={({ pressed }) => [styles.locationRow, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.locationField, pressed && styles.pressed]}
       >
-        <MapPin color="#2563EB" size={20} />
-        <View style={styles.locationCopy}>
-          <Text style={styles.label}>Pickup location</Text>
-          <Text numberOfLines={1} style={styles.locationText}>
-            {location?.name || 'Select pickup location'}
-          </Text>
-        </View>
+        <Search color={colors.muted} size={22} />
+        <Text numberOfLines={1} style={styles.locationText}>
+          {location?.name || 'Where would you like to pick up?'}
+        </Text>
       </Pressable>
 
-      <View style={styles.dateGrid}>
-        <SearchField
-          icon={<CalendarDays color="#4B5563" size={18} />}
-          label="Pickup date"
-          onPress={() => onDateTimeFieldPress('pickupDate')}
-          value={formatDate(rentalWindow.pickupAt)}
-        />
-        <SearchField
-          icon={<Clock color="#4B5563" size={18} />}
-          label="Pickup time"
-          onPress={() => onDateTimeFieldPress('pickupTime')}
-          value={formatTime(rentalWindow.pickupAt)}
-        />
-        <SearchField
-          icon={<CalendarDays color="#4B5563" size={18} />}
-          label="Return date"
+      <View style={styles.rentalCard}>
+        <View style={styles.dateRow}>
+          <RentalDate
+            date={formatDate(rentalWindow.pickupAt)}
+            label="Pick-up"
+            onDatePress={() => onDateTimeFieldPress('pickupDate')}
+            onTimePress={() => onDateTimeFieldPress('pickupTime')}
+            time={formatTime(rentalWindow.pickupAt)}
+          />
+
+          <View style={styles.swapColumn}>
+            <View style={styles.swapLine} />
+            <View style={styles.swapButton}>
+              <ArrowLeftRight color={colors.muted} size={18} />
+            </View>
+            <View style={styles.swapLine} />
+          </View>
+
+          <RentalDate
+            date={formatDate(rentalWindow.returnAt)}
+            label="Drop-off"
+            onDatePress={() => onDateTimeFieldPress('returnDate')}
+            onTimePress={() => onDateTimeFieldPress('returnTime')}
+            time={formatTime(rentalWindow.returnAt)}
+          />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
           onPress={() => onDateTimeFieldPress('returnDate')}
-          value={formatDate(rentalWindow.returnAt)}
-        />
-        <SearchField
-          icon={<Clock color="#4B5563" size={18} />}
-          label="Return time"
-          onPress={() => onDateTimeFieldPress('returnTime')}
-          value={formatTime(rentalWindow.returnAt)}
-        />
+          style={({ pressed }) => [styles.durationRow, pressed && styles.pressed]}
+        >
+          <Clock color={colors.muted} size={19} />
+          <Text style={styles.durationLabel}>Rental duration:</Text>
+          <Text style={styles.durationValue}>
+            {rentalDays} {rentalDays === 1 ? 'Day' : 'Days'}
+          </Text>
+          <ChevronRight color={colors.text} size={20} />
+        </Pressable>
       </View>
 
       {validationError ? (
@@ -90,7 +115,7 @@ export function RentalSearchCard({
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <>
-            <Search color="#FFFFFF" size={20} />
+            <Search color={colors.surface} size={20} />
             <Text style={styles.searchButtonText}>Search Cars</Text>
           </>
         )}
@@ -99,93 +124,150 @@ export function RentalSearchCard({
   );
 }
 
-function SearchField({
-  icon,
+function RentalDate({
+  date,
   label,
-  onPress,
-  value,
+  onDatePress,
+  onTimePress,
+  time,
 }: {
-  icon: ReactNode;
+  date: string;
   label: string;
-  onPress: () => void;
-  value: string;
+  onDatePress: () => void;
+  onTimePress: () => void;
+  time: string;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.field, pressed && styles.pressed]}
-    >
-      {icon}
-      <View style={styles.fieldCopy}>
-        <Text style={styles.label}>{label}</Text>
-        <Text numberOfLines={1} style={styles.fieldValue}>
-          {value}
-        </Text>
+    <View style={styles.dateBlock}>
+      <View style={styles.dateHeading}>
+        <View style={styles.calendarIcon}>
+          <CalendarDays color={colors.brand} size={20} />
+        </View>
+        <Text style={styles.dateLabel}>{label}</Text>
       </View>
-    </Pressable>
+      <Pressable accessibilityRole="button" onPress={onDatePress}>
+        <Text numberOfLines={1} style={styles.dateValue}>{date}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={onTimePress}>
+        <Text style={styles.timeValue}>{time}</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: 18,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 16,
+  container: {
+    gap: 14,
   },
-  locationRow: {
-    minHeight: 48,
+  locationField: {
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 11,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    ...shadows.card,
   },
   pressed: {
     opacity: 0.76,
   },
-  locationCopy: {
-    flex: 1,
-    gap: 3,
-  },
-  label: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
   locationText: {
-    color: '#111827',
-    fontSize: 17,
-    fontWeight: '800',
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
   },
-  dateGrid: {
+  rentalCard: {
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderColor: colors.brandBorder,
+    backgroundColor: colors.surface,
+    ...shadows.card,
+  },
+  dateRow: {
+    minHeight: 140,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'stretch',
+    paddingHorizontal: 14,
+    paddingVertical: 18,
   },
-  field: {
-    minHeight: 68,
-    width: '48%',
-    minWidth: 138,
-    flexGrow: 1,
+  dateBlock: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dateHeading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 8,
   },
-  fieldCopy: {
-    flex: 1,
-    gap: 3,
+  calendarIcon: {
+    height: 36,
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+    backgroundColor: colors.brandSoft,
   },
-  fieldValue: {
-    color: '#111827',
+  dateLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dateValue: {
+    color: colors.ink,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
+  },
+  timeValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  swapColumn: {
+    width: 46,
+    alignItems: 'center',
+  },
+  swapLine: {
+    flex: 1,
+    width: 1,
+    backgroundColor: colors.brandSoft,
+  },
+  swapButton: {
+    height: 38,
+    width: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  durationRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderTopWidth: 1,
+    borderTopColor: colors.brandSoft,
+    marginHorizontal: 14,
+  },
+  durationLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  durationValue: {
+    flex: 1,
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: '900',
   },
   searchButton: {
     minHeight: 52,
@@ -193,11 +275,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 8,
-    backgroundColor: '#111827',
+    borderRadius: radii.md,
+    backgroundColor: colors.brand,
+    ...shadows.card,
   },
   validationError: {
-    color: '#DC2626',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -205,10 +288,10 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   searchButtonPressed: {
-    opacity: 0.86,
+    backgroundColor: colors.brandPressed,
   },
   searchButtonText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '900',
   },

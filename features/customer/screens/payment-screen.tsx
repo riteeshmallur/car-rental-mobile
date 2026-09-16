@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   title: {
     color: '#111827',
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   disabledButton: {
     backgroundColor: '#6B7280',

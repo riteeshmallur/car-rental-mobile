@@ -62,7 +62,7 @@ export function HostVehicleStartScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   header: {
     minHeight: 76,
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   heading: {
     color: '#111827',
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',

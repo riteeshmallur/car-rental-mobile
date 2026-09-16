@@ -1,21 +1,21 @@
-import { ArrowRight, ShieldCheck } from 'lucide-react-native';
+import { ChevronRight, ShieldCheck } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, radii } from '@/utils/theme';
 
 export function PromotionalSection() {
   return (
     <View style={styles.section}>
       <View style={styles.iconWrap}>
-        <ShieldCheck color="#FFFFFF" size={26} />
+        <ShieldCheck color={colors.surface} size={29} />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.title}>Zero-hassle rentals</Text>
+        <Text style={styles.title}>Drive with confidence</Text>
         <Text style={styles.body}>
-          Verified hosts, secure payments, and support for every HopIn booking.
+          Every car is verified for a safer HopIn journey.
         </Text>
       </View>
-      <Pressable accessibilityRole="button" style={styles.cta}>
-        <Text style={styles.ctaText}>Learn more</Text>
-        <ArrowRight color="#FFFFFF" size={17} />
+      <Pressable accessibilityLabel="Learn more" accessibilityRole="button" style={styles.cta}>
+        <ChevronRight color={colors.text} size={22} />
       </Pressable>
     </View>
   );
@@ -23,43 +23,43 @@ export function PromotionalSection() {
 
 const styles = StyleSheet.create({
   section: {
-    gap: 14,
-    borderRadius: 8,
-    backgroundColor: '#0F172A',
-    padding: 18,
+    minHeight: 104,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+    backgroundColor: colors.brandSoft,
+    padding: 16,
   },
   iconWrap: {
     height: 48,
     width: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
+    borderRadius: 24,
+    backgroundColor: colors.brand,
   },
   copy: {
+    flex: 1,
     gap: 6,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 22,
+    color: colors.ink,
+    fontSize: 16,
     fontWeight: '900',
   },
   body: {
-    color: '#CBD5E1',
-    fontSize: 15,
-    lineHeight: 22,
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: '600',
   },
   cta: {
-    minHeight: 42,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
+    height: 42,
+    width: 34,
     alignItems: 'center',
-    gap: 8,
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
+    justifyContent: 'center',
   },
 });

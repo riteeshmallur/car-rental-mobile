@@ -131,7 +131,7 @@ function EmptyState({ body, title }: { body: string; title: string }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   container: {
     flex: 1,

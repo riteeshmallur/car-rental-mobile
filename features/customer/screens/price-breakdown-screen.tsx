@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   notice: {
     gap: 5,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#EAF2FF',
     padding: 14,
   },
   noticeTitle: {
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',

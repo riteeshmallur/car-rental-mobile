@@ -287,14 +287,14 @@ export function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 18,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   backButton: {
     height: 44,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   vehicleInitial: {
     color: '#0F172A',
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
     marginTop: 4,
   },

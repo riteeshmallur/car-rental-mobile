@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
     padding: 24,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   title: {
     color: '#111827',
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
   },
   buttonText: {

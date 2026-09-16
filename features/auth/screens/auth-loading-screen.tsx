@@ -18,7 +18,7 @@ export function AuthLoadingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   container: {
     flex: 1,
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   logoText: {
     color: '#FFFFFF',

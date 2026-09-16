@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { colors, radii, shadows } from '@/utils/theme';
 
 type AuthSubmitButtonProps = {
   title: string;
@@ -27,7 +28,7 @@ export function AuthSubmitButton({
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={colors.surface} />
       ) : (
         <Text style={styles.buttonText}>{title}</Text>
       )}
@@ -40,18 +41,20 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#111827',
+    borderRadius: radii.md,
+    backgroundColor: colors.brand,
     paddingHorizontal: 18,
+    ...shadows.card,
   },
   buttonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#98A2B3',
+    opacity: 1,
   },
   buttonPressed: {
-    opacity: 0.86,
+    backgroundColor: colors.brandPressed,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '800',
   },

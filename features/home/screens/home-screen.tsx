@@ -21,6 +21,7 @@ import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   getRentalWindowError,
 } from '@/features/customer/utils/rental-window';
+import { colors } from '@/utils/theme';
 
 export function HomeScreen() {
   const user = useAuthStore((state) => state.user);
@@ -134,6 +135,7 @@ export function HomeScreen() {
         <CustomerHeader
           isLocationLoading={defaultLocationQuery.isLoading}
           location={location}
+          onLocationPress={() => router.push('/(customer)/location')}
           user={user}
         />
 
@@ -156,16 +158,11 @@ export function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.sectionNote}>
-          <Text style={styles.sectionNoteText}>
-            {`${availableCars.length} cars available for your selected time`}
-          </Text>
-        </View>
-
         <FeaturedCarList
           cars={featuredCars}
           isLoading={carsQuery.isLoading || defaultLocationQuery.isLoading}
           onCarPress={openVehicle}
+          onViewAll={searchCars}
           title="Featured cars"
           variant="featured"
         />
@@ -173,6 +170,7 @@ export function HomeScreen() {
         <FeaturedCarList
           cars={popularCars}
           onCarPress={openVehicle}
+          onViewAll={searchCars}
           title="Popular cars"
           variant="popular"
         />
@@ -194,12 +192,12 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    gap: 24,
-    paddingHorizontal: 24,
-    paddingTop: 18,
+    gap: 20,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 114,
   },
   inlineError: {
@@ -220,13 +218,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
-  },
-  sectionNote: {
-    marginTop: -8,
-  },
-  sectionNoteText: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

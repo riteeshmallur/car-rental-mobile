@@ -433,7 +433,7 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   header: {
     minHeight: 76,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   vehicleCopy: {
     flex: 1,
@@ -571,8 +571,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   darkAction: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   dangerAction: {
     borderColor: '#FCA5A5',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
     marginTop: 4,
   },

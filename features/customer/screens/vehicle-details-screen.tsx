@@ -586,7 +586,7 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   container: {
     flex: 1,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   heroActions: {
     position: 'absolute',
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderRadius: 27,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   hostImage: {
     height: '100%',
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
     borderRadius: 3,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   ruleText: {
     flex: 1,
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
   },
   continueButtonDisabled: {
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
     marginTop: 6,
   },

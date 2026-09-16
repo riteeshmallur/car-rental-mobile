@@ -15,6 +15,7 @@ import {
 import { authApi } from '@/features/auth/services/auth-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { normalizeApiError } from '@/utils/errors';
+import { colors, radii } from '@/utils/theme';
 
 const defaultCountryCode = '+91';
 
@@ -98,7 +99,7 @@ export function PhoneLoginScreen() {
                 onBlur={onBlur}
                 onChangeText={(nextValue) => onChange(nextValue.replace(/\D/g, ''))}
                 placeholder="Mobile number"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.muted}
                 style={[
                   styles.phoneInput,
                   errors.phoneNumber && styles.inputError,
@@ -136,24 +137,24 @@ const styles = StyleSheet.create({
     minHeight: 54,
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    color: colors.ink,
     fontSize: 17,
     fontWeight: '700',
     paddingHorizontal: 14,
   },
   inputError: {
-    borderColor: '#DC2626',
+    borderColor: colors.error,
   },
   errorText: {
-    color: '#DC2626',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '600',
   },
   devHint: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',

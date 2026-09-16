@@ -7,6 +7,7 @@ import {
   type TextInputProps,
   View,
 } from 'react-native';
+import { colors, radii } from '@/utils/theme';
 
 type OtpInputProps = {
   value: string;
@@ -84,19 +85,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
   },
   digitBoxActive: {
-    borderColor: '#2563EB',
+    borderColor: colors.brand,
     borderWidth: 2,
   },
   digitBoxError: {
-    borderColor: '#DC2626',
+    borderColor: colors.error,
   },
   digitText: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 22,
     fontWeight: '800',
   },
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   error: {
-    color: '#DC2626',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '600',
   },

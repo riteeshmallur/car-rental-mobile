@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   ArrowLeft,
+  ArrowRight,
   Bell,
   Banknote,
   CalendarClock,
@@ -11,11 +12,10 @@ import {
   CreditCard,
   FileText,
   Headphones,
-  HelpCircle,
   LogOut,
   Mail,
-  Pencil,
   Phone,
+  Settings,
   ShieldCheck,
   UserRound,
 } from 'lucide-react-native';
@@ -47,6 +47,7 @@ import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import { useAuthStore } from '@/store/auth-store';
 import { type SafeUser, UserRole } from '@/types/auth';
 import { normalizeApiError } from '@/utils/errors';
+import { colors, radii, shadows } from '@/utils/theme';
 
 type ProfileScreenProps = {
   mode: 'customer' | 'host';
@@ -54,6 +55,7 @@ type ProfileScreenProps = {
 
 type SectionItem = {
   label: string;
+  description: string;
   icon: React.ReactNode;
   onPress: () => void;
   destructive?: boolean;
@@ -150,63 +152,63 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         ? [
             {
               label: 'My Cars',
+              description: 'Manage your vehicle listings',
               icon: <CarFront color="#111827" size={20} />,
               onPress: () => router.push('/(host)/cars'),
             },
             {
               label: 'Bookings',
+              description: 'Review customer reservations',
               icon: <CalendarClock color="#111827" size={20} />,
               onPress: () => router.push('/(host)/bookings'),
             },
             {
               label: 'Earnings',
+              description: 'Track your host payouts',
               icon: <Banknote color="#111827" size={20} />,
               onPress: () => router.push('/(host)/earnings'),
             },
           ]
         : []),
       {
-        label: 'Account',
+        label: 'Personal information',
+        description: 'View and update your details',
         icon: <UserRound color="#111827" size={20} />,
         onPress: () => setIsEditing(true),
       },
       {
         label: 'Payment methods',
+        description: 'Manage your cards and wallets',
         icon: <CreditCard color="#111827" size={20} />,
         onPress: () => showPending('Payment methods are not connected yet.'),
       },
       {
         label: 'Documents',
+        description: 'Manage your documents',
         icon: <FileText color="#111827" size={20} />,
         onPress: () => showPending('Document upload will be added in a later phase.'),
       },
       {
         label: 'Notifications',
+        description: 'Manage your alerts and updates',
         icon: <Bell color="#111827" size={20} />,
         onPress: () => showPending('Notification preferences are not connected yet.'),
       },
       {
         label: 'Help & Support',
+        description: 'Get help or contact us',
         icon: <Headphones color="#111827" size={20} />,
         onPress: () => showPending('Support workflows are not connected yet.'),
       },
       {
-        label: 'Privacy',
+        label: 'Privacy & Security',
+        description: 'Manage your data and security',
         icon: <ShieldCheck color="#111827" size={20} />,
         onPress: () => showPending('Privacy settings are not connected yet.'),
       },
       {
-        label: getHostSwitchLabel(mode, profile),
-        icon: <HelpCircle color="#111827" size={20} />,
-        onPress: () =>
-          mode === 'host'
-            ? router.replace('/(customer)/home')
-            : hasHostCapability(profile)
-              ? router.push('/(host)/profile')
-              : router.push('/(customer)/become-host'),
-      },
-      {
         label: 'Logout',
+        description: '',
         icon: <LogOut color="#B91C1C" size={20} />,
         destructive: true,
         onPress: () => {
@@ -250,10 +252,8 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                 </Pressable>
               ) : null}
               <View>
-                <Text style={styles.eyebrow}>
-                  {mode === 'host' ? 'Host profile' : 'Customer profile'}
-                </Text>
                 <Text style={styles.title}>Profile</Text>
+                <Text style={styles.subtitle}>Manage your account and preferences</Text>
               </View>
             </View>
             <Pressable
@@ -261,7 +261,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
               onPress={() => setIsEditing((current) => !current)}
               style={styles.iconButton}
             >
-              <Pencil color="#111827" size={20} />
+              <Settings color={colors.ink} size={22} />
             </Pressable>
           </View>
 
@@ -279,7 +279,21 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
             />
           ) : profile ? (
             <>
-              <ProfileSummary user={profile} />
+              <ProfileSummary onPress={() => setIsEditing(true)} user={profile} />
+
+              {mode === 'customer' || mode === 'host' ? (
+                <HostBanner
+                  hasHostCapability={hasHostCapability(profile)}
+                  mode={mode}
+                  onPress={() =>
+                    mode === 'host'
+                      ? router.replace('/(customer)/home')
+                      : hasHostCapability(profile)
+                      ? router.push('/(host)/profile')
+                      : router.push('/(customer)/become-host')
+                  }
+                />
+              ) : null}
 
               {isEditing ? (
                 <View style={styles.form}>
@@ -362,10 +376,36 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                 </View>
               ) : null}
 
+              {mode === 'host' ? <SectionHeading title="Host workspace" /> : null}
+              {mode === 'host' ? (
+                <View style={styles.section}>
+                  {sections.slice(0, 3).map((item) => (
+                    <SectionRow key={item.label} item={item} />
+                  ))}
+                </View>
+              ) : null}
+
+              <SectionHeading title="Account" />
               <View style={styles.section}>
-                {sections.map((item) => (
+                {sections.slice(mode === 'host' ? 3 : 0, mode === 'host' ? 6 : 3).map((item) => (
                   <SectionRow key={item.label} item={item} />
                 ))}
+              </View>
+
+              <SectionHeading title="Preferences" />
+              <View style={styles.section}>
+                <SectionRow item={sections[mode === 'host' ? 6 : 3]} />
+              </View>
+
+              <SectionHeading title="Support & Security" />
+              <View style={styles.section}>
+                {sections.slice(mode === 'host' ? 7 : 4, mode === 'host' ? 9 : 6).map((item) => (
+                  <SectionRow key={item.label} item={item} />
+                ))}
+              </View>
+
+              <View style={styles.logoutSection}>
+                <SectionRow item={sections[mode === 'host' ? 9 : 6]} />
               </View>
             </>
           ) : null}
@@ -376,21 +416,6 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
   );
 }
 
-function getHostSwitchLabel(
-  mode: ProfileScreenProps['mode'],
-  profile: SafeUser | undefined,
-) {
-  if (mode === 'host') {
-    return 'Switch to Customer';
-  }
-
-  if (hasHostCapability(profile)) {
-    return 'Switch to Host';
-  }
-
-  return 'Become a Host / Switch to Host';
-}
-
 function hasHostCapability(profile: SafeUser | undefined) {
   return Boolean(
     profile?.capabilities.canHost ||
@@ -399,9 +424,13 @@ function hasHostCapability(profile: SafeUser | undefined) {
   );
 }
 
-function ProfileSummary({ user }: { user: SafeUser }) {
+function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {
   return (
-    <View style={styles.summary}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
+    >
       {user.profileImageUrl ? (
         <Image source={{ uri: user.profileImageUrl }} style={styles.avatar} />
       ) : (
@@ -414,48 +443,66 @@ function ProfileSummary({ user }: { user: SafeUser }) {
         <InfoLine
           icon={<Phone color="#6B7280" size={16} />}
           text={user.phoneNumber ?? 'Mobile number not added'}
+          trailing={user.phoneVerified ? <ShieldCheck color={colors.success} size={21} /> : undefined}
         />
-        <InfoLine
-          icon={<Mail color="#6B7280" size={16} />}
-          text={user.email ?? 'Email not added'}
-        />
-        <View style={styles.verificationRow}>
-          <ShieldCheck
-            color={user.phoneVerified ? '#047857' : '#B45309'}
-            size={16}
-          />
-          <Text
-            style={[
-              styles.verificationText,
-              user.phoneVerified && styles.verifiedText,
-            ]}
-          >
-            {user.phoneVerified ? 'Mobile verified' : 'Mobile not verified'}
+        <View style={styles.emailRow}>
+          <Mail color={colors.text} size={18} />
+          <Text style={[styles.emailAction, user.email && styles.emailValue]}>
+            {user.email ?? 'Add email address'}
           </Text>
-          <Text style={styles.dot}>.</Text>
-          <Text
-            style={[
-              styles.verificationText,
-              user.isEmailVerified && styles.verifiedText,
-            ]}
-          >
-            {user.isEmailVerified ? 'Email verified' : 'Email not verified'}
-          </Text>
+          <ArrowRight color={user.email ? colors.muted : colors.brand} size={19} />
         </View>
       </View>
-    </View>
+      <ChevronRight color={colors.text} size={22} />
+    </Pressable>
   );
 }
 
-function InfoLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+function InfoLine({ icon, text, trailing }: { icon: React.ReactNode; text: string; trailing?: React.ReactNode }) {
   return (
     <View style={styles.infoLine}>
       {icon}
       <Text numberOfLines={1} style={styles.infoText}>
         {text}
       </Text>
+      {trailing}
     </View>
   );
+}
+
+function HostBanner({ hasHostCapability, mode, onPress }: { hasHostCapability: boolean; mode: ProfileScreenProps['mode']; onPress: () => void }) {
+  const title = mode === 'host' ? 'Switch to Customer' : hasHostCapability ? 'Switch to Host' : 'Become a Host';
+  const body = mode === 'host'
+    ? 'Return to your customer trips'
+    : hasHostCapability
+      ? 'Manage your cars and bookings'
+      : 'List your car and start earning';
+  const cta = mode === 'host' ? 'Open customer mode' : hasHostCapability ? 'Open host mode' : 'Get started';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.hostBanner, pressed && styles.pressed]}
+    >
+      <View style={styles.hostIcon}>
+        <CarFront color={colors.ink} size={27} />
+      </View>
+      <View style={styles.hostCopy}>
+        <Text style={styles.hostTitle}>{title}</Text>
+        <Text style={styles.hostBody}>{body}</Text>
+        <View style={styles.hostCta}>
+          <Text style={styles.hostCtaText}>{cta}</Text>
+          <ArrowRight color={colors.surface} size={18} />
+        </View>
+      </View>
+      <View style={styles.hostAccent} />
+    </Pressable>
+  );
+}
+
+function SectionHeading({ title }: { title: string }) {
+  return <Text style={styles.sectionHeading}>{title}</Text>;
 }
 
 function ProfileInput({
@@ -510,11 +557,10 @@ function SectionRow({ item }: { item: SectionItem }) {
       style={({ pressed }) => [styles.sectionRow, pressed && styles.pressed]}
     >
       <View style={styles.sectionIcon}>{item.icon}</View>
-      <Text
-        style={[styles.sectionLabel, item.destructive && styles.destructiveText]}
-      >
-        {item.label}
-      </Text>
+      <View style={styles.sectionCopy}>
+        <Text style={[styles.sectionLabel, item.destructive && styles.destructiveText]}>{item.label}</Text>
+        {item.description ? <Text style={styles.sectionDescription}>{item.description}</Text> : null}
+      </View>
       <ChevronRight color={item.destructive ? '#B91C1C' : '#9CA3AF'} size={18} />
     </Pressable>
   );
@@ -555,18 +601,19 @@ function showPending(message: string) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
   },
   content: {
-    gap: 16,
-    padding: 16,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 110,
   },
   header: {
-    minHeight: 62,
+    minHeight: 78,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -574,19 +621,18 @@ const styles = StyleSheet.create({
   headerLead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  eyebrow: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
+    gap: 10,
   },
   title: {
-    color: '#111827',
-    fontSize: 30,
+    color: colors.ink,
+    fontSize: 32,
     fontWeight: '900',
+  },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
   },
   iconButton: {
     height: 44,
@@ -594,24 +640,82 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
   },
   summary: {
     flexDirection: 'row',
     gap: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
     padding: 14,
+    ...shadows.card,
+  },
+  hostBanner: {
+    minHeight: 142,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    backgroundColor: colors.brandSoft,
+    padding: 16,
+  },
+  hostIcon: {
+    height: 58,
+    width: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+  },
+  hostCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  hostTitle: {
+    color: colors.ink,
+    fontSize: 21,
+    fontWeight: '900',
+  },
+  hostBody: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  hostCta: {
+    minHeight: 38,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radii.sm,
+    backgroundColor: colors.brand,
+    marginTop: 9,
+    paddingHorizontal: 14,
+  },
+  hostCtaText: {
+    color: colors.surface,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  hostAccent: {
+    position: 'absolute',
+    right: -90,
+    bottom: -32,
+    height: 125,
+    width: 125,
+    borderRadius: 63,
+    backgroundColor: 'rgba(183,210,255,0.56)',
   },
   avatar: {
     height: 82,
     width: 82,
     borderRadius: 41,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.brandSoft,
   },
   avatarFallback: {
     height: 82,
@@ -619,10 +723,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 41,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   avatarText: {
-    color: '#0F172A',
+    color: colors.brand,
     fontSize: 28,
     fontWeight: '900',
   },
@@ -632,7 +736,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   name: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 21,
     fontWeight: '900',
   },
@@ -643,35 +747,30 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    color: '#4B5563',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '800',
   },
-  verificationRow: {
+  emailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 5,
+    gap: 8,
   },
-  verificationText: {
-    color: '#B45309',
-    fontSize: 12,
-    fontWeight: '900',
+  emailAction: {
+    flex: 1,
+    color: colors.brand,
+    fontSize: 14,
+    fontWeight: '800',
   },
-  verifiedText: {
-    color: '#047857',
-  },
-  dot: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '900',
+  emailValue: {
+    color: colors.text,
   },
   form: {
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
     padding: 14,
   },
   field: {
@@ -685,19 +784,19 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    color: colors.ink,
     fontSize: 15,
     fontWeight: '700',
     paddingHorizontal: 12,
   },
   inputError: {
-    borderColor: '#DC2626',
+    borderColor: colors.error,
   },
   errorText: {
-    color: '#DC2626',
+    color: colors.error,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -711,7 +810,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 14,
   },
   secondaryButton: {
@@ -720,9 +819,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
   },
   primaryButtonText: {
@@ -731,7 +830,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   secondaryButtonText: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -741,35 +840,60 @@ const styles = StyleSheet.create({
   section: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
   },
   sectionRow: {
-    minHeight: 56,
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingHorizontal: 14,
+    borderBottomColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
   sectionIcon: {
     height: 34,
     width: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    borderRadius: radii.sm,
+    backgroundColor: colors.brandSoft,
   },
   sectionLabel: {
     flex: 1,
-    color: '#111827',
+    color: colors.ink,
     fontSize: 15,
     fontWeight: '900',
   },
+  sectionCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  sectionDescription: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sectionHeading: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  logoutSection: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
   destructiveText: {
-    color: '#B91C1C',
+    color: '#E03131',
   },
   loadingState: {
     minHeight: 260,
@@ -778,7 +902,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   mutedText: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -793,13 +917,13 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   stateTitle: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
   },
   stateBody: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,

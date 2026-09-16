@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, radii } from '@/utils/theme';
 
 type AuthShellProps = PropsWithChildren<{
   title: string;
@@ -52,7 +53,7 @@ export function AuthShell({ children, footer, subtitle, title }: AuthShellProps)
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 28,
+    paddingVertical: 24,
   },
   header: {
     flexDirection: 'row',
@@ -73,18 +74,18 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#111827',
+    borderRadius: radii.md,
+    backgroundColor: colors.brand,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontSize: 22,
     fontWeight: '800',
   },
   brand: {
-    color: '#111827',
-    fontSize: 24,
-    fontWeight: '800',
+    color: colors.brand,
+    fontSize: 27,
+    fontWeight: '900',
   },
   content: {
     gap: 28,
@@ -97,13 +98,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '800',
-    lineHeight: 40,
+    color: colors.ink,
+    fontSize: 31,
+    fontWeight: '900',
+    lineHeight: 38,
   },
   subtitle: {
-    color: '#4B5563',
+    color: colors.text,
     fontSize: 16,
     lineHeight: 24,
   },

@@ -506,7 +506,7 @@ function getStatusStyle(phase: RenterTripPhase) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   container: {
     flex: 1,
@@ -557,8 +557,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   activeTab: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   tabText: {
     color: '#6B7280',
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   cardCopy: {
     flex: 1,
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
     padding: 10,
   },
   dateBlock: {
@@ -716,8 +716,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   darkAction: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   dangerAction: {
     borderColor: '#FCA5A5',
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
     marginTop: 4,
   },

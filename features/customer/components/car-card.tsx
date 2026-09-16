@@ -1,4 +1,4 @@
-import { Heart, Users } from 'lucide-react-native';
+import { Check, Heart } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -6,6 +6,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { type Car } from '@/types/car';
+import { colors, radii, shadows } from '@/utils/theme';
 
 type CarCardProps = {
   car: Car;
@@ -23,21 +24,18 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        isLarge ? styles.cardLarge : styles.cardCompact,
+        isLarge && styles.cardLarge,
         pressed && styles.cardPressed,
       ]}
     >
-      <View style={[styles.imageFrame, isLarge && styles.imageFrameLarge]}>
+      <View style={styles.imageFrame}>
         {imageUrl ? (
-          <Image resizeMode="cover" source={{ uri: imageUrl }} style={styles.image} />
+          <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} />
         ) : (
           <View style={styles.imageFallback}>
             <Text style={styles.imageFallbackText}>{car.make.slice(0, 1)}</Text>
           </View>
         )}
-        <View style={styles.favoriteButton}>
-          <Heart color="#111827" size={17} />
-        </View>
       </View>
 
       <View style={styles.copy}>
@@ -45,17 +43,25 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
           <Text numberOfLines={1} style={styles.name}>
             {car.make} {car.model}
           </Text>
-          <Text style={styles.year}>{car.manufacturingYear}</Text>
+          <Pressable accessibilityLabel="Add to favorites" hitSlop={8}>
+            <Heart color={colors.muted} size={21} />
+          </Pressable>
         </View>
         <Text numberOfLines={1} style={styles.meta}>
-          {car.transmission} • {car.fuelType}
+          {car.manufacturingYear} · {car.transmission} · {car.seats} seats
         </Text>
+        <View style={styles.availableChip}>
+          <Check color={colors.success} size={12} strokeWidth={3} />
+          <Text style={styles.availableText}>Available</Text>
+        </View>
         <View style={styles.footer}>
-          <View style={styles.seatRow}>
-            <Users color="#6B7280" size={15} />
-            <Text style={styles.seats}>{car.seats} seats</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>{formatDailyPrice(car.pricePerDay)}</Text>
+            <Text style={styles.priceSuffix}>/ day</Text>
           </View>
-          <Text style={styles.price}>{formatDailyPrice(car.pricePerDay)}/day</Text>
+          <View style={styles.bookButton}>
+            <Text style={styles.bookButtonText}>Book now</Text>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -64,27 +70,26 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    minHeight: 154,
+    flexDirection: 'row',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  cardCompact: {
-    width: 236,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
   cardLarge: {
-    width: 280,
+    minHeight: 164,
   },
   cardPressed: {
     opacity: 0.86,
   },
   imageFrame: {
-    height: 128,
-    backgroundColor: '#E5E7EB',
-  },
-  imageFrameLarge: {
-    height: 152,
+    width: '42%',
+    minWidth: 118,
+    backgroundColor: colors.surfaceMuted,
+    padding: 8,
   },
   image: {
     height: '100%',
@@ -94,27 +99,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.brandSoft,
   },
   imageFallbackText: {
-    color: '#0F172A',
+    color: colors.brand,
     fontSize: 44,
     fontWeight: '900',
   },
-  favoriteButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    height: 34,
-    width: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
   copy: {
+    flex: 1,
+    justifyContent: 'center',
     gap: 8,
-    padding: 12,
+    padding: 13,
   },
   titleRow: {
     flexDirection: 'row',
@@ -123,20 +119,30 @@ const styles = StyleSheet.create({
   },
   name: {
     flex: 1,
-    color: '#111827',
+    color: colors.ink,
     fontSize: 16,
     fontWeight: '900',
   },
-  year: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '800',
-  },
   meta: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  availableChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  availableText: {
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: '800',
   },
   footer: {
     flexDirection: 'row',
@@ -144,19 +150,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  seatRow: {
+  priceRow: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  seats: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '700',
+    alignItems: 'baseline',
+    gap: 3,
   },
   price: {
-    color: '#111827',
-    fontSize: 14,
+    color: colors.brand,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  priceSuffix: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  bookButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+    backgroundColor: colors.brand,
+    paddingHorizontal: 12,
+  },
+  bookButtonText: {
+    color: colors.surface,
+    fontSize: 12,
     fontWeight: '900',
   },
 });

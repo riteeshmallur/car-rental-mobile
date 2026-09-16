@@ -1,13 +1,15 @@
-import { Bell, MapPin } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronDown, MapPin } from 'lucide-react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { type SafeUser } from '@/types/auth';
 import { type LocationSearchResult } from '@/types/location';
+import { colors, radii, shadows } from '@/utils/theme';
 
 type CustomerHeaderProps = {
   user: SafeUser | null;
   location?: LocationSearchResult | null;
   isLocationLoading?: boolean;
+  onLocationPress?: () => void;
 };
 
 function getGreetingName(user: SafeUser | null) {
@@ -25,28 +27,44 @@ function getGreetingName(user: SafeUser | null) {
 export function CustomerHeader({
   isLocationLoading,
   location,
+  onLocationPress,
   user,
 }: CustomerHeaderProps) {
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` || 'H';
+
   return (
     <View style={styles.container}>
-      <View style={styles.greetingBlock}>
-        <Text style={styles.eyebrow}>Good to see you</Text>
+      <View style={styles.brandBlock}>
+        <Text numberOfLines={1} style={styles.brand}>
+          HopIn
+        </Text>
         <Text numberOfLines={1} style={styles.greeting}>
           Hi, {getGreetingName(user)}
         </Text>
-        <View style={styles.locationRow}>
-          <MapPin color="#2563EB" size={16} />
-          <Text numberOfLines={1} style={styles.locationText}>
-            {isLocationLoading
-              ? 'Finding your default location'
-              : location?.name || 'Bengaluru, India'}
-          </Text>
-        </View>
       </View>
 
-      <Pressable accessibilityLabel="Notifications" accessibilityRole="button" style={styles.iconButton}>
-        <Bell color="#111827" size={22} />
+      <Pressable
+        accessibilityLabel="Change pickup location"
+        accessibilityRole="button"
+        onPress={onLocationPress}
+        style={({ pressed }) => [styles.locationPill, pressed && styles.pressed]}
+      >
+        <MapPin color={colors.brand} size={18} />
+        <Text numberOfLines={1} style={styles.locationText}>
+          {isLocationLoading
+            ? 'Finding location'
+            : location?.city || location?.name || 'Select location'}
+        </Text>
+        <ChevronDown color={colors.muted} size={17} />
       </Pressable>
+
+      <View style={styles.avatar}>
+        {user?.profileImageUrl ? (
+          <Image source={{ uri: user.profileImageUrl }} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatarText}>{initials.toUpperCase()}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -56,41 +74,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 6,
   },
-  greetingBlock: {
+  brandBlock: {
     flex: 1,
-    gap: 5,
+    minWidth: 68,
+    gap: 1,
   },
-  eyebrow: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  greeting: {
-    color: '#111827',
+  brand: {
+    color: colors.brand,
     fontSize: 26,
     fontWeight: '900',
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  locationText: {
-    flex: 1,
-    color: '#374151',
-    fontSize: 14,
+  greeting: {
+    color: colors.muted,
+    fontSize: 11,
     fontWeight: '700',
   },
-  iconButton: {
+  locationPill: {
+    maxWidth: 136,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+    ...shadows.card,
+  },
+  locationText: {
+    flexShrink: 1,
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  avatar: {
     height: 44,
     width: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    borderRadius: 22,
+    backgroundColor: colors.brandSoft,
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  avatarText: {
+    color: colors.brand,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });

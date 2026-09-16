@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   optionSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#EAF2FF',
   },
   optionDisabled: {
     backgroundColor: '#F9FAFB',

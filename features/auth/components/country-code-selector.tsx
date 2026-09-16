@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { countryCodes } from '@/features/auth/constants/country-codes';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import { colors, radii } from '@/utils/theme';
 
 type CountryCodeSelectorProps = {
   value: string;
@@ -32,7 +33,7 @@ export function CountryCodeSelector({
         <Text style={styles.triggerText}>
           {selectedCountry?.isoCode} {value}
         </Text>
-        <ChevronDown color="#374151" size={18} />
+        <ChevronDown color={colors.text} size={18} />
       </Pressable>
 
       <Modal animationType="fade" onRequestClose={onClose} transparent visible={isOpen}>
@@ -74,13 +75,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
   },
   triggerText: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -96,12 +97,12 @@ const styles = StyleSheet.create({
     gap: 8,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     padding: 20,
     paddingBottom: 34,
   },
   sheetTitle: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 18,
     fontWeight: '800',
     marginBottom: 8,
@@ -111,19 +112,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 8,
+    borderRadius: radii.sm,
     paddingHorizontal: 12,
   },
   optionSelected: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.brandSoft,
   },
   optionText: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 16,
     fontWeight: '600',
   },
   optionCode: {
-    color: '#2563EB',
+    color: colors.brand,
     fontSize: 16,
     fontWeight: '800',
   },

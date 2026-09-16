@@ -544,7 +544,7 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   container: {
     flex: 1,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   resetText: {
-    color: '#2563EB',
+    color: '#0B4FE8',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -642,8 +642,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipSelected: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   chipText: {
     color: '#374151',
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   favoriteButton: {
     position: 'absolute',
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 18,
     marginTop: 6,
   },

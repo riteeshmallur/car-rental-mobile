@@ -1,13 +1,15 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CarCard } from '@/features/customer/components/car-card';
 import { type Car } from '@/types/car';
+import { colors, radii } from '@/utils/theme';
 
 type FeaturedCarListProps = {
   title: string;
   cars: Car[];
   isLoading?: boolean;
   onCarPress?: (vehicleId: string) => void;
+  onViewAll?: () => void;
   variant?: 'featured' | 'popular';
 };
 
@@ -15,6 +17,7 @@ export function FeaturedCarList({
   cars,
   isLoading,
   onCarPress,
+  onViewAll,
   title,
   variant = 'featured',
 }: FeaturedCarListProps) {
@@ -22,7 +25,9 @@ export function FeaturedCarList({
     <View style={styles.section}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.count}>{cars.length} cars</Text>
+        <Pressable accessibilityRole="button" onPress={onViewAll}>
+          <Text style={styles.viewAll}>View all</Text>
+        </Pressable>
       </View>
 
       {isLoading ? (
@@ -36,20 +41,16 @@ export function FeaturedCarList({
           <Text style={styles.emptyBody}>Try another location or rental window.</Text>
         </View>
       ) : (
-        <FlatList
-          contentContainerStyle={styles.listContent}
-          data={cars}
-          horizontal
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
+        <View style={styles.listContent}>
+          {cars.map((item) => (
             <CarCard
+              key={item.id}
               car={item}
               onPress={() => onCarPress?.(item.id)}
               size={variant === 'featured' ? 'large' : 'compact'}
             />
-          )}
-          showsHorizontalScrollIndicator={false}
-        />
+          ))}
+        </View>
       )}
     </View>
   );
@@ -66,26 +67,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 20,
     fontWeight: '900',
   },
-  count: {
-    color: '#6B7280',
+  viewAll: {
+    color: colors.brand,
     fontSize: 13,
     fontWeight: '800',
   },
   listContent: {
-    gap: 14,
-    paddingRight: 24,
+    gap: 12,
   },
   loadingRow: {
     minHeight: 180,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -100,18 +100,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
     padding: 16,
   },
   emptyTitle: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 15,
     fontWeight: '900',
   },
   emptyBody: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',

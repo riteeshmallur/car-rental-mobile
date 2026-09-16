@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
   },
   secondaryButtonText: {
-    color: '#2563EB',
+    color: '#0B4FE8',
     fontSize: 15,
     fontWeight: '800',
   },

@@ -708,7 +708,7 @@ function CheckboxField({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   keyboardView: {
     flex: 1,
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#EAF2FF',
   },
   introTitle: {
     color: '#111827',
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   introCopy: {
     flex: 1,
@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 8,
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
   },
   stepLabels: {
     flexDirection: 'row',
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   stepCopy: {
     flex: 1,
@@ -924,8 +924,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   selectedSegment: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   segmentText: {
     color: '#374151',
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
     padding: 12,
   },
   checkbox: {
@@ -957,8 +957,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkedBox: {
-    borderColor: '#111827',
-    backgroundColor: '#111827',
+    borderColor: '#0B4FE8',
+    backgroundColor: '#0B4FE8',
   },
   checkboxText: {
     flex: 1,
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
   },
   termsBox: {
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
     padding: 12,
   },
   termsText: {
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#0B4FE8',
     paddingHorizontal: 14,
   },
   secondaryButton: {

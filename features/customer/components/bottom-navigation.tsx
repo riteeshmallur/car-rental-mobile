@@ -9,6 +9,7 @@ import {
 import { type Href, router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, shadows } from '@/utils/theme';
 
 type NavItem = {
   href: Href;
@@ -46,7 +47,11 @@ export function BottomNavigation() {
               pressed && styles.itemPressed,
             ]}
           >
-            <Icon color={isActive ? '#111827' : '#6B7280'} size={21} />
+            <Icon
+              color={isActive ? colors.brand : colors.muted}
+              fill={isActive && item.label === 'Home' ? colors.brand : 'transparent'}
+              size={21}
+            />
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {item.label}
             </Text>
@@ -68,10 +73,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
     paddingTop: 8,
     paddingHorizontal: 8,
+    ...shadows.floating,
   },
   item: {
     minHeight: 52,
@@ -81,18 +87,16 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 8,
   },
-  itemActive: {
-    backgroundColor: '#F3F4F6',
-  },
+  itemActive: {},
   itemPressed: {
     opacity: 0.76,
   },
   label: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 11,
     fontWeight: '800',
   },
   labelActive: {
-    color: '#111827',
+    color: colors.brand,
   },
 });
