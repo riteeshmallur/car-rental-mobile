@@ -1,49 +1,36 @@
-import { X } from 'lucide-react-native';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  formatDate,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import {
   formatTime,
+  getRentalWindowError,
   type RentalWindow,
 } from '@/features/customer/utils/rental-window';
-import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import { type LocationSearchResult } from '@/types/location';
+import { colors, radii } from '@/utils/theme';
 
 export type DateTimeField = 'pickupDate' | 'pickupTime' | 'returnDate' | 'returnTime';
 
 type DateTimePickerSheetProps = {
   field: DateTimeField | null;
+  location?: LocationSearchResult | null;
   rentalWindow: RentalWindow;
   onClose: () => void;
   onChangePickupAt: (value: Date) => void;
   onChangeReturnAt: (value: Date) => void;
 };
 
-const timeSlots = [
-  [6, 0],
-  [7, 0],
-  [8, 0],
-  [9, 0],
-  [10, 0],
-  [11, 0],
-  [12, 0],
-  [13, 0],
-  [14, 0],
-  [15, 0],
-  [16, 0],
-  [17, 0],
-  [18, 0],
-  [19, 0],
-  [20, 0],
-] as const;
-
-function getDateOptions() {
-  return Array.from({ length: 21 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() + index);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  });
-}
+type SelectionStage = 'pickup' | 'return';
 
 function sameDate(left: Date, right: Date) {
   return (
@@ -59,222 +46,355 @@ function withDate(base: Date, date: Date) {
   return next;
 }
 
-function withTime(base: Date, hour: number, minute: number) {
-  const next = new Date(base);
-  next.setHours(hour, minute, 0, 0);
-  return next;
+function getCalendarDays(month: Date) {
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+  const leadingDays = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
+    0,
+  ).getDate();
+  const days: Array<Date | null> = Array.from({ length: leadingDays }, () => null);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    days.push(new Date(month.getFullYear(), month.getMonth(), day));
+  }
+
+  return days;
 }
 
-function isPast(value: Date) {
-  return value.getTime() < Date.now();
+function formatPickerDateTime(value: Date) {
+  return new Intl.DateTimeFormat('en-IN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(value);
+}
+
+function formatPickerTime(value: Date) {
+  return formatTime(value).replace(':00', '').toUpperCase();
+}
+
+function getTimeChoices(value: Date) {
+  return [-1, 0, 1].map((offset) => {
+    const next = new Date(value);
+    next.setHours(value.getHours() + offset, 0, 0, 0);
+    return next;
+  });
+}
+
+function isBeforeToday(value: Date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return value.getTime() < today.getTime();
 }
 
 export function DateTimePickerSheet({
   field,
+  location,
   onChangePickupAt,
   onChangeReturnAt,
   onClose,
   rentalWindow,
 }: DateTimePickerSheetProps) {
   const isOpen = field !== null;
+  const [stage, setStage] = useState<SelectionStage>('pickup');
+  const [pickupAt, setPickupAt] = useState<Date | null>(null);
+  const [returnAt, setReturnAt] = useState<Date | null>(null);
+  const [visibleMonth, setVisibleMonth] = useState(new Date());
   useWebBackGuard({ active: isOpen, onBack: onClose });
-  const targetDate =
-    field === 'returnDate' || field === 'returnTime'
-      ? rentalWindow.returnAt
-      : rentalWindow.pickupAt;
-  const isReturnField = field === 'returnDate' || field === 'returnTime';
-  const isDateField = field === 'pickupDate' || field === 'returnDate';
 
-  const title = isDateField
-    ? isReturnField
-      ? 'Return date'
-      : 'Pickup date'
-    : isReturnField
-      ? 'Return time'
-      : 'Pickup time';
-
-  const updateValue = (value: Date) => {
-    if (isReturnField) {
-      onChangeReturnAt(value);
-    } else {
-      onChangePickupAt(value);
+  useEffect(() => {
+    if (!isOpen) {
+      return;
     }
+
+    const initialPickup = new Date(rentalWindow.pickupAt);
+    const initialReturn = new Date(rentalWindow.returnAt);
+    setPickupAt(initialPickup);
+    setReturnAt(initialReturn);
+    setStage(field === 'returnDate' || field === 'returnTime' ? 'return' : 'pickup');
+    setVisibleMonth(new Date(initialPickup.getFullYear(), initialPickup.getMonth(), 1));
+  }, [field, isOpen, rentalWindow.pickupAt, rentalWindow.returnAt]);
+
+  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
+  const activeDate = stage === 'pickup' ? pickupAt : returnAt;
+  const timePickup = pickupAt ?? rentalWindow.pickupAt;
+  const timeReturn = returnAt ?? rentalWindow.returnAt;
+  const draftWindow = pickupAt && returnAt ? { pickupAt, returnAt } : null;
+  const validationError = draftWindow ? getRentalWindowError(draftWindow) : null;
+  const canContinue = Boolean(pickupAt && returnAt && !validationError);
+
+  const selectDate = (date: Date) => {
+    if (stage === 'pickup') {
+      if (isBeforeToday(date)) {
+        return;
+      }
+
+      setPickupAt(withDate(pickupAt ?? rentalWindow.pickupAt, date));
+      setStage('return');
+      setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+      return;
+    }
+
+    const nextReturn = withDate(returnAt ?? rentalWindow.returnAt, date);
+    if (pickupAt && nextReturn.getTime() <= pickupAt.getTime()) {
+      return;
+    }
+
+    setReturnAt(nextReturn);
+  };
+
+  const selectTime = (value: Date, target: SelectionStage) => {
+    if (target === 'pickup') {
+      if (value.getTime() < Date.now()) {
+        return;
+      }
+      setPickupAt(value);
+      return;
+    }
+
+    if (pickupAt && value.getTime() <= pickupAt.getTime()) {
+      return;
+    }
+    setReturnAt(value);
+  };
+
+  const continueWithSelection = () => {
+    if (!canContinue || !pickupAt || !returnAt) {
+      return;
+    }
+
+    onChangePickupAt(pickupAt);
+    onChangeReturnAt(returnAt);
     onClose();
   };
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} transparent visible={isOpen}>
-      <Pressable onPress={onClose} style={styles.backdrop}>
-        <Pressable onPress={(event) => event.stopPropagation()} style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+    <Modal animationType="slide" onRequestClose={onClose} visible={isOpen}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.topBar}>
             <Pressable
-              accessibilityLabel="Close date and time picker"
+              accessibilityLabel="Back"
               accessibilityRole="button"
+              hitSlop={10}
               onPress={onClose}
-              style={styles.closeButton}
+              style={styles.backButton}
             >
-              <X color="#111827" size={20} />
+              <ArrowLeft color={colors.ink} size={30} />
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.options}>
-            {isDateField
-              ? getDateOptions().map((date) => {
-                  const nextValue = withDate(targetDate, date);
-                  const disabled =
-                    (!isReturnField && isPast(nextValue)) ||
-                    (isReturnField &&
-                      nextValue.getTime() <= rentalWindow.pickupAt.getTime());
-                  const selected = sameDate(targetDate, date);
+          <View style={styles.locationRow}>
+            <Text style={styles.locationLabel}>Where</Text>
+            <Text numberOfLines={1} style={styles.locationValue}>
+              {location?.name || location?.city || 'Select pickup location'}
+            </Text>
+          </View>
 
-                  return (
-                    <PickerOption
-                      disabled={disabled}
-                      key={date.toISOString()}
-                      label={formatDate(date)}
-                      selected={selected}
-                      sublabel={date.toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                      onPress={() => updateValue(nextValue)}
-                    />
-                  );
-                })
-              : timeSlots.map(([hour, minute]) => {
-                  const nextValue = withTime(targetDate, hour, minute);
-                  const disabled =
-                    (!isReturnField && isPast(nextValue)) ||
-                    (isReturnField &&
-                      nextValue.getTime() <= rentalWindow.pickupAt.getTime());
-                  const selected =
-                    targetDate.getHours() === hour &&
-                    targetDate.getMinutes() === minute;
+          <View style={styles.dateCard}>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>Select start &amp; end date</Text>
+              <Pressable accessibilityRole="button" onPress={() => { setPickupAt(null); setReturnAt(null); setStage('pickup'); }}>
+                <Text style={styles.clearText}>CLEAR</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.rangeText}>
+              {pickupAt && returnAt
+                ? `${formatPickerDateTime(pickupAt)} -> ${formatPickerDateTime(returnAt)}`
+                : 'Select a start and end date'}
+            </Text>
 
-                  return (
-                    <PickerOption
-                      disabled={disabled}
-                      key={`${hour}:${minute}`}
-                      label={formatTime(nextValue)}
-                      selected={selected}
-                      sublabel={disabled ? 'Unavailable' : 'Available'}
-                      onPress={() => updateValue(nextValue)}
-                    />
-                  );
-                })}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
+            <View style={styles.weekRow}>
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                <Text key={`${day}-${index}`} style={styles.weekDay}>{day}</Text>
+              ))}
+            </View>
+
+            <View style={styles.calendarHeader}>
+              <Pressable
+                accessibilityLabel="Previous month"
+                accessibilityRole="button"
+                onPress={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))}
+                style={styles.monthButton}
+              >
+                <ChevronLeft color={colors.text} size={20} />
+              </Pressable>
+              <Text style={styles.monthTitle}>
+                {new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(visibleMonth)}
+              </Text>
+              <Pressable
+                accessibilityLabel="Next month"
+                accessibilityRole="button"
+                onPress={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))}
+                style={styles.monthButton}
+              >
+                <ChevronRight color={colors.text} size={20} />
+              </Pressable>
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {calendarDays.map((date, index) => {
+                if (!date) {
+                  return <View key={`empty-${index}`} style={styles.dayCell} />;
+                }
+
+                const isPickup = pickupAt ? sameDate(pickupAt, date) : false;
+                const isReturn = returnAt ? sameDate(returnAt, date) : false;
+                const isInRange = Boolean(pickupAt && returnAt && date > pickupAt && date < returnAt);
+                const disabled = stage === 'pickup'
+                  ? isBeforeToday(date)
+                  : Boolean(pickupAt && withDate(returnAt ?? rentalWindow.returnAt, date).getTime() <= pickupAt.getTime());
+
+                return (
+                  <Pressable
+                    accessibilityLabel={`${stage === 'pickup' ? 'Pickup' : 'Return'} ${date.getDate()}`}
+                    accessibilityRole="button"
+                    disabled={disabled}
+                    key={date.toISOString()}
+                    onPress={() => selectDate(date)}
+                    style={[
+                      styles.dayCell,
+                      isInRange && styles.dayCellInRange,
+                      isPickup && styles.dayCellPickupSelected,
+                      isReturn && styles.dayCellReturnSelected,
+                      disabled && styles.dayCellDisabled,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.dayText,
+                      (isPickup || isReturn) && styles.dayTextSelected,
+                      disabled && styles.dayTextDisabled,
+                    ]}>
+                      {String(date.getDate()).padStart(2, '0')}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.selectionHint}>
+              <Text style={styles.selectionHintText}>
+                {activeDate ? `Choose ${stage === 'pickup' ? 'pickup' : 'return'} date` : 'Choose pickup date'}
+              </Text>
+            </View>
+
+            <View style={styles.timeRow}>
+              <TimePickerColumn label="Pickup time" value={timePickup} onChange={(value) => selectTime(value, 'pickup')} />
+              <TimePickerColumn label="Dropoff time" value={timeReturn} onChange={(value) => selectTime(value, 'return')} />
+            </View>
+
+            {validationError ? <Text style={styles.validationError}>{validationError}</Text> : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={!canContinue}
+              onPress={continueWithSelection}
+              style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
+            >
+              <Text style={styles.continueText}>CONTINUE</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-function PickerOption({
-  disabled,
+function TimePickerColumn({
   label,
-  onPress,
-  selected,
-  sublabel,
+  onChange,
+  value,
 }: {
-  disabled?: boolean;
   label: string;
-  onPress: () => void;
-  selected?: boolean;
-  sublabel: string;
+  onChange: (value: Date) => void;
+  value: Date;
 }) {
+  const choices = getTimeChoices(value);
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.option,
-        selected && styles.optionSelected,
-        disabled && styles.optionDisabled,
-        pressed && !disabled && styles.optionPressed,
-      ]}
-    >
-      <Text style={[styles.optionLabel, disabled && styles.disabledText]}>
-        {label}
-      </Text>
-      <Text style={[styles.optionSublabel, disabled && styles.disabledText]}>
-        {sublabel}
-      </Text>
-    </Pressable>
+    <View style={styles.timeColumn}>
+      <Text style={styles.timeTitle}>{label}</Text>
+      <View style={styles.timeChoices}>
+        {choices.map((choice, index) => (
+          <Pressable
+            accessibilityRole="button"
+            key={`${label}-${choice.toISOString()}`}
+            onPress={() => onChange(choice)}
+            style={[styles.timeChoice, index === 1 && styles.timeChoiceSelected]}
+          >
+            <Text style={[styles.timeText, index !== 1 && styles.timeTextMuted]}>
+              {formatPickerTime(choice)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(17,24,39,0.36)',
-  },
-  sheet: {
-    maxHeight: '78%',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    paddingBottom: 34,
-  },
-  header: {
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  content: { gap: 14, paddingBottom: 28 },
+  topBar: { height: 64, justifyContent: 'center', backgroundColor: colors.surface, paddingHorizontal: 18 },
+  backButton: { height: 42, width: 42, alignItems: 'center', justifyContent: 'center' },
+  locationRow: {
+    minHeight: 74,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 16,
-    marginBottom: 12,
-  },
-  title: {
-    color: '#111827',
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  closeButton: {
-    height: 40,
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-  },
-  options: {
-    gap: 10,
-  },
-  option: {
-    minHeight: 58,
-    justifyContent: 'center',
-    gap: 4,
+    marginHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 18,
   },
-  optionSelected: {
-    borderColor: '#0B4FE8',
-    backgroundColor: '#EAF2FF',
+  locationLabel: { color: colors.muted, fontSize: 21, fontWeight: '700' },
+  locationValue: { flex: 1, color: colors.ink, fontSize: 16, fontWeight: '700' },
+  dateCard: {
+    gap: 14,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    padding: 16,
   },
-  optionDisabled: {
-    backgroundColor: '#F9FAFB',
-    opacity: 0.48,
-  },
-  optionPressed: {
-    opacity: 0.76,
-  },
-  optionLabel: {
-    color: '#111827',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  optionSublabel: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  disabledText: {
-    color: '#9CA3AF',
-  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  title: { flex: 1, color: colors.ink, fontSize: 21, lineHeight: 27, fontWeight: '900' },
+  clearText: { color: colors.success, fontSize: 18, fontWeight: '900' },
+  rangeText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 10 },
+  weekDay: { width: '14.28%', color: colors.muted, fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  calendarHeader: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthButton: { height: 34, width: 34, alignItems: 'center', justifyContent: 'center' },
+  monthTitle: { color: colors.ink, fontSize: 22, fontWeight: '900' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 },
+  dayCell: { height: 42, width: '14.28%', alignItems: 'center', justifyContent: 'center', borderRadius: 21 },
+  dayCellInRange: { backgroundColor: colors.brandSoft, borderRadius: 0 },
+  dayCellPickupSelected: { backgroundColor: colors.brand },
+  dayCellReturnSelected: { backgroundColor: colors.brand, borderRadius: 0 },
+  dayCellDisabled: { opacity: 0.35 },
+  dayText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  dayTextSelected: { color: colors.surface, fontWeight: '900' },
+  dayTextDisabled: { color: colors.muted },
+  selectionHint: { minHeight: 24, alignItems: 'center', justifyContent: 'center' },
+  selectionHintText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+  timeRow: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
+  timeColumn: { flex: 1 },
+  timeTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center', textTransform: 'uppercase' },
+  timeChoices: { alignItems: 'center', gap: 2, paddingTop: 6 },
+  timeChoice: { minHeight: 42, minWidth: 122, alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
+  timeChoiceSelected: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.text },
+  timeText: { color: colors.ink, fontSize: 21, fontWeight: '700' },
+  timeTextMuted: { color: '#B8B8B8' },
+  validationError: { color: colors.error, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  continueButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.success, marginTop: 2 },
+  continueButtonDisabled: { opacity: 0.45 },
+  continueText: { color: colors.surface, fontSize: 17, fontWeight: '900', letterSpacing: 1 },
 });

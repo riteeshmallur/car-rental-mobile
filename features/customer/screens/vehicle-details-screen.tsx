@@ -21,6 +21,8 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   Share,
@@ -40,6 +42,7 @@ import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { type VehicleDetail } from '@/types/car';
+import { colors, radii, shadows } from '@/utils/theme';
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -164,17 +167,17 @@ export function VehicleDetailsScreen() {
           />
         ) : detailsQuery.data ? (
           <>
+            <VehicleDetailsHeader
+              isFavorite={isFavorite}
+              onBack={goBack}
+              onFavoritePress={() => setIsFavorite((value) => !value)}
+              onSharePress={shareVehicle}
+            />
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
-              <VehicleHero
-                isFavorite={isFavorite}
-                onBack={goBack}
-                onFavoritePress={() => setIsFavorite((value) => !value)}
-                onSharePress={shareVehicle}
-                vehicle={detailsQuery.data}
-              />
+              <VehicleHero vehicle={detailsQuery.data} />
 
               <VehicleSummary
                 pickupDateTime={pickupDateTime}
@@ -257,20 +260,65 @@ export function VehicleDetailsScreen() {
   );
 }
 
-function VehicleHero({
+function VehicleDetailsHeader({
   isFavorite,
   onBack,
   onFavoritePress,
   onSharePress,
-  vehicle,
 }: {
   isFavorite: boolean;
   onBack: () => void;
   onFavoritePress: () => void;
   onSharePress: () => void;
+}) {
+  return (
+    <View style={styles.detailsHeader}>
+      <Pressable
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
+        onPress={onBack}
+        style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+      >
+        <ArrowLeft color={colors.ink} size={22} />
+      </Pressable>
+      <View style={styles.detailsHeaderCopy}>
+        <Text style={styles.detailsHeaderTitle}>Car details</Text>
+        <Text style={styles.detailsHeaderSubtitle}>Review and book your car</Text>
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable
+          accessibilityLabel={isFavorite ? 'Remove favorite' : 'Add favorite'}
+          accessibilityRole="button"
+          onPress={onFavoritePress}
+          style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+        >
+          <Heart
+            color={isFavorite ? colors.error : colors.ink}
+            fill={isFavorite ? colors.error : 'transparent'}
+            size={22}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Share vehicle"
+          accessibilityRole="button"
+          onPress={onSharePress}
+          style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+        >
+          <Share2 color={colors.ink} size={21} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function VehicleHero({
+  vehicle,
+}: {
   vehicle: VehicleDetail;
 }) {
   const { width } = useWindowDimensions();
+  const galleryWidth = Math.max(width - 32, 280);
+  const [activeIndex, setActiveIndex] = useState(0);
   const images = useMemo(() => {
     if (vehicle.images.length > 0) {
       return vehicle.images;
@@ -281,12 +329,26 @@ function VehicleHero({
 
   return (
     <View style={styles.hero}>
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(
+          event: NativeSyntheticEvent<NativeScrollEvent>,
+        ) => {
+          setActiveIndex(
+            Math.round(event.nativeEvent.contentOffset.x / galleryWidth),
+          );
+        }}
+      >
         {images.map((image) => {
           const imageUrl = getCarImageUrl(image.url);
 
           return (
-            <View key={image.id} style={[styles.galleryItem, { width }]}>
+            <View
+              key={image.id}
+              style={[styles.galleryItem, { width: galleryWidth }]}
+            >
               {imageUrl ? (
                 <Image source={{ uri: imageUrl }} style={styles.heroImage} />
               ) : (
@@ -298,37 +360,19 @@ function VehicleHero({
           );
         })}
       </ScrollView>
-
-      <View style={styles.heroActions}>
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          onPress={onBack}
-          style={styles.heroButton}
-        >
-          <ArrowLeft color="#111827" size={21} />
-        </Pressable>
-        <View style={styles.heroRightActions}>
-          <Pressable
-            accessibilityLabel="Share vehicle"
-            accessibilityRole="button"
-            onPress={onSharePress}
-            style={styles.heroButton}
-          >
-            <Share2 color="#111827" size={20} />
-          </Pressable>
-          <Pressable
-            accessibilityLabel={isFavorite ? 'Remove favorite' : 'Add favorite'}
-            accessibilityRole="button"
-            onPress={onFavoritePress}
-            style={styles.heroButton}
-          >
-            <Heart
-              color={isFavorite ? '#DC2626' : '#111827'}
-              fill={isFavorite ? '#DC2626' : 'transparent'}
-              size={20}
+      <View style={styles.galleryFooter}>
+        <View style={styles.galleryDots}>
+          {images.map((image, index) => (
+            <View
+              key={image.id}
+              style={[styles.galleryDot, index === activeIndex && styles.galleryDotActive]}
             />
-          </Pressable>
+          ))}
+        </View>
+        <View style={styles.galleryCount}>
+          <Text style={styles.galleryCountText}>
+            {activeIndex + 1} / {images.length}
+          </Text>
         </View>
       </View>
     </View>
@@ -346,21 +390,22 @@ function VehicleSummary({
 }) {
   return (
     <View style={styles.summary}>
-      <View style={styles.titleRow}>
-        <View style={styles.titleCopy}>
-          <Text style={styles.vehicleTitle}>
-            {vehicle.make} {vehicle.model}
-          </Text>
-          <Text style={styles.mutedText}>
-            {vehicle.manufacturingYear} • {vehicle.vehicleType}
-          </Text>
-        </View>
-        <View style={styles.ratingPill}>
-          <Star color="#F59E0B" fill="#F59E0B" size={14} />
+      <View style={styles.titleCopy}>
+        <Text style={styles.vehicleTitle}>
+          {vehicle.make} {vehicle.model}
+        </Text>
+        <View style={styles.ratingRow}>
+          <Star color="#F59E0B" fill="#F59E0B" size={17} />
           <Text style={styles.ratingText}>
             {vehicle.rating > 0 ? vehicle.rating.toFixed(1) : 'New'}
           </Text>
+          <Text style={styles.reviewCount}>
+            ({vehicle.reviewCount} reviews)
+          </Text>
         </View>
+        <Text style={styles.mutedText}>
+          {vehicle.manufacturingYear} • {vehicle.vehicleType}
+        </Text>
       </View>
 
       <View style={styles.specGrid}>
@@ -586,62 +631,139 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   stateHeader: {
-    minHeight: 64,
+    minHeight: 72,
+    alignItems: 'flex-start',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
+  detailsHeader: {
+    minHeight: 82,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  detailsHeaderCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  detailsHeaderTitle: {
+    color: colors.ink,
+    fontSize: 25,
+    fontWeight: '900',
+  },
+  detailsHeaderSubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerIconButton: {
+    height: 44,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    ...shadows.card,
+  },
   scrollContent: {
+    gap: 14,
+    paddingHorizontal: 16,
     paddingBottom: 118,
   },
   hero: {
     height: 286,
-    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    backgroundColor: colors.brandSoft,
+    ...shadows.card,
   },
   galleryItem: {
     width: 390,
     height: 286,
+    backgroundColor: colors.brandSoft,
   },
   heroImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   heroFallback: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF2FF',
+    backgroundColor: colors.brandSoft,
   },
-  heroActions: {
+  galleryFooter: {
     position: 'absolute',
-    top: 14,
-    right: 14,
+    right: 12,
+    bottom: 12,
     left: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  heroRightActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  heroButton: {
-    height: 42,
-    width: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  galleryDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  galleryDot: {
+    height: 7,
+    width: 7,
+    borderRadius: 4,
+    backgroundColor: '#C7D2E5',
+  },
+  galleryDotActive: {
+    width: 20,
+    backgroundColor: colors.brand,
+  },
+  galleryCount: {
+    position: 'absolute',
+    right: 0,
+    minHeight: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(16, 24, 46, 0.7)',
+    paddingHorizontal: 10,
+  },
+  galleryCountText: {
+    color: colors.surface,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  heroButton: {
+    height: 44,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
   summary: {
-    gap: 18,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
+    gap: 14,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    padding: 16,
+    ...shadows.card,
   },
   titleRow: {
     flexDirection: 'row',
@@ -653,12 +775,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   vehicleTitle: {
-    color: '#111827',
-    fontSize: 26,
+    color: colors.ink,
+    fontSize: 25,
     fontWeight: '900',
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  reviewCount: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   mutedText: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
@@ -668,12 +800,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 8,
-    backgroundColor: '#FFFBEB',
+    borderRadius: radii.pill,
+    backgroundColor: '#FFF7D6',
     paddingHorizontal: 9,
   },
   ratingText: {
-    color: '#92400E',
+    color: '#8A5A00',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -683,23 +815,23 @@ const styles = StyleSheet.create({
   },
   spec: {
     flex: 1,
-    minHeight: 88,
+    minHeight: 82,
     justifyContent: 'center',
     gap: 5,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
     padding: 12,
   },
   specValue: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 15,
     fontWeight: '900',
     textTransform: 'capitalize',
   },
   specLabel: {
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -707,8 +839,8 @@ const styles = StyleSheet.create({
   tripWindow: {
     flexDirection: 'row',
     gap: 10,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    borderRadius: radii.md,
+    backgroundColor: colors.brandSoft,
     padding: 14,
   },
   tripCopy: {
@@ -716,20 +848,22 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tripTitle: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
   },
   section: {
     gap: 12,
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    padding: 16,
+    ...shadows.card,
   },
   sectionTitle: {
-    color: '#111827',
-    fontSize: 18,
+    color: colors.ink,
+    fontSize: 19,
     fontWeight: '900',
   },
   featureWrap: {
@@ -738,21 +872,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   featureChip: {
-    minHeight: 34,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 8,
-    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#CDEFD9',
+    borderRadius: radii.pill,
+    backgroundColor: colors.successSoft,
     paddingHorizontal: 10,
   },
   featureText: {
-    color: '#065F46',
+    color: '#166534',
     fontSize: 13,
     fontWeight: '900',
   },
   paragraph: {
-    color: '#374151',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 23,
@@ -766,7 +902,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   locationTitle: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -782,7 +918,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderRadius: 27,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: colors.brandSoft,
   },
   hostImage: {
     height: '100%',
@@ -793,31 +929,31 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   hostName: {
-    color: '#111827',
+    color: colors.ink,
     fontSize: 16,
     fontWeight: '900',
   },
   availability: {
     flexDirection: 'row',
     gap: 10,
-    borderRadius: 8,
-    backgroundColor: '#ECFDF5',
+    borderRadius: radii.md,
+    backgroundColor: colors.successSoft,
     padding: 14,
   },
   availabilityBlocked: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.errorSoft,
   },
   availabilityCopy: {
     flex: 1,
     gap: 3,
   },
   availabilityTitle: {
-    color: '#047857',
+    color: colors.success,
     fontSize: 15,
     fontWeight: '900',
   },
   availabilityTitleBlocked: {
-    color: '#B91C1C',
+    color: colors.error,
   },
   rules: {
     gap: 10,
@@ -831,11 +967,11 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
     borderRadius: 3,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: colors.brand,
   },
   ruleText: {
     flex: 1,
-    color: '#374151',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -844,8 +980,8 @@ const styles = StyleSheet.create({
   },
   reviewItem: {
     gap: 6,
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
     padding: 12,
   },
   reviewHeader: {

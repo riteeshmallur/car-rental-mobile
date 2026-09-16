@@ -1,8 +1,6 @@
 import {
   Briefcase,
-  Heart,
   Home,
-  Search,
   UserRound,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -20,9 +18,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/(customer)/home', path: '/home', icon: Home, label: 'Home' },
-  { href: '/(customer)/search', path: '/search', icon: Search, label: 'Search' },
   { href: '/(customer)/trips', path: '/trips', icon: Briefcase, label: 'Trips' },
-  { href: '/(customer)/favorites', path: '/favorites', icon: Heart, label: 'Favorites' },
   { href: '/(customer)/profile', path: '/profile', icon: UserRound, label: 'Profile' },
 ];
 

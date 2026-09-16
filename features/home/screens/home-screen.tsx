@@ -133,9 +133,6 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <CustomerHeader
-          isLocationLoading={defaultLocationQuery.isLoading}
-          location={location}
-          onLocationPress={() => router.push('/(customer)/location')}
           user={user}
         />
 
@@ -179,6 +176,7 @@ export function HomeScreen() {
       </ScrollView>
       <DateTimePickerSheet
         field={activeDateTimeField}
+        location={location}
         onChangePickupAt={setPickupAt}
         onChangeReturnAt={setReturnAt}
         onClose={() => setActiveDateTimeField(null)}

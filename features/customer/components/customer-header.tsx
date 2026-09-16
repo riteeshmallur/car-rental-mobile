@@ -1,15 +1,10 @@
-import { ChevronDown, MapPin } from 'lucide-react-native';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { type SafeUser } from '@/types/auth';
-import { type LocationSearchResult } from '@/types/location';
-import { colors, radii, shadows } from '@/utils/theme';
+import { colors } from '@/utils/theme';
 
 type CustomerHeaderProps = {
   user: SafeUser | null;
-  location?: LocationSearchResult | null;
-  isLocationLoading?: boolean;
-  onLocationPress?: () => void;
 };
 
 function getGreetingName(user: SafeUser | null) {
@@ -25,9 +20,6 @@ function getGreetingName(user: SafeUser | null) {
 }
 
 export function CustomerHeader({
-  isLocationLoading,
-  location,
-  onLocationPress,
   user,
 }: CustomerHeaderProps) {
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` || 'H';
@@ -42,21 +34,6 @@ export function CustomerHeader({
           Hi, {getGreetingName(user)}
         </Text>
       </View>
-
-      <Pressable
-        accessibilityLabel="Change pickup location"
-        accessibilityRole="button"
-        onPress={onLocationPress}
-        style={({ pressed }) => [styles.locationPill, pressed && styles.pressed]}
-      >
-        <MapPin color={colors.brand} size={18} />
-        <Text numberOfLines={1} style={styles.locationText}>
-          {isLocationLoading
-            ? 'Finding location'
-            : location?.city || location?.name || 'Select location'}
-        </Text>
-        <ChevronDown color={colors.muted} size={17} />
-      </Pressable>
 
       <View style={styles.avatar}>
         {user?.profileImageUrl ? (
@@ -91,25 +68,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  locationPill: {
-    maxWidth: 136,
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
-    ...shadows.card,
-  },
-  locationText: {
-    flexShrink: 1,
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
   avatar: {
     height: 44,
     width: 44,
@@ -127,8 +85,5 @@ const styles = StyleSheet.create({
     color: colors.brand,
     fontSize: 15,
     fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.72,
   },
 });

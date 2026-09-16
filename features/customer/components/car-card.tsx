@@ -43,9 +43,9 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
           <Text numberOfLines={1} style={styles.name}>
             {car.make} {car.model}
           </Text>
-          <Pressable accessibilityLabel="Add to favorites" hitSlop={8}>
+          <View accessibilityLabel="Add to favorites">
             <Heart color={colors.muted} size={21} />
-          </Pressable>
+          </View>
         </View>
         <Text numberOfLines={1} style={styles.meta}>
           {car.manufacturingYear} · {car.transmission} · {car.seats} seats
