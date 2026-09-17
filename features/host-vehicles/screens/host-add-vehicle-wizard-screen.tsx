@@ -8,8 +8,10 @@ import {
   CarFront,
   ChevronRight,
   FileText,
+  MapPin,
   Palette,
   Plus,
+  Search,
   Trash2,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,6 +36,7 @@ import {
   type HostVehicleFormValues,
 } from '@/features/host-vehicles/schemas/host-vehicle-form-schema';
 import { hostsApi } from '@/services/hosts/hosts-api';
+import { locationsApi } from '@/services/locations/locations-api';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
@@ -51,6 +54,7 @@ import {
   VehicleSelectionSheet,
   type VehicleSelectionOption,
 } from '@/features/host-vehicles/components/vehicle-selection-sheet';
+import { type LocationSearchResult } from '@/types/location';
 
 type StepKey =
   | 'vehicleDetails'
@@ -90,7 +94,7 @@ const steps: WizardStep[] = [
   {
     key: 'vehicleLocation',
     title: 'Vehicle location',
-    helper: 'Where renters will pick up and return the vehicle.',
+    helper: 'Where will renters pick up and return the vehicle?',
     fields: ['locationId', 'address', 'city', 'state', 'country'],
   },
   {
@@ -491,7 +495,11 @@ export function HostAddVehicleWizardScreen() {
             />
           ) : null}
           {step.key === 'vehicleLocation' ? (
-            <VehicleLocationStep control={control} errors={errors} />
+            <VehicleLocationStep
+              control={control}
+              errors={errors}
+              setValue={setValue}
+            />
           ) : null}
           {step.key === 'features' ? (
             <FeaturesStep
@@ -658,43 +666,172 @@ function VehicleDetailsStep({
 function VehicleLocationStep({
   control,
   errors,
+  setValue,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
 }) {
   return (
     <View style={styles.form}>
-      <TextField
+      <LocationSearchField
         control={control}
-        error={errors.locationId?.message}
-        label="Backend location ID"
-        name="locationId"
+        error={errors.address?.message ?? errors.locationId?.message}
+        setValue={setValue}
       />
       <TextField
         control={control}
-        error={errors.address?.message}
-        label="Pickup address"
-        multiline
-        name="address"
+        editable={false}
+        error={errors.city?.message}
+        label="City"
+        name="city"
       />
-      <TextField control={control} error={errors.city?.message} label="City" name="city" />
-      <TextField control={control} error={errors.state?.message} label="State" name="state" />
-      <TextField control={control} error={errors.country?.message} label="Country" name="country" />
-      <View style={styles.row}>
-        <TextField
-          control={control}
-          error={errors.latitude?.message}
-          keyboardType="decimal-pad"
-          label="Latitude"
-          name="latitude"
-        />
-        <TextField
-          control={control}
-          error={errors.longitude?.message}
-          keyboardType="decimal-pad"
-          label="Longitude"
-          name="longitude"
-        />
+      <TextField
+        control={control}
+        editable={false}
+        error={errors.state?.message}
+        label="State"
+        name="state"
+      />
+      <TextField
+        control={control}
+        editable={false}
+        error={errors.country?.message}
+        label="Country"
+        name="country"
+      />
+      <View style={styles.locationHint}>
+        <MapPin color="#1769F5" size={17} />
+        <Text style={styles.locationHintText}>
+          Location helps renters find the pickup point accurately.
+        </Text>
       </View>
+    </View>
+  );
+}
+
+function LocationSearchField({
+  control,
+  error,
+  setValue,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  error?: string;
+  setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <Controller
+      control={control}
+      name="address"
+      render={({ field: { onBlur, onChange, value } }) => (
+        <LocationSearchInput
+          error={error}
+          focused={focused}
+          onBlur={() => {
+            onBlur();
+            // Let a tapped result receive its press event before hiding the list.
+            setTimeout(() => setFocused(false), 120);
+          }}
+          onChangeText={(nextAddress) => {
+            onChange(nextAddress);
+            setValue('locationId', '', { shouldDirty: true, shouldValidate: false });
+          }}
+          onFocus={() => setFocused(true)}
+          onSelect={(location) => {
+            onChange(location.name);
+            setValue('locationId', location.id, { shouldDirty: true, shouldValidate: true });
+            setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
+            setValue('state', location.state ?? '', { shouldDirty: true, shouldValidate: true });
+            setValue('country', location.country, { shouldDirty: true, shouldValidate: true });
+            setValue('latitude', String(location.latitude), { shouldDirty: true, shouldValidate: false });
+            setValue('longitude', String(location.longitude), { shouldDirty: true, shouldValidate: false });
+            setFocused(false);
+          }}
+          value={typeof value === 'string' ? value : ''}
+        />
+      )}
+    />
+  );
+}
+
+function LocationSearchInput({
+  error,
+  focused,
+  onBlur,
+  onChangeText,
+  onFocus,
+  onSelect,
+  value,
+}: {
+  error?: string;
+  focused: boolean;
+  onBlur: () => void;
+  onChangeText: (value: string) => void;
+  onFocus: () => void;
+  onSelect: (location: LocationSearchResult) => void;
+  value: string;
+}) {
+  const query = value.trim();
+  const locationsQuery = useQuery({
+    enabled: focused && query.length >= 2,
+    queryKey: ['host-vehicle-locations', 'search', query],
+    queryFn: () => locationsApi.search(query, 6),
+  });
+  const locations = locationsQuery.data ?? [];
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Pickup address</Text>
+      <View style={[styles.locationSearchBox, error && styles.inputError]}>
+        <MapPin color="#52627C" size={18} />
+        <TextInput
+          autoCapitalize="words"
+          autoCorrect={false}
+          onBlur={onBlur}
+          onChangeText={onChangeText}
+          onFocus={onFocus}
+          placeholder="Search city or pickup area"
+          placeholderTextColor="#8B96AA"
+          style={styles.locationSearchInput}
+          value={value}
+        />
+        <Search color="#52627C" size={18} />
+      </View>
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+      {focused && query.length >= 2 ? (
+        <View style={styles.locationResults}>
+          {locationsQuery.isLoading ? (
+            <Text style={styles.locationResultStatus}>Searching supported locations...</Text>
+          ) : locationsQuery.isError ? (
+            <Text style={styles.locationResultStatus}>Could not load locations. Try again.</Text>
+          ) : locations.length === 0 ? (
+            <Text style={styles.locationResultStatus}>No supported locations found.</Text>
+          ) : (
+            locations.map((location) => (
+              <Pressable
+                accessibilityRole="button"
+                key={location.id}
+                onPress={() => onSelect(location)}
+                style={({ pressed }) => [
+                  styles.locationResult,
+                  pressed && styles.locationResultPressed,
+                ]}
+              >
+                <MapPin color="#1769F5" size={17} />
+                <View style={styles.locationResultCopy}>
+                  <Text numberOfLines={1} style={styles.locationResultTitle}>
+                    {location.name}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.locationResultMeta}>
+                    {[location.city, location.state, location.country].filter(Boolean).join(', ')}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -977,6 +1114,7 @@ function TextField({
             placeholderTextColor="#9CA3AF"
             style={[
               styles.input,
+              inputProps.editable === false && styles.inputReadOnly,
               inputProps.multiline && styles.textArea,
               error && styles.inputError,
             ]}
@@ -1312,6 +1450,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     paddingHorizontal: 14,
   },
+  inputReadOnly: {
+    backgroundColor: '#F8FAFC',
+    color: '#52627C',
+  },
   inputError: {
     borderColor: '#DC2626',
   },
@@ -1366,6 +1508,81 @@ const styles = StyleSheet.create({
     borderColor: '#DCE4EF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
+  },
+  locationSearchBox: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  locationSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    color: '#17213B',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingVertical: 13,
+  },
+  locationResults: {
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+  },
+  locationResult: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F7',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+  locationResultPressed: {
+    backgroundColor: '#F0F6FF',
+  },
+  locationResultCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  locationResultTitle: {
+    color: '#17213B',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  locationResultMeta: {
+    color: '#738099',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  locationResultStatus: {
+    color: '#52627C',
+    fontSize: 13,
+    fontWeight: '700',
+    padding: 14,
+  },
+  locationHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: '#F0F6FF',
+    padding: 12,
+  },
+  locationHintText: {
+    flex: 1,
+    color: '#52627C',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
   },
   selectInputDisabled: {
     backgroundColor: '#F3F6FA',
