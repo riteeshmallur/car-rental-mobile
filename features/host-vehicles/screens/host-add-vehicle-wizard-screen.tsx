@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -100,7 +101,7 @@ const steps: WizardStep[] = [
   {
     key: 'features',
     title: 'Features',
-    helper: 'Add practical features that make the car easier to choose.',
+    helper: 'Add features that make your vehicle easier to choose.',
     fields: ['features'],
   },
   {
@@ -190,6 +191,21 @@ const colourOptions: VehicleSelectionOption[] = [
   'Brown',
 ].map((colour) => ({ label: colour, value: colour }));
 
+const popularFeatures = [
+  'Reverse camera',
+  'Sunroof',
+  'Android Auto',
+  'Apple CarPlay',
+  'USB charging',
+  'Leather seats',
+  'Navigation',
+  'Parking sensors',
+  'Cruise control',
+];
+
+const maximumPhotoCount = 10;
+const maximumPhotoSizeBytes = 10 * 1024 * 1024;
+
 export function HostAddVehicleWizardScreen() {
   const params = useLocalSearchParams<{ vehicleId?: string | string[] }>();
   const requestedVehicleId = Array.isArray(params.vehicleId)
@@ -199,6 +215,7 @@ export function HostAddVehicleWizardScreen() {
   const [stepIndex, setStepIndex] = useState(0);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [resumeChecked, setResumeChecked] = useState(false);
   const [saveStatus, setSaveStatus] = useState<DraftSaveStatus>('idle');
   const [selectionField, setSelectionField] = useState<
@@ -331,7 +348,10 @@ export function HostAddVehicleWizardScreen() {
   const addFeature = () => {
     const nextFeature = featureInput.trim();
 
-    if (!nextFeature || features.includes(nextFeature)) {
+    if (
+      !nextFeature ||
+      features.some((feature) => feature.toLocaleLowerCase() === nextFeature.toLocaleLowerCase())
+    ) {
       setFeatureInput('');
       return;
     }
@@ -343,6 +363,22 @@ export function HostAddVehicleWizardScreen() {
     setFeatureInput('');
   };
 
+  const togglePopularFeature = (feature: string) => {
+    const existingFeature = features.find(
+      (item) => item.toLocaleLowerCase() === feature.toLocaleLowerCase(),
+    );
+
+    if (existingFeature) {
+      removeFeature(existingFeature);
+      return;
+    }
+
+    setValue('features', [...features, feature], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   const removeFeature = (feature: string) => {
     setValue(
       'features',
@@ -352,6 +388,13 @@ export function HostAddVehicleWizardScreen() {
   };
 
   const pickPhotos = async () => {
+    const remainingPhotoCount = maximumPhotoCount - imageUrls.length;
+
+    if (remainingPhotoCount <= 0) {
+      setPhotoError(`You can add up to ${maximumPhotoCount} photos.`);
+      return;
+    }
+
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
@@ -366,26 +409,51 @@ export function HostAddVehicleWizardScreen() {
       allowsMultipleSelection: true,
       mediaTypes: ['images'],
       quality: 0.8,
-      selectionLimit: 8,
+      selectionLimit: remainingPhotoCount,
     });
 
     if (result.canceled) {
       return;
     }
 
+    const invalidType = result.assets.some(
+      (asset) => asset.mimeType && !['image/jpeg', 'image/png'].includes(asset.mimeType),
+    );
+    const invalidSize = result.assets.some(
+      (asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes,
+    );
+
+    if (invalidType || invalidSize) {
+      setPhotoError(
+        invalidType
+          ? 'Choose JPG or PNG images only.'
+          : 'Each photo must be 10 MB or smaller.',
+      );
+      return;
+    }
+
     const nextImages = result.assets.map((asset) => asset.uri);
-    setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, 8), {
+    setPhotoError(null);
+    setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, maximumPhotoCount), {
       shouldDirty: true,
       shouldValidate: true,
     });
   };
 
   const removePhoto = (uri: string) => {
+    setPhotoError(null);
     setValue(
       'imageUrls',
       imageUrls.filter((item) => item !== uri),
       { shouldDirty: true, shouldValidate: true },
     );
+  };
+
+  const setCoverPhoto = (uri: string) => {
+    setValue('imageUrls', [uri, ...imageUrls.filter((item) => item !== uri)], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const saveAndContinue = async () => {
@@ -509,14 +577,17 @@ export function HostAddVehicleWizardScreen() {
               onAddFeature={addFeature}
               onChangeFeatureInput={setFeatureInput}
               onRemoveFeature={removeFeature}
+              onTogglePopularFeature={togglePopularFeature}
             />
           ) : null}
           {step.key === 'photos' ? (
             <PhotosStep
-              error={errors.imageUrls?.message}
+              error={photoError ?? errors.imageUrls?.message}
               imageUrls={imageUrls}
+              isUploading={uploadPhotosMutation.isPending}
               onPickPhotos={pickPhotos}
               onRemovePhoto={removePhoto}
+              onSetCoverPhoto={setCoverPhoto}
             />
           ) : null}
           {step.key === 'documents' ? (
@@ -843,6 +914,7 @@ function FeaturesStep({
   onAddFeature,
   onChangeFeatureInput,
   onRemoveFeature,
+  onTogglePopularFeature,
 }: {
   error?: string;
   featureInput: string;
@@ -850,21 +922,24 @@ function FeaturesStep({
   onAddFeature: () => void;
   onChangeFeatureInput: (value: string) => void;
   onRemoveFeature: (feature: string) => void;
+  onTogglePopularFeature: (feature: string) => void;
 }) {
   return (
     <View style={styles.form}>
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Add feature</Text>
         <View style={styles.inlineInputRow}>
-          <TextInput
-            onChangeText={onChangeFeatureInput}
-            onSubmitEditing={onAddFeature}
-            placeholder="Bluetooth, reverse camera"
-            placeholderTextColor="#9CA3AF"
-            returnKeyType="done"
-            style={[styles.input, styles.inlineInput]}
-            value={featureInput}
-          />
+          <View style={styles.featureSearchInput}>
+            <Search color="#52627C" size={18} />
+            <TextInput
+              onChangeText={onChangeFeatureInput}
+              onSubmitEditing={onAddFeature}
+              placeholder="Search and add a feature"
+              placeholderTextColor="#9CA3AF"
+              returnKeyType="done"
+              style={styles.featureSearchTextInput}
+              value={featureInput}
+            />
+          </View>
           <Pressable
             accessibilityLabel="Add feature"
             accessibilityRole="button"
@@ -876,18 +951,50 @@ function FeaturesStep({
         </View>
         {error ? <Text style={styles.fieldError}>{error}</Text> : null}
       </View>
-      <View style={styles.chipGrid}>
-        {features.map((feature) => (
-          <Pressable
-            accessibilityRole="button"
-            key={feature}
-            onPress={() => onRemoveFeature(feature)}
-            style={styles.chip}
-          >
-            <Text style={styles.chipText}>{feature}</Text>
-            <Trash2 color="#6B7280" size={14} />
-          </Pressable>
-        ))}
+      <View style={styles.featureSection}>
+        <Text style={styles.featureSectionTitle}>Added features</Text>
+        {features.length ? (
+          <View style={styles.chipGrid}>
+            {features.map((feature) => (
+              <Pressable
+                accessibilityLabel={`Remove ${feature}`}
+                accessibilityRole="button"
+                key={feature}
+                onPress={() => onRemoveFeature(feature)}
+                style={styles.chip}
+              >
+                <Text style={styles.chipText}>{feature}</Text>
+                <Trash2 color="#52627C" size={14} />
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.featureEmptyText}>Select features renters will value.</Text>
+        )}
+      </View>
+      <View style={styles.featureSection}>
+        <Text style={styles.featureSectionTitle}>Popular features</Text>
+        <View style={styles.chipGrid}>
+          {popularFeatures.map((feature) => {
+            const isSelected = features.some(
+              (item) => item.toLocaleLowerCase() === feature.toLocaleLowerCase(),
+            );
+
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                key={feature}
+                onPress={() => onTogglePopularFeature(feature)}
+                style={[styles.popularChip, isSelected && styles.popularChipSelected]}
+              >
+                <Text style={[styles.popularChipText, isSelected && styles.popularChipTextSelected]}>
+                  {feature}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -896,29 +1003,63 @@ function FeaturesStep({
 function PhotosStep({
   error,
   imageUrls,
+  isUploading,
   onPickPhotos,
   onRemovePhoto,
+  onSetCoverPhoto,
 }: {
   error?: string;
   imageUrls: string[];
+  isUploading: boolean;
   onPickPhotos: () => void;
   onRemovePhoto: (uri: string) => void;
+  onSetCoverPhoto: (uri: string) => void;
 }) {
   return (
     <View style={styles.form}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPickPhotos}
-        style={styles.photoPickerButton}
-      >
-        <Camera color="#111827" size={22} />
-        <Text style={styles.photoPickerText}>Choose photos</Text>
-      </Pressable>
+      {imageUrls.length === 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={isUploading}
+          onPress={onPickPhotos}
+          style={({ pressed }) => [
+            styles.photoPickerButton,
+            pressed && !isUploading && styles.photoPickerButtonPressed,
+          ]}
+        >
+          <Camera color="#1769F5" size={30} />
+          <Text style={styles.photoPickerText}>Choose photos</Text>
+          <Text style={styles.photoPickerSubtext}>Add up to 10 photos</Text>
+          <Text style={styles.photoPickerSubtext}>JPG, PNG • Max 10 MB each</Text>
+        </Pressable>
+      ) : null}
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
-      <View style={styles.photoGrid}>
-        {imageUrls.map((uri) => (
-          <View key={uri} style={styles.photoTile}>
+      {isUploading ? (
+        <View style={styles.photoUploadStatus}>
+          <ActivityIndicator color="#1769F5" size="small" />
+          <Text style={styles.photoUploadStatusText}>Uploading photos...</Text>
+        </View>
+      ) : null}
+      {imageUrls.length ? <Text style={styles.photoCount}>Photos ({imageUrls.length}/10)</Text> : null}
+      {imageUrls.length ? (
+        <View style={styles.photoGrid}>
+          {imageUrls.map((uri) => (
+            <View key={uri} style={styles.photoTile}>
             <Image source={{ uri }} style={styles.photo} />
+            {imageUrls[0] === uri ? (
+              <View style={styles.coverBadge}>
+                <Text style={styles.coverBadgeText}>Cover</Text>
+              </View>
+            ) : (
+              <Pressable
+                accessibilityLabel="Set as cover photo"
+                accessibilityRole="button"
+                onPress={() => onSetCoverPhoto(uri)}
+                style={styles.setCoverButton}
+              >
+                <Text style={styles.setCoverButtonText}>Set cover</Text>
+              </Pressable>
+            )}
             <Pressable
               accessibilityLabel="Remove photo"
               accessibilityRole="button"
@@ -927,9 +1068,25 @@ function PhotosStep({
             >
               <Trash2 color="#FFFFFF" size={15} />
             </Pressable>
-          </View>
-        ))}
-      </View>
+            </View>
+          ))}
+          {imageUrls.length < maximumPhotoCount ? (
+            <Pressable
+            accessibilityLabel="Add more photos"
+            accessibilityRole="button"
+            disabled={isUploading}
+            onPress={onPickPhotos}
+            style={({ pressed }) => [
+              styles.addMorePhotoTile,
+              pressed && !isUploading && styles.addMorePhotoTilePressed,
+            ]}
+          >
+            <Plus color="#1769F5" size={30} />
+            <Text style={styles.addMorePhotoText}>Add more</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1605,8 +1762,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  inlineInput: {
+  featureSearchInput: {
     flex: 1,
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  featureSearchTextInput: {
+    flex: 1,
+    minWidth: 0,
+    color: '#17213B',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingVertical: 13,
   },
   smallIconButton: {
     height: 50,
@@ -1620,6 +1794,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  featureSection: {
+    gap: 10,
+  },
+  featureSectionTitle: {
+    color: '#17213B',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  featureEmptyText: {
+    color: '#738099',
+    fontSize: 13,
+    fontWeight: '700',
   },
   chip: {
     minHeight: 38,
@@ -1637,20 +1824,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  photoPickerButton: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
+  popularChip: {
+    minHeight: 42,
     justifyContent: 'center',
-    gap: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#DCE4EF',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  popularChipSelected: {
+    borderColor: '#0F9D78',
+    backgroundColor: '#E1F7F0',
+  },
+  popularChipText: {
+    color: '#34415D',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  popularChipTextSelected: {
+    color: '#08765B',
+  },
+  photoPickerButton: {
+    minHeight: 154,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#BFD4F7',
+    backgroundColor: '#F8FBFF',
+    padding: 20,
+  },
+  photoPickerButtonPressed: {
+    backgroundColor: '#EDF5FF',
   },
   photoPickerText: {
-    color: '#111827',
+    color: '#17213B',
     fontSize: 15,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  photoPickerSubtext: {
+    color: '#738099',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  photoUploadStatus: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 9,
+    borderRadius: 12,
+    backgroundColor: '#F0F6FF',
+    padding: 12,
+  },
+  photoUploadStatusText: {
+    color: '#245AAE',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  photoCount: {
+    color: '#17213B',
+    fontSize: 14,
     fontWeight: '900',
   },
   photoGrid: {
@@ -1659,11 +1895,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   photoTile: {
-    width: '31%',
-    aspectRatio: 1,
+    width: '48%',
+    aspectRatio: 1.2,
     overflow: 'hidden',
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#F7FAFF',
   },
   photo: {
     height: '100%',
@@ -1677,8 +1913,55 @@ const styles = StyleSheet.create({
     width: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: 'rgba(17, 24, 39, 0.78)',
+  },
+  coverBadge: {
+    position: 'absolute',
+    top: 7,
+    left: 7,
+    borderRadius: 999,
+    backgroundColor: '#1769F5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  coverBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  setCoverButton: {
+    position: 'absolute',
+    bottom: 7,
+    left: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(17, 24, 39, 0.78)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  setCoverButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  addMorePhotoTile: {
+    width: '48%',
+    aspectRatio: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFD4F7',
+    backgroundColor: '#F0F6FF',
+  },
+  addMorePhotoTilePressed: {
+    backgroundColor: '#E2EEFF',
+  },
+  addMorePhotoText: {
+    color: '#1769F5',
+    fontSize: 13,
+    fontWeight: '900',
   },
   notice: {
     flexDirection: 'row',
