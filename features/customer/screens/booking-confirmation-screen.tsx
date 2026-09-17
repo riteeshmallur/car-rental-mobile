@@ -67,7 +67,7 @@ export function BookingConfirmationScreen() {
           title="Booking not found"
         />
       ) : booking ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
           <View style={styles.successCard}>
             <CheckCircle2 color="#047857" size={46} />
             <Text style={styles.title}>Booking created</Text>
@@ -105,6 +105,10 @@ export function BookingConfirmationScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     gap: 16,
     padding: 18,

@@ -215,6 +215,7 @@ export function HostEarningsScreen() {
             contentContainerStyle={styles.listContent}
             data={earnings.items}
             keyExtractor={(item) => item.id}
+            style={styles.listView}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void earningsQuery.refetch()}
@@ -384,6 +385,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerLead: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -412,6 +415,10 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 30,
+  },
+  listView: {
+    flex: 1,
+    minHeight: 0,
   },
   headerContent: {
     gap: 18,

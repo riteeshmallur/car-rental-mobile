@@ -380,7 +380,7 @@ export function HostAddVehicleWizardScreen() {
     (hostVehiclesQuery.isLoading && !resumeChecked);
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
@@ -409,6 +409,7 @@ export function HostAddVehicleWizardScreen() {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          style={styles.contentScroll}
           showsVerticalScrollIndicator={false}
         >
           {draftId ? (
@@ -1163,6 +1164,10 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 28,
   },
+  contentScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   resumeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1197,6 +1202,7 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     flex: 1,
+    minWidth: 0,
     gap: 7,
   },
   label: {
@@ -1230,6 +1236,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   segmentWrap: {

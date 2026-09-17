@@ -67,6 +67,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
+    flex: 1,
     color: colors.ink,
     fontSize: 20,
     fontWeight: '900',

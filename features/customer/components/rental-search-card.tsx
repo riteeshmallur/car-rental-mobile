@@ -146,7 +146,7 @@ function RentalDate({
         <Text style={styles.dateLabel}>{label}</Text>
       </View>
       <Pressable accessibilityRole="button" onPress={onDatePress}>
-        <Text numberOfLines={1} style={styles.dateValue}>{date}</Text>
+        <Text style={styles.dateValue}>{date}</Text>
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onTimePress}>
         <Text style={styles.timeValue}>{time}</Text>
@@ -196,11 +196,13 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   dateBlock: {
+    minWidth: 0,
     flex: 1,
     justifyContent: 'center',
     gap: 6,
   },
   dateHeading: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -259,6 +261,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
   },
   durationLabel: {
+    flexShrink: 1,
     color: colors.text,
     fontSize: 13,
     fontWeight: '700',

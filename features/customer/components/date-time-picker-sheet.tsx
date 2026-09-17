@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -79,9 +79,9 @@ function formatPickerTime(value: Date) {
 }
 
 function getTimeChoices(value: Date) {
-  return [-1, 0, 1].map((offset) => {
+  return Array.from({ length: 24 }, (_, hour) => {
     const next = new Date(value);
-    next.setHours(value.getHours() + offset, 0, 0, 0);
+    next.setHours(hour, 0, 0, 0);
     return next;
   });
 }
@@ -90,6 +90,40 @@ function isBeforeToday(value: Date) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return value.getTime() < today.getTime();
+}
+
+function isToday(value: Date) {
+  return sameDate(value, new Date());
+}
+
+function canSelectPickupTime(value: Date) {
+  return !isToday(value) || value.getTime() >= Date.now();
+}
+
+function canSelectReturnTime(value: Date, pickupAt: Date | null) {
+  return !pickupAt || !sameDate(value, pickupAt) || value.getTime() > pickupAt.getTime();
+}
+
+function makePickupTimeValid(value: Date) {
+  if (!isToday(value) || value.getTime() >= Date.now()) {
+    return value;
+  }
+
+  const next = new Date(value);
+  const now = new Date();
+  next.setHours(now.getHours() + 1, 0, 0, 0);
+  return next;
+}
+
+function makeReturnAfter(pickupAt: Date, currentReturnAt: Date) {
+  if (currentReturnAt.getTime() > pickupAt.getTime()) {
+    return currentReturnAt;
+  }
+
+  const next = new Date(pickupAt);
+  next.setDate(next.getDate() + 1);
+  next.setHours(18, 0, 0, 0);
+  return next;
 }
 
 export function DateTimePickerSheet({
@@ -117,7 +151,10 @@ export function DateTimePickerSheet({
     setPickupAt(initialPickup);
     setReturnAt(initialReturn);
     setStage(field === 'returnDate' || field === 'returnTime' ? 'return' : 'pickup');
-    setVisibleMonth(new Date(initialPickup.getFullYear(), initialPickup.getMonth(), 1));
+    const focusDate = field === 'returnDate' || field === 'returnTime'
+      ? initialReturn
+      : initialPickup;
+    setVisibleMonth(new Date(focusDate.getFullYear(), focusDate.getMonth(), 1));
   }, [field, isOpen, rentalWindow.pickupAt, rentalWindow.returnAt]);
 
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
@@ -134,7 +171,16 @@ export function DateTimePickerSheet({
         return;
       }
 
-      setPickupAt(withDate(pickupAt ?? rentalWindow.pickupAt, date));
+      const nextPickup = makePickupTimeValid(
+        withDate(pickupAt ?? rentalWindow.pickupAt, date),
+      );
+      setPickupAt(nextPickup);
+      setReturnAt(
+        makeReturnAfter(
+          nextPickup,
+          returnAt ?? rentalWindow.returnAt,
+        ),
+      );
       setStage('return');
       setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
       return;
@@ -154,6 +200,9 @@ export function DateTimePickerSheet({
         return;
       }
       setPickupAt(value);
+      setReturnAt(
+        makeReturnAfter(value, returnAt ?? rentalWindow.returnAt),
+      );
       return;
     }
 
@@ -176,7 +225,11 @@ export function DateTimePickerSheet({
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible={isOpen}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+        >
           <View style={styles.topBar}>
             <Pressable
               accessibilityLabel="Back"
@@ -283,9 +336,42 @@ export function DateTimePickerSheet({
               </Text>
             </View>
 
+            <View style={styles.stageSwitcher}>
+              {(['pickup', 'return'] as const).map((selection) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={selection}
+                  onPress={() => setStage(selection)}
+                  style={[
+                    styles.stageButton,
+                    stage === selection && styles.stageButtonSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stageButtonText,
+                      stage === selection && styles.stageButtonTextSelected,
+                    ]}
+                  >
+                    {selection === 'pickup' ? 'Pickup date' : 'Return date'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
             <View style={styles.timeRow}>
-              <TimePickerColumn label="Pickup time" value={timePickup} onChange={(value) => selectTime(value, 'pickup')} />
-              <TimePickerColumn label="Dropoff time" value={timeReturn} onChange={(value) => selectTime(value, 'return')} />
+              <TimePickerColumn
+                canSelect={canSelectPickupTime}
+                label="Pickup time"
+                value={timePickup}
+                onChange={(value) => selectTime(value, 'pickup')}
+              />
+              <TimePickerColumn
+                canSelect={(value) => canSelectReturnTime(value, pickupAt)}
+                label="Dropoff time"
+                value={timeReturn}
+                onChange={(value) => selectTime(value, 'return')}
+              />
             </View>
 
             {validationError ? <Text style={styles.validationError}>{validationError}</Text> : null}
@@ -306,40 +392,80 @@ export function DateTimePickerSheet({
 }
 
 function TimePickerColumn({
+  canSelect,
   label,
   onChange,
   value,
 }: {
+  canSelect: (value: Date) => boolean;
   label: string;
   onChange: (value: Date) => void;
   value: Date;
 }) {
   const choices = getTimeChoices(value);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const selectedOffset = Math.max(value.getHours() - 2, 0) * 44;
+    scrollRef.current?.scrollTo({ animated: false, y: selectedOffset });
+  }, [value]);
 
   return (
     <View style={styles.timeColumn}>
       <Text style={styles.timeTitle}>{label}</Text>
-      <View style={styles.timeChoices}>
-        {choices.map((choice, index) => (
-          <Pressable
-            accessibilityRole="button"
-            key={`${label}-${choice.toISOString()}`}
-            onPress={() => onChange(choice)}
-            style={[styles.timeChoice, index === 1 && styles.timeChoiceSelected]}
-          >
-            <Text style={[styles.timeText, index !== 1 && styles.timeTextMuted]}>
-              {formatPickerTime(choice)}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.timeViewport}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.timeChoices}
+          nestedScrollEnabled
+          onContentSizeChange={() => {
+            const selectedOffset = Math.max(value.getHours() - 2, 0) * 44;
+            scrollRef.current?.scrollTo({ animated: false, y: selectedOffset });
+          }}
+          showsVerticalScrollIndicator={false}
+          style={styles.timeScroll}
+        >
+          {choices.map((choice) => (
+            (() => {
+              const selectable = canSelect(choice);
+
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={!selectable}
+                  key={`${label}-${choice.toISOString()}`}
+                  onPress={() => onChange(choice)}
+                  style={[styles.timeChoice, !selectable && styles.timeChoiceDisabled]}
+                >
+                  <Text
+                    style={[
+                      styles.timeText,
+                      !sameTime(value, choice) && selectable && styles.timeTextMuted,
+                      !selectable && styles.timeTextDisabled,
+                    ]}
+                  >
+                    {formatPickerTime(choice)}
+                  </Text>
+                </Pressable>
+              );
+            })()
+          ))}
+        </ScrollView>
+        <View pointerEvents="none" style={[styles.timeGuide, styles.timeGuideTop]} />
+        <View pointerEvents="none" style={[styles.timeGuide, styles.timeGuideBottom]} />
       </View>
     </View>
   );
 }
 
+function sameTime(left: Date, right: Date) {
+  return left.getHours() === right.getHours();
+}
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { gap: 14, paddingBottom: 28 },
+  scroll: { flex: 1, minHeight: 0 },
   topBar: { height: 64, justifyContent: 'center', backgroundColor: colors.surface, paddingHorizontal: 18 },
   backButton: { height: 42, width: 42, alignItems: 'center', justifyContent: 'center' },
   locationRow: {
@@ -385,14 +511,46 @@ const styles = StyleSheet.create({
   dayTextDisabled: { color: colors.muted },
   selectionHint: { minHeight: 24, alignItems: 'center', justifyContent: 'center' },
   selectionHintText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
+  stageSwitcher: {
+    flexDirection: 'row',
+    gap: 8,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
+    padding: 4,
+  },
+  stageButton: {
+    minHeight: 38,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+    paddingHorizontal: 8,
+  },
+  stageButtonSelected: {
+    backgroundColor: colors.brand,
+  },
+  stageButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  stageButtonTextSelected: {
+    color: colors.surface,
+  },
   timeRow: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
   timeColumn: { flex: 1 },
   timeTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center', textTransform: 'uppercase' },
-  timeChoices: { alignItems: 'center', gap: 2, paddingTop: 6 },
-  timeChoice: { minHeight: 42, minWidth: 122, alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
-  timeChoiceSelected: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.text },
+  timeViewport: { height: 174, marginTop: 6, position: 'relative' },
+  timeScroll: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  timeChoices: { alignItems: 'center', gap: 2, paddingVertical: 66 },
+  timeChoice: { minHeight: 42, width: '100%', alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
+  timeChoiceDisabled: { opacity: 0.5 },
+  timeGuide: { position: 'absolute', left: 18, right: 18, height: 1, backgroundColor: colors.text },
+  timeGuideTop: { top: 66 },
+  timeGuideBottom: { top: 108 },
   timeText: { color: colors.ink, fontSize: 21, fontWeight: '700' },
-  timeTextMuted: { color: '#B8B8B8' },
+  timeTextMuted: { color: '#64748B' },
+  timeTextDisabled: { color: '#CBD5E1' },
   validationError: { color: colors.error, fontSize: 13, fontWeight: '800', textAlign: 'center' },
   continueButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.success, marginTop: 2 },
   continueButtonDisabled: { opacity: 0.45 },

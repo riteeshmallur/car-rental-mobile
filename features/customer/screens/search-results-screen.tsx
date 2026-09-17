@@ -29,7 +29,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -289,6 +289,7 @@ export function SearchResultsScreen() {
             contentContainerStyle={styles.list}
             data={vehicles}
             keyExtractor={(item) => item.id}
+            style={styles.listView}
             onEndReached={loadNextPage}
             onEndReachedThreshold={0.55}
             refreshControl={
@@ -376,6 +377,7 @@ function FilterSheet({
         option.minPrice === draftFilters.minPrice &&
         option.maxPrice === draftFilters.maxPrice,
     ) ?? priceOptions[0];
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
@@ -391,7 +393,7 @@ function FilterSheet({
           onPress={onClose}
           style={styles.sheetBackdrop}
         />
-        <View style={styles.filterSheet}>
+        <View style={[styles.filterSheet, { marginHorizontal: Math.max(insets.left, insets.right) }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Filters</Text>
@@ -405,6 +407,7 @@ function FilterSheet({
           </View>
 
           <ScrollView
+            style={styles.sheetScroll}
             contentContainerStyle={styles.sheetContent}
             showsVerticalScrollIndicator={false}
           >
@@ -459,7 +462,7 @@ function FilterSheet({
             />
           </ScrollView>
 
-          <View style={styles.sheetFooter}>
+          <View style={[styles.sheetFooter, { paddingBottom: Math.max(16, insets.bottom) }]}>
             <Pressable
               accessibilityRole="button"
               onPress={onReset}
@@ -543,6 +546,7 @@ function SortSheet({
   onClose: () => void;
   onSelect: (sort: VehicleSearchSort) => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       animationType="slide"
@@ -557,7 +561,7 @@ function SortSheet({
           onPress={onClose}
           style={styles.sheetBackdrop}
         />
-        <View style={styles.sortSheet}>
+        <View style={[styles.sortSheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Sort by</Text>
@@ -569,7 +573,7 @@ function SortSheet({
               <Text style={styles.resetText}>Done</Text>
             </Pressable>
           </View>
-          <View style={styles.sortOptions}>
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sortOptions}>
             {sortOptions.map((option) => {
               const selected = selectedSort === option.value;
 
@@ -592,7 +596,7 @@ function SortSheet({
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -747,7 +751,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 18,
     paddingTop: 14,
-    paddingBottom: 88,
+    paddingBottom: 0,
   },
   header: {
     flexDirection: 'row',
@@ -782,6 +786,10 @@ const styles = StyleSheet.create({
   list: {
     gap: 14,
     paddingBottom: 24,
+  },
+  listView: {
+    flex: 1,
+    minHeight: 0,
   },
   actionRow: {
     flexDirection: 'row',
@@ -830,6 +838,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.54)',
   },
   filterSheet: {
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
     height: '82%',
     overflow: 'hidden',
     borderTopLeftRadius: 24,
@@ -838,7 +849,10 @@ const styles = StyleSheet.create({
     ...shadows.floating,
   },
   sortSheet: {
-    minHeight: 300,
+    maxHeight: '85%',
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
     overflow: 'hidden',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -855,6 +869,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#CBD5E1',
   },
   sheetHeader: {
+    flexShrink: 0,
+    gap: 12,
     minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
@@ -864,6 +880,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sheetTitle: {
+    flex: 1,
     color: colors.ink,
     fontSize: 22,
     fontWeight: '900',
@@ -904,6 +921,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   filterSectionTitle: {
+    flex: 1,
     color: colors.ink,
     fontSize: 16,
     fontWeight: '900',
@@ -914,6 +932,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
+    maxWidth: '100%',
+    paddingVertical: 8,
     minHeight: 42,
     justifyContent: 'center',
     borderWidth: 1,
@@ -927,6 +947,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
   },
   chipText: {
+    flexShrink: 1,
     color: colors.ink,
     fontSize: 14,
     fontWeight: '800',
@@ -935,6 +956,7 @@ const styles = StyleSheet.create({
     color: colors.surface,
   },
   sheetFooter: {
+    flexShrink: 0,
     flexDirection: 'row',
     gap: 10,
     borderTopWidth: 1,
@@ -946,7 +968,8 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     minHeight: 52,
-    minWidth: 106,
+    flex: 1,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -956,13 +979,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   clearButtonText: {
+    textAlign: 'center',
     color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
   },
   showButton: {
+    paddingVertical: 12,
     minHeight: 52,
-    flex: 1,
+    flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.md,
@@ -973,6 +998,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandPressed,
   },
   showButtonText: {
+    textAlign: 'center',
     color: colors.surface,
     fontSize: 15,
     fontWeight: '900',
@@ -997,6 +1023,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandSoft,
   },
   sortOptionText: {
+    flex: 1,
     color: colors.ink,
     fontSize: 15,
     fontWeight: '800',
@@ -1105,17 +1132,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   priceRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: 12,
   },
   dailyPrice: {
+    flexShrink: 1,
     color: '#111827',
     fontSize: 18,
     fontWeight: '900',
   },
   totalPrice: {
+    flexShrink: 1,
     color: '#6B7280',
     fontSize: 13,
     fontWeight: '800',
@@ -1136,6 +1166,10 @@ const styles = StyleSheet.create({
   },
   footerLoader: {
     paddingVertical: 18,
+  },
+  sheetScroll: {
+    flexShrink: 1,
+    minHeight: 0,
   },
   skeletonContainer: {
     gap: 14,

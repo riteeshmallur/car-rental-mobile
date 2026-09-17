@@ -60,10 +60,7 @@ export function BottomNavigation() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    left: 0,
+    flexShrink: 0,
     minHeight: 74,
     flexDirection: 'row',
     alignItems: 'center',
@@ -76,8 +73,9 @@ const styles = StyleSheet.create({
     ...shadows.floating,
   },
   item: {
+    flex: 1,
     minHeight: 52,
-    minWidth: 58,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
@@ -88,6 +86,7 @@ const styles = StyleSheet.create({
     opacity: 0.76,
   },
   label: {
+    textAlign: 'center',
     color: colors.muted,
     fontSize: 11,
     fontWeight: '800',

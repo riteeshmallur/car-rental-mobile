@@ -199,6 +199,7 @@ export function TripsScreen() {
             contentContainerStyle={styles.listContent}
             data={visibleBookings}
             keyExtractor={(item) => item.id}
+            style={styles.listView}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void bookingsQuery.refetch()}
@@ -547,6 +548,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    minWidth: 0,
     minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
@@ -564,6 +566,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 12,
     fontWeight: '900',
+    textAlign: 'center',
   },
   tabCount: {
     color: '#6B7280',
@@ -575,7 +578,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     gap: 14,
-    paddingBottom: 106,
+    paddingBottom: 24,
+  },
+  listView: {
+    flex: 1,
+    minHeight: 0,
   },
   card: {
     gap: 12,
@@ -742,7 +749,7 @@ const styles = StyleSheet.create({
   },
   skeletonList: {
     gap: 14,
-    paddingBottom: 106,
+    paddingBottom: 24,
   },
   skeletonImage: {
     height: 86,

@@ -83,7 +83,7 @@ export function PaymentScreen() {
 
   return (
     <BookingShell fallback={backFallback} title="Payment">
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
         <View style={styles.paymentCard}>
           <View style={styles.iconFrame}>
             <CreditCard color="#111827" size={28} />
@@ -135,6 +135,10 @@ export function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     gap: 16,
     padding: 18,

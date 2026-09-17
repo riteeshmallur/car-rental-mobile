@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     padding: 24,
-    paddingBottom: 104,
+    paddingBottom: 24,
   },
   title: {
     color: '#111827',

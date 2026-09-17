@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   imageFrame: {
     width: '42%',
-    minWidth: 118,
+    minWidth: 0,
     backgroundColor: colors.surfaceMuted,
     padding: 8,
   },
@@ -107,6 +107,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   copy: {
+    minWidth: 0,
     flex: 1,
     justifyContent: 'center',
     gap: 8,
@@ -145,18 +146,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   footer: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
   priceRow: {
-    flex: 1,
+    flexShrink: 1,
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 3,
   },
   price: {
+    flexShrink: 1,
     color: colors.brand,
     fontSize: 20,
     fontWeight: '900',

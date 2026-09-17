@@ -159,6 +159,7 @@ export function HostBookingsScreen() {
             contentContainerStyle={styles.listContent}
             data={visibleBookings}
             keyExtractor={(item) => item.id}
+            style={styles.listView}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void bookingsQuery.refetch()}
@@ -393,6 +394,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerLead: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -427,6 +430,7 @@ const styles = StyleSheet.create({
   tab: {
     minHeight: 44,
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
@@ -443,6 +447,7 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     fontSize: 10,
     fontWeight: '900',
+    textAlign: 'center',
   },
   tabCount: {
     marginTop: 2,
@@ -457,6 +462,10 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     paddingBottom: 30,
+  },
+  listView: {
+    flex: 1,
+    minHeight: 0,
   },
   card: {
     gap: 14,

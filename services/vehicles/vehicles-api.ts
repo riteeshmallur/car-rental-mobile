@@ -1,4 +1,5 @@
 import { apiRequest } from '@/services/api/client';
+import { Platform } from 'react-native';
 import {
   type VehicleAvailability,
   type VehicleDetail,
@@ -44,19 +45,21 @@ export const vehiclesApi = {
       data: payload,
     });
   },
-  uploadImage(vehicleId: string, imageUri: string) {
+  async uploadImage(vehicleId: string, imageUri: string) {
     const extension = imageUri.split('.').pop()?.toLowerCase();
     const normalizedExtension = extension === 'png' ? 'png' : 'jpg';
+    const filename = `vehicle-${Date.now()}.${normalizedExtension}`;
     const formData = new FormData();
+    const image =
+      Platform.OS === 'web'
+        ? await fetch(imageUri).then((response) => response.blob())
+        : ({
+            name: filename,
+            type: normalizedExtension === 'png' ? 'image/png' : 'image/jpeg',
+            uri: imageUri,
+          } as unknown as Blob);
 
-    formData.append(
-      'image',
-      {
-        name: `vehicle-${Date.now()}.${normalizedExtension}`,
-        type: normalizedExtension === 'png' ? 'image/png' : 'image/jpeg',
-        uri: imageUri,
-      } as unknown as Blob,
-    );
+    formData.append('image', image, filename);
 
     return apiRequest<HostVehicleListing>({
       method: 'POST',

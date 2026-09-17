@@ -127,6 +127,7 @@ export function HomeScreen() {
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        style={styles.scroll}
         refreshControl={
           <RefreshControl onRefresh={refreshHome} refreshing={isRefreshing} />
         }
@@ -196,7 +197,11 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingHorizontal: 18,
     paddingTop: 14,
-    paddingBottom: 114,
+    paddingBottom: 24,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
   },
   inlineError: {
     gap: 4,

@@ -46,7 +46,7 @@ export function PriceBreakdownScreen() {
 
   return (
     <BookingShell fallback={backFallback} title="Price breakdown">
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Server calculated quote</Text>
           <Text style={styles.noticeBody}>
@@ -84,6 +84,10 @@ export function PriceBreakdownScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   content: {
     gap: 16,
     padding: 18,

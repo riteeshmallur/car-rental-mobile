@@ -96,6 +96,7 @@ export function LocationSelectionScreen() {
             data={locations}
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
+            style={styles.resultListView}
             renderItem={({ item }) => (
               <Pressable
                 accessibilityRole="button"
@@ -217,6 +218,10 @@ const styles = StyleSheet.create({
   resultList: {
     gap: 10,
     paddingBottom: 20,
+  },
+  resultListView: {
+    flex: 1,
+    minHeight: 0,
   },
   resultItem: {
     gap: 5,

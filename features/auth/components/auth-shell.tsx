@@ -27,6 +27,7 @@ export function AuthShell({ children, footer, subtitle, title }: AuthShellProps)
           bounces={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          style={styles.scroll}
         >
           <View style={styles.header}>
             <View style={styles.logoMark}>
@@ -57,6 +58,10 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
   },
   scrollContent: {
     flexGrow: 1,

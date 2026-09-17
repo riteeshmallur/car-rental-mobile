@@ -125,7 +125,7 @@ export function BookingSummaryScreen() {
           title="Quote failed"
         />
       ) : currentQuote ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
           <View style={styles.vehicleRow}>
             {currentQuote.vehicle.imageUrl ? (
               <Image
@@ -145,7 +145,7 @@ export function BookingSummaryScreen() {
               </Text>
               <View style={styles.inlineRow}>
                 <MapPin color="#6B7280" size={15} />
-                <Text numberOfLines={1} style={styles.mutedText}>
+                <Text style={[styles.mutedText, { flex: 1 }]}>
                   {currentQuote.vehicle.locationName ?? 'Pickup location'}
                 </Text>
               </View>
@@ -215,7 +215,7 @@ export function BookingShell({
   const goBack = useSafeBack({ fallback, onBeforeBack, preferFallback });
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.header}>
         <Pressable
           accessibilityLabel="Go back"
@@ -227,7 +227,7 @@ export function BookingShell({
         </Pressable>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
-      {children}
+      <View style={styles.body}>{children}</View>
     </SafeAreaView>
   );
 }
@@ -289,6 +289,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7FAFF',
   },
+  body: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -307,6 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
+    flex: 1,
     color: '#111827',
     fontSize: 24,
     fontWeight: '900',
@@ -388,11 +397,13 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   priceRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
   },
   totalRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,

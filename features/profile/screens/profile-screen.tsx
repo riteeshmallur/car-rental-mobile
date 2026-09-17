@@ -1,5 +1,4 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   ArrowLeft,
@@ -17,30 +16,22 @@ import {
   Phone,
   Settings,
   ShieldCheck,
-  UserRound,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Platform,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
-import {
-  profileSchema,
-  type ProfileFormValues,
-} from '@/features/profile/schemas/profile-schema';
 import { usersApi } from '@/services/users/users-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
@@ -76,22 +67,12 @@ function getInitials(user: SafeUser | null | undefined) {
     .toUpperCase();
 }
 
-function toFormValues(user: SafeUser | null | undefined): ProfileFormValues {
-  return {
-    firstName: user?.firstName ?? null,
-    lastName: user?.lastName ?? null,
-    email: user?.email ?? null,
-    phoneNumber: user?.phoneNumber ?? '',
-    profileImageUrl: user?.profileImageUrl ?? null,
-  };
-}
-
 export function ProfileScreen({ mode }: ProfileScreenProps) {
-  const queryClient = useQueryClient();
   const authUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isLogoutSheetOpen, setLogoutSheetOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const profileQuery = useQuery({
     initialData: authUser ?? undefined,
@@ -101,50 +82,35 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
   const profile = profileQuery.data;
 
-  const {
-    control,
-    formState: { errors, isDirty, isValid },
-    handleSubmit,
-    reset,
-    setError,
-  } = useForm<ProfileFormValues>({
-    defaultValues: toFormValues(profile),
-    mode: 'onChange',
-    resolver: zodResolver(profileSchema),
-  });
-  const closeEditorBeforeBack = useCallback(() => {
-    if (!isEditing) {
-      return false;
+  const closeOverlayBeforeBack = useCallback(() => {
+    if (isLogoutSheetOpen) {
+      setLogoutSheetOpen(false);
+      return true;
     }
-
-    setIsEditing(false);
-    return true;
-  }, [isEditing]);
+    return false;
+  }, [isLogoutSheetOpen]);
   const goBack = useSafeBack({
     fallback: '/(customer)/home',
-    onBeforeBack: closeEditorBeforeBack,
+    onBeforeBack: closeOverlayBeforeBack,
   });
-  useWebBackGuard({ active: isEditing, onBack: goBack });
+  useWebBackGuard({
+    active: isLogoutSheetOpen,
+    onBack: closeOverlayBeforeBack,
+  });
 
   useEffect(() => {
     if (profile) {
       setUser(profile);
-      reset(toFormValues(profile));
     }
-  }, [profile, reset, setUser]);
+  }, [profile, setUser]);
 
-  const updateMutation = useMutation({
-    mutationFn: usersApi.updateMe,
-    onError: (error) => {
-      setError('root', { message: normalizeApiError(error).message });
-    },
-    onSuccess: (updatedUser) => {
-      setUser(updatedUser);
-      queryClient.setQueryData(['users', 'me'], updatedUser);
-      reset(toFormValues(updatedUser));
-      setIsEditing(false);
-    },
-  });
+  const openPersonalInformation = useCallback(() => {
+    if (mode === 'host') {
+      router.push('/(host)/personal-information');
+      return;
+    }
+    router.push('/(customer)/personal-information');
+  }, [mode]);
 
   const sections = useMemo<SectionItem[]>(
     () => [
@@ -170,12 +136,6 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
             },
           ]
         : []),
-      {
-        label: 'Personal information',
-        description: 'View and update your details',
-        icon: <UserRound color="#111827" size={20} />,
-        onPress: () => setIsEditing(true),
-      },
       {
         label: 'Payment methods',
         description: 'Manage your cards and wallets',
@@ -211,207 +171,138 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         description: '',
         icon: <LogOut color="#B91C1C" size={20} />,
         destructive: true,
-        onPress: () => {
-          void logout().then(() => {
-            if (router.canDismiss()) {
-              router.dismissAll();
-            }
-            router.replace('/(auth)/login');
-          });
-        },
+        onPress: () => setLogoutSheetOpen(true),
       },
     ],
-    [logout, mode, profile?.capabilities.canHost, profile?.hostEnabled, profile?.role],
+    [mode],
   );
 
-  const submitProfile = handleSubmit((values) => {
-    updateMutation.mutate(values);
-  });
+  const confirmLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    setLogoutSheetOpen(false);
+
+    try {
+      await logout();
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      router.replace('/(auth)/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: 'padding', default: undefined })}
-        style={styles.keyboardView}
-      >
+      <View style={styles.screen}>
         <ScrollView
           contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
+          style={styles.contentScroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <View style={styles.headerLead}>
-              {mode === 'host' ? (
-                <Pressable
-                  accessibilityLabel="Go back"
-                  accessibilityRole="button"
-                  onPress={goBack}
-                  style={styles.iconButton}
-                >
-                  <ArrowLeft color="#111827" size={20} />
-                </Pressable>
-              ) : null}
-              <View>
-                <Text style={styles.title}>Profile</Text>
-                <Text style={styles.subtitle}>Manage your account and preferences</Text>
-              </View>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsEditing((current) => !current)}
-              style={styles.iconButton}
-            >
-              <Settings color={colors.ink} size={22} />
-            </Pressable>
-          </View>
-
-          {profileQuery.isLoading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator color="#111827" />
-              <Text style={styles.mutedText}>Loading profile</Text>
-            </View>
-          ) : profileQuery.isError ? (
-            <StateMessage
-              actionLabel="Try again"
-              body={normalizeApiError(profileQuery.error).message}
-              onAction={() => void profileQuery.refetch()}
-              title="Profile could not load"
-            />
-          ) : profile ? (
-            <>
-              <ProfileSummary onPress={() => setIsEditing(true)} user={profile} />
-
-              {mode === 'customer' || mode === 'host' ? (
-                <HostBanner
-                  hasHostCapability={hasHostCapability(profile)}
-                  mode={mode}
-                  onPress={() =>
-                    mode === 'host'
-                      ? router.replace('/(customer)/home')
-                      : hasHostCapability(profile)
-                      ? router.push('/(host)/profile')
-                      : router.push('/(customer)/become-host')
-                  }
-                />
-              ) : null}
-
-              {isEditing ? (
-                <View style={styles.form}>
-                  <ProfileInput
-                    control={control}
-                    error={errors.firstName?.message}
-                    label="First name"
-                    name="firstName"
-                    placeholder="First name"
-                  />
-                  <ProfileInput
-                    control={control}
-                    error={errors.lastName?.message}
-                    label="Last name"
-                    name="lastName"
-                    placeholder="Last name"
-                  />
-                  <ProfileInput
-                    autoCapitalize="none"
-                    control={control}
-                    error={errors.email?.message}
-                    inputMode="email"
-                    keyboardType="email-address"
-                    label="Email"
-                    name="email"
-                    placeholder="Email address"
-                  />
-                  <ProfileInput
-                    control={control}
-                    error={errors.phoneNumber?.message}
-                    inputMode="tel"
-                    keyboardType="phone-pad"
-                    label="Mobile number"
-                    name="phoneNumber"
-                    placeholder="+91..."
-                  />
-                  <ProfileInput
-                    autoCapitalize="none"
-                    control={control}
-                    error={errors.profileImageUrl?.message}
-                    inputMode="url"
-                    keyboardType="url"
-                    label="Profile image URL"
-                    name="profileImageUrl"
-                    placeholder="https://..."
-                  />
-
-                  {errors.root?.message ? (
-                    <Text style={styles.errorText}>{errors.root.message}</Text>
-                  ) : null}
-
-                  <View style={styles.formActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        reset(toFormValues(profile));
-                        setIsEditing(false);
-                      }}
-                      style={styles.secondaryButton}
-                    >
-                      <Text style={styles.secondaryButtonText}>Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={!isDirty || !isValid || updateMutation.isPending}
-                      onPress={submitProfile}
-                      style={[
-                        styles.primaryButton,
-                        (!isDirty || !isValid || updateMutation.isPending) &&
-                          styles.disabledButton,
-                      ]}
-                    >
-                      {updateMutation.isPending ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.primaryButtonText}>Save profile</Text>
-                      )}
-                    </Pressable>
-                  </View>
+            <View style={styles.header}>
+              <View style={styles.headerLead}>
+                {mode === 'host' ? (
+                  <Pressable
+                    accessibilityLabel="Go back"
+                    accessibilityRole="button"
+                    onPress={goBack}
+                    style={styles.iconButton}
+                  >
+                    <ArrowLeft color="#111827" size={20} />
+                  </Pressable>
+                ) : null}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.title}>Profile</Text>
+                  <Text style={styles.subtitle}>Manage your account and preferences</Text>
                 </View>
-              ) : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit personal information"
+                onPress={openPersonalInformation}
+                style={styles.iconButton}
+              >
+                <Settings color={colors.ink} size={22} />
+              </Pressable>
+            </View>
 
-              {mode === 'host' ? <SectionHeading title="Host workspace" /> : null}
-              {mode === 'host' ? (
+            {profileQuery.isLoading ? (
+              <View style={styles.loadingState}>
+                <ActivityIndicator color="#111827" />
+                <Text style={styles.mutedText}>Loading profile</Text>
+              </View>
+            ) : profileQuery.isError ? (
+              <StateMessage
+                actionLabel="Try again"
+                body={normalizeApiError(profileQuery.error).message}
+                onAction={() => void profileQuery.refetch()}
+                title="Profile could not load"
+              />
+            ) : profile ? (
+              <>
+                <ProfileSummary onPress={openPersonalInformation} user={profile} />
+
+                {mode === 'customer' || mode === 'host' ? (
+                  <HostBanner
+                    hasHostCapability={hasHostCapability(profile)}
+                    mode={mode}
+                    onPress={() =>
+                      mode === 'host'
+                        ? router.replace('/(customer)/home')
+                        : hasHostCapability(profile)
+                        ? router.push('/(host)/profile')
+                        : router.push('/(customer)/become-host')
+                    }
+                  />
+                ) : null}
+
+                {mode === 'host' ? <SectionHeading title="Host workspace" /> : null}
+                {mode === 'host' ? (
+                  <View style={styles.section}>
+                    {sections.slice(0, 3).map((item) => (
+                      <SectionRow key={item.label} item={item} />
+                    ))}
+                  </View>
+                ) : null}
+
+                <SectionHeading title="Account" />
                 <View style={styles.section}>
-                  {sections.slice(0, 3).map((item) => (
+                  {sections.slice(mode === 'host' ? 3 : 0, mode === 'host' ? 5 : 2).map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
-              ) : null}
 
-              <SectionHeading title="Account" />
-              <View style={styles.section}>
-                {sections.slice(mode === 'host' ? 3 : 0, mode === 'host' ? 6 : 3).map((item) => (
-                  <SectionRow key={item.label} item={item} />
-                ))}
-              </View>
+                <SectionHeading title="Preferences" />
+                <View style={styles.section}>
+                  <SectionRow item={sections[mode === 'host' ? 5 : 2]} />
+                </View>
 
-              <SectionHeading title="Preferences" />
-              <View style={styles.section}>
-                <SectionRow item={sections[mode === 'host' ? 6 : 3]} />
-              </View>
+                <SectionHeading title="Support & Security" />
+                <View style={styles.section}>
+                  {sections.slice(mode === 'host' ? 6 : 3, mode === 'host' ? 8 : 5).map((item) => (
+                    <SectionRow key={item.label} item={item} />
+                  ))}
+                </View>
 
-              <SectionHeading title="Support & Security" />
-              <View style={styles.section}>
-                {sections.slice(mode === 'host' ? 7 : 4, mode === 'host' ? 9 : 6).map((item) => (
-                  <SectionRow key={item.label} item={item} />
-                ))}
-              </View>
-
-              <View style={styles.logoutSection}>
-                <SectionRow item={sections[mode === 'host' ? 9 : 6]} />
-              </View>
-            </>
-          ) : null}
+                <View style={styles.logoutSection}>
+                  <SectionRow item={sections[mode === 'host' ? 8 : 5]} />
+                </View>
+              </>
+            ) : null}
         </ScrollView>
-      </KeyboardAvoidingView>
-      {mode === 'customer' ? <BottomNavigation /> : null}
+        {mode === 'customer' ? <BottomNavigation /> : null}
+      </View>
+      <LogoutConfirmationSheet
+        isLoggingOut={isLoggingOut}
+        isVisible={isLogoutSheetOpen}
+        onClose={() => setLogoutSheetOpen(false)}
+        onConfirm={() => void confirmLogout()}
+      />
     </SafeAreaView>
   );
 }
@@ -443,14 +334,12 @@ function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser
         <InfoLine
           icon={<Phone color="#6B7280" size={16} />}
           text={user.phoneNumber ?? 'Mobile number not added'}
-          trailing={user.phoneVerified ? <ShieldCheck color={colors.success} size={21} /> : undefined}
         />
         <View style={styles.emailRow}>
           <Mail color={colors.text} size={18} />
           <Text style={[styles.emailAction, user.email && styles.emailValue]}>
             {user.email ?? 'Add email address'}
           </Text>
-          <ArrowRight color={user.email ? colors.muted : colors.brand} size={19} />
         </View>
       </View>
       <ChevronRight color={colors.text} size={22} />
@@ -505,50 +394,6 @@ function SectionHeading({ title }: { title: string }) {
   return <Text style={styles.sectionHeading}>{title}</Text>;
 }
 
-function ProfileInput({
-  autoCapitalize,
-  control,
-  error,
-  inputMode,
-  keyboardType,
-  label,
-  name,
-  placeholder,
-}: {
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  control: ReturnType<typeof useForm<ProfileFormValues>>['control'];
-  error?: string;
-  inputMode?: 'text' | 'email' | 'tel' | 'url';
-  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'url';
-  label: string;
-  name: keyof ProfileFormValues;
-  placeholder: string;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onBlur, onChange, value } }) => (
-          <TextInput
-            autoCapitalize={autoCapitalize}
-            inputMode={inputMode}
-            keyboardType={keyboardType}
-            onBlur={onBlur}
-            onChangeText={onChange}
-            placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
-            style={[styles.input, error && styles.inputError]}
-            value={value ?? ''}
-          />
-        )}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
-}
-
 function SectionRow({ item }: { item: SectionItem }) {
   return (
     <Pressable
@@ -563,6 +408,73 @@ function SectionRow({ item }: { item: SectionItem }) {
       </View>
       <ChevronRight color={item.destructive ? '#B91C1C' : '#9CA3AF'} size={18} />
     </Pressable>
+  );
+}
+
+function LogoutConfirmationSheet({
+  isLoggingOut,
+  isVisible,
+  onClose,
+  onConfirm,
+}: {
+  isLoggingOut: boolean;
+  isVisible: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      transparent
+      visible={isVisible}
+    >
+      <View style={styles.sheetOverlay}>
+        <Pressable
+          accessibilityLabel="Close logout confirmation"
+          accessibilityRole="button"
+          onPress={onClose}
+          style={styles.sheetBackdrop}
+        />
+        <View style={styles.logoutSheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Log out?</Text>
+          <Text style={styles.sheetBody}>
+            Are you sure you want to log out of your HopIn account?
+          </Text>
+          <View style={styles.sheetActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isLoggingOut}
+              onPress={onClose}
+              style={({ pressed }) => [
+                styles.sheetNoButton,
+                pressed && styles.pressed,
+                isLoggingOut && styles.disabledButton,
+              ]}
+            >
+              <Text style={styles.sheetNoText}>No</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isLoggingOut}
+              onPress={onConfirm}
+              style={({ pressed }) => [
+                styles.sheetYesButton,
+                pressed && styles.sheetYesPressed,
+                isLoggingOut && styles.disabledButton,
+              ]}
+            >
+              {isLoggingOut ? (
+                <ActivityIndicator color={colors.surface} />
+              ) : (
+                <Text style={styles.sheetYesText}>Yes</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -602,15 +514,21 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
+    position: 'relative',
   },
-  keyboardView: {
+  screen: {
     flex: 1,
+    position: 'relative',
   },
   content: {
     gap: 14,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 110,
+    paddingBottom: 32,
+  },
+  contentScroll: {
+    flex: 1,
+    minHeight: 0,
   },
   header: {
     minHeight: 78,
@@ -619,6 +537,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerLead: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -765,45 +685,6 @@ const styles = StyleSheet.create({
   emailValue: {
     color: colors.text,
   },
-  form: {
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface,
-    padding: 14,
-  },
-  field: {
-    gap: 6,
-  },
-  fieldLabel: {
-    color: '#374151',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: '700',
-    paddingHorizontal: 12,
-  },
-  inputError: {
-    borderColor: colors.error,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  formActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
   primaryButton: {
     minHeight: 48,
     flex: 1,
@@ -813,24 +694,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B4FE8',
     paddingHorizontal: 14,
   },
-  secondaryButton: {
-    minHeight: 48,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-  },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  secondaryButtonText: {
-    color: colors.ink,
+    color: colors.surface,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -891,6 +756,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
+    marginBottom: 12,
   },
   destructiveText: {
     color: '#E03131',
@@ -908,6 +774,80 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.76,
+  },
+  sheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(15, 23, 42, 0.54)',
+  },
+  logoutSheet: {
+    minHeight: 250,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    ...shadows.floating,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    height: 5,
+    width: 46,
+    marginBottom: 22,
+    borderRadius: radii.pill,
+    backgroundColor: '#CBD5E1',
+  },
+  sheetTitle: {
+    color: colors.ink,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  sheetBody: {
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    marginTop: 8,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 24,
+  },
+  sheetNoButton: {
+    minHeight: 52,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+  },
+  sheetNoText: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  sheetYesButton: {
+    minHeight: 52,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    backgroundColor: colors.error,
+  },
+  sheetYesPressed: {
+    backgroundColor: '#A61B1B',
+  },
+  sheetYesText: {
+    color: colors.surface,
+    fontSize: 15,
+    fontWeight: '900',
   },
   state: {
     minHeight: 280,

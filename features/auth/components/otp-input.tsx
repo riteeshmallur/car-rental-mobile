@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   digitBox: {
     height: 54,
     flex: 1,
-    minWidth: 42,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

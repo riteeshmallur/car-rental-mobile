@@ -140,7 +140,7 @@ export function TripDetailsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.header}>
         <Pressable
           accessibilityLabel="Go back"
@@ -171,7 +171,7 @@ export function TripDetailsScreen() {
           title="Booking could not load"
         />
       ) : booking ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
           <VehicleSummary booking={booking} />
 
           <View style={styles.section}>
@@ -468,6 +468,10 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
     paddingBottom: 32,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
   },
   loadingState: {
     flex: 1,

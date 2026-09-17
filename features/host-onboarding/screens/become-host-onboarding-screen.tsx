@@ -486,7 +486,7 @@ function OnboardingShell({
   title: string;
 }) {
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: 'padding', default: undefined })}
         style={styles.keyboardView}
@@ -505,6 +505,7 @@ function OnboardingShell({
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          style={styles.contentScroll}
           showsVerticalScrollIndicator={false}
         >
           {children}
@@ -740,6 +741,10 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 24,
   },
+  contentScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
   introHeader: {
     gap: 12,
   },
@@ -830,9 +835,11 @@ const styles = StyleSheet.create({
   stepLabels: {
     flexDirection: 'row',
     gap: 6,
+    minWidth: 0,
   },
   stepLabel: {
     flex: 1,
+    minWidth: 0,
     color: '#9CA3AF',
     fontSize: 10,
     fontWeight: '900',

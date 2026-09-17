@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { type ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -29,7 +29,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -137,7 +136,7 @@ export function VehicleDetailsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.container}>
         {!detailsQuery.data ? (
           <View style={styles.stateHeader}>
@@ -316,8 +315,8 @@ function VehicleHero({
 }: {
   vehicle: VehicleDetail;
 }) {
-  const { width } = useWindowDimensions();
-  const galleryWidth = Math.max(width - 32, 280);
+  const [galleryWidth, setGalleryWidth] = useState(0);
+  const galleryRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const images = useMemo(() => {
     if (vehicle.images.length > 0) {
@@ -328,8 +327,13 @@ function VehicleHero({
   }, [vehicle]);
 
   return (
-    <View style={styles.hero}>
+    <View
+      style={styles.hero}
+      onLayout={(event) => setGalleryWidth(event.nativeEvent.layout.width)}
+    >
       <ScrollView
+        ref={galleryRef}
+        onContentSizeChange={() => galleryRef.current?.scrollTo({ x: activeIndex * galleryWidth, animated: false })}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -337,7 +341,7 @@ function VehicleHero({
           event: NativeSyntheticEvent<NativeScrollEvent>,
         ) => {
           setActiveIndex(
-            Math.round(event.nativeEvent.contentOffset.x / galleryWidth),
+            Math.max(0, Math.min(images.length - 1, Math.round(event.nativeEvent.contentOffset.x / (galleryWidth || 1)))),
           );
         }}
       >
@@ -562,7 +566,7 @@ function StickyBookingBar({
 }) {
   return (
     <View style={styles.stickyBar}>
-      <View>
+      <View style={styles.stickyCopy}>
         <Text style={styles.stickyDaily}>
           {formatDailyPrice(vehicle.dailyPrice)}/day
         </Text>
@@ -684,7 +688,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 14,
     paddingHorizontal: 16,
-    paddingBottom: 118,
+    paddingBottom: 24,
   },
   hero: {
     height: 286,
@@ -694,7 +698,6 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   galleryItem: {
-    width: 390,
     height: 286,
     backgroundColor: colors.brandSoft,
   },
@@ -714,10 +717,14 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 12,
     left: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   galleryDots: {
+    flex: 1,
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
@@ -733,8 +740,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
   },
   galleryCount: {
-    position: 'absolute',
-    right: 0,
     minHeight: 28,
     alignItems: 'center',
     justifyContent: 'center',
@@ -810,11 +815,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   specGrid: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 10,
   },
   spec: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 120,
+    minWidth: 0,
     minHeight: 82,
     justifyContent: 'center',
     gap: 5,
@@ -872,6 +880,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   featureChip: {
+    maxWidth: '100%',
     minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
@@ -883,6 +892,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   featureText: {
+    flexShrink: 1,
     color: '#166534',
     fontSize: 13,
     fontWeight: '900',
@@ -990,6 +1000,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   reviewName: {
+    flex: 1,
     color: '#111827',
     fontSize: 14,
     fontWeight: '900',
@@ -1000,10 +1011,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   stickyBar: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    left: 0,
+    flexShrink: 0,
+    flexWrap: 'wrap',
     minHeight: 86,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1027,8 +1036,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   continueButton: {
+    flexGrow: 1,
+    flexBasis: 138,
+    paddingVertical: 12,
     minHeight: 48,
-    minWidth: 138,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
@@ -1039,12 +1051,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#9CA3AF',
   },
   continueText: {
+    textAlign: 'center',
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '900',
   },
   pressed: {
     opacity: 0.8,
+  },
+  stickyCopy: {
+    flexGrow: 1,
+    flexBasis: 140,
+    minWidth: 0,
   },
   skeleton: {
     flex: 1,
