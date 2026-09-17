@@ -3,13 +3,19 @@ import { z } from 'zod';
 const moneyString = z
   .string()
   .trim()
-  .regex(/^\d+(\.\d{1,2})?$/, 'Enter a valid amount');
+  .regex(/^\d+(\.\d{1,2})?$/, 'Enter a valid amount')
+  .refine((value) => Number(value) > 0, {
+    message: 'Price must be greater than ₹0',
+  });
 
 const optionalMoneyString = z
   .string()
   .trim()
   .refine((value) => !value || /^\d+(\.\d{1,2})?$/.test(value), {
     message: 'Enter a valid amount',
+  })
+  .refine((value) => !value || Number(value) >= 0, {
+    message: 'Deposit cannot be negative',
   });
 
 const optionalNumberString = z
@@ -19,7 +25,12 @@ const optionalNumberString = z
     message: 'Enter a whole number',
   });
 
-export const hostVehicleFormSchema = z.object({
+const optionalPositiveNumberString = optionalNumberString.refine(
+  (value) => !value || Number(value) > 0,
+  { message: 'Enter a value greater than 0' },
+);
+
+const hostVehicleFormSchemaBase = z.object({
   make: z.string().trim().min(2, 'Make is required'),
   model: z.string().trim().min(1, 'Model is required'),
   manufacturingYear: z
@@ -73,7 +84,7 @@ export const hostVehicleFormSchema = z.object({
   pollutionCertificateNumber: z.string().trim().optional(),
   pricePerDay: moneyString,
   securityDeposit: optionalMoneyString,
-  mileageLimitPerDay: optionalNumberString,
+  mileageLimitPerDay: optionalPositiveNumberString,
   minimumRentalDays: z
     .string()
     .trim()
@@ -87,6 +98,29 @@ export const hostVehicleFormSchema = z.object({
   advanceNoticeHours: optionalNumberString,
   available: z.boolean(),
 });
+
+export const hostVehicleFormSchema = hostVehicleFormSchemaBase.superRefine(
+  (values, context) => {
+    if (
+      values.maximumRentalDays &&
+      Number(values.maximumRentalDays) < Number(values.minimumRentalDays)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Maximum days cannot be less than minimum days',
+        path: ['maximumRentalDays'],
+      });
+    }
+
+    if (values.availableTo && values.availableFrom && values.availableTo < values.availableFrom) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Available until cannot be before available from',
+        path: ['availableTo'],
+      });
+    }
+  },
+);
 
 export type HostVehicleFormValues = z.infer<typeof hostVehicleFormSchema>;
 
@@ -121,6 +155,6 @@ export const hostVehicleDefaultValues: HostVehicleFormValues = {
   maximumRentalDays: '',
   availableFrom: '',
   availableTo: '',
-  advanceNoticeHours: '',
+  advanceNoticeHours: '24',
   available: true,
 };

@@ -40,7 +40,8 @@
           "photosPermission": "HopIn needs access to your photos so you can add vehicle images.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,11 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   CalendarDays,
   Camera,
   CarFront,
+  Check,
   ChevronRight,
   FileText,
   MapPin,
@@ -14,12 +17,12 @@ import {
   Search,
   Trash2,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -29,7 +32,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Controller, type FieldPath, useForm } from 'react-hook-form';
+import { Controller, type FieldPath, useForm, useWatch } from 'react-hook-form';
 
 import {
   hostVehicleDefaultValues,
@@ -113,25 +116,31 @@ const steps: WizardStep[] = [
   {
     key: 'documents',
     title: 'Documents',
-    helper: 'Keep document references ready for verification.',
+    helper: 'Keep your vehicle documents ready for verification.',
     fields: ['registrationCertificateNumber', 'insurancePolicyNumber'],
   },
   {
     key: 'pricing',
     title: 'Pricing',
     helper: 'Set the daily price and rental rules.',
-    fields: ['pricePerDay', 'minimumRentalDays'],
+    fields: [
+      'pricePerDay',
+      'securityDeposit',
+      'mileageLimitPerDay',
+      'minimumRentalDays',
+      'maximumRentalDays',
+    ],
   },
   {
     key: 'availability',
     title: 'Availability',
     helper: 'Control when the listing can receive bookings.',
-    fields: ['availableFrom'],
+    fields: ['availableFrom', 'availableTo', 'advanceNoticeHours'],
   },
   {
     key: 'review',
     title: 'Review and submit',
-    helper: 'Confirm the draft before sending it for approval.',
+    helper: 'Confirm the details before sending for approval.',
     fields: [],
   },
 ];
@@ -216,11 +225,15 @@ export function HostAddVehicleWizardScreen() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [submissionComplete, setSubmissionComplete] = useState(false);
   const [resumeChecked, setResumeChecked] = useState(false);
   const [saveStatus, setSaveStatus] = useState<DraftSaveStatus>('idle');
   const [selectionField, setSelectionField] = useState<
     'make' | 'model' | 'manufacturingYear' | 'colour' | null
   >(null);
+  const actionInFlightRef = useRef(false);
+  const photoPickerOpenRef = useRef(false);
 
   const form = useForm<HostVehicleFormValues>({
     defaultValues: hostVehicleDefaultValues,
@@ -241,6 +254,8 @@ export function HostAddVehicleWizardScreen() {
   const hostVehiclesQuery = useQuery({
     queryKey: ['host', 'vehicles'],
     queryFn: hostsApi.listVehicles,
+    retry: 1,
+    staleTime: 60_000,
   });
 
   useEffect(() => {
@@ -296,7 +311,7 @@ export function HostAddVehicleWizardScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
-      router.replace('/(host)/profile');
+      setSubmissionComplete(true);
     },
   });
 
@@ -388,56 +403,68 @@ export function HostAddVehicleWizardScreen() {
   };
 
   const pickPhotos = async () => {
+    if (photoPickerOpenRef.current) {
+      return;
+    }
+
+    photoPickerOpenRef.current = true;
     const remainingPhotoCount = maximumPhotoCount - imageUrls.length;
 
     if (remainingPhotoCount <= 0) {
       setPhotoError(`You can add up to ${maximumPhotoCount} photos.`);
+      photoPickerOpenRef.current = false;
       return;
     }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permission.granted) {
-      Alert.alert(
-        'Photo access required',
-        'Allow photo access in device settings to add vehicle images.',
+      if (!permission.granted) {
+        Alert.alert(
+          'Photo access required',
+          'Allow photo access in device settings to add vehicle images.',
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: true,
+        mediaTypes: ['images'],
+        quality: 0.8,
+        selectionLimit: remainingPhotoCount,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const invalidType = result.assets.some(
+        (asset) => asset.mimeType && !['image/jpeg', 'image/png'].includes(asset.mimeType),
       );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      mediaTypes: ['images'],
-      quality: 0.8,
-      selectionLimit: remainingPhotoCount,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const invalidType = result.assets.some(
-      (asset) => asset.mimeType && !['image/jpeg', 'image/png'].includes(asset.mimeType),
-    );
-    const invalidSize = result.assets.some(
-      (asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes,
-    );
-
-    if (invalidType || invalidSize) {
-      setPhotoError(
-        invalidType
-          ? 'Choose JPG or PNG images only.'
-          : 'Each photo must be 10 MB or smaller.',
+      const invalidSize = result.assets.some(
+        (asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes,
       );
-      return;
-    }
 
-    const nextImages = result.assets.map((asset) => asset.uri);
-    setPhotoError(null);
-    setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, maximumPhotoCount), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+      if (invalidType || invalidSize) {
+        setPhotoError(
+          invalidType
+            ? 'Choose JPG or PNG images only.'
+            : 'Each photo must be 10 MB or smaller.',
+        );
+        return;
+      }
+
+      const nextImages = result.assets.map((asset) => asset.uri);
+      setPhotoError(null);
+      setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, maximumPhotoCount), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch {
+      setPhotoError('Could not open your photo library. Please try again.');
+    } finally {
+      photoPickerOpenRef.current = false;
+    }
   };
 
   const removePhoto = (uri: string) => {
@@ -457,20 +484,42 @@ export function HostAddVehicleWizardScreen() {
   };
 
   const saveAndContinue = async () => {
-    setSaveStatus('saving');
-    const valid = step.fields.length ? await trigger(step.fields) : true;
-
-    if (!valid) {
-      setSaveStatus('idle');
+    if (actionInFlightRef.current) {
       return;
     }
 
+    actionInFlightRef.current = true;
+    setValidationMessage(null);
+    setSaveStatus('saving');
+
     try {
+      const valid = step.fields.length ? await trigger(step.fields) : true;
+
+      if (!valid) {
+        setSaveStatus('idle');
+        return;
+      }
+
       if (step.key === 'review') {
         const allValid = await trigger();
 
         if (!allValid) {
-          setStepIndex(0);
+          let invalidStepIndex = 0;
+
+          for (const [index, candidate] of steps.entries()) {
+            if (candidate.key !== 'review' && candidate.fields.length) {
+              const stepIsValid = await trigger(candidate.fields);
+
+              if (!stepIsValid) {
+                invalidStepIndex = index;
+                break;
+              }
+            }
+          }
+
+          setValidationMessage(`Complete ${steps[invalidStepIndex].title} before submitting.`);
+          setSaveStatus('idle');
+          setStepIndex(invalidStepIndex);
           return;
         }
 
@@ -502,6 +551,8 @@ export function HostAddVehicleWizardScreen() {
     } catch {
       // Mutation state renders the backend or upload error without an unhandled promise.
       setSaveStatus('failed');
+    } finally {
+      actionInFlightRef.current = false;
     }
   };
 
@@ -510,6 +561,10 @@ export function HostAddVehicleWizardScreen() {
   };
 
   const handleInternalBack = useCallback(() => {
+    if (actionInFlightRef.current) {
+      return true;
+    }
+
     if (stepIndex > 0) {
       setStepIndex((current) => current - 1);
       return true;
@@ -523,19 +578,43 @@ export function HostAddVehicleWizardScreen() {
   });
   useWebBackGuard({ active: stepIndex > 0, onBack: goBack });
 
+  const isRestoringDraft = hostVehiclesQuery.isLoading && !resumeChecked;
   const isBusy =
     saveMutation.isPending ||
     uploadPhotosMutation.isPending ||
-    submitMutation.isPending ||
-    (hostVehiclesQuery.isLoading && !resumeChecked);
+    submitMutation.isPending;
+
+  if (submissionComplete) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <View style={styles.submissionComplete}>
+          <View style={styles.submissionIcon}>
+            <Check color="#FFFFFF" size={34} strokeWidth={3} />
+          </View>
+          <Text style={styles.submissionTitle}>Vehicle submitted for review</Text>
+          <Text style={styles.submissionBody}>
+            We'll let you know once your listing is approved.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.replace('/(host)/cars')}
+            style={styles.submissionButton}
+          >
+            <Text style={styles.submissionButtonText}>View my cars</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
       >
         <AddVehicleHeader
+          disabled={isBusy || isRestoringDraft}
           onBack={goBack}
           onRetry={retrySave}
           saveStatus={saveStatus}
@@ -545,71 +624,87 @@ export function HostAddVehicleWizardScreen() {
 
         <ScrollView
           contentContainerStyle={styles.content}
+          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           style={styles.contentScroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{step.title}</Text>
-            <Text style={styles.stepHelper}>{step.helper}</Text>
-          </View>
-
-          {step.key === 'vehicleDetails' ? (
-            <VehicleDetailsStep
-              control={control}
-              errors={errors}
-              make={make}
-              onOpenSelection={setSelectionField}
-            />
-          ) : null}
-          {step.key === 'vehicleLocation' ? (
-            <VehicleLocationStep
-              control={control}
-              errors={errors}
-              setValue={setValue}
-            />
-          ) : null}
-          {step.key === 'features' ? (
-            <FeaturesStep
-              error={errors.features?.message}
-              featureInput={featureInput}
-              features={features}
-              onAddFeature={addFeature}
-              onChangeFeatureInput={setFeatureInput}
-              onRemoveFeature={removeFeature}
-              onTogglePopularFeature={togglePopularFeature}
-            />
-          ) : null}
-          {step.key === 'photos' ? (
-            <PhotosStep
-              error={photoError ?? errors.imageUrls?.message}
-              imageUrls={imageUrls}
-              isUploading={uploadPhotosMutation.isPending}
-              onPickPhotos={pickPhotos}
-              onRemovePhoto={removePhoto}
-              onSetCoverPhoto={setCoverPhoto}
-            />
-          ) : null}
-          {step.key === 'documents' ? (
-            <DocumentsStep control={control} errors={errors} />
-          ) : null}
-          {step.key === 'pricing' ? (
-            <PricingStep control={control} errors={errors} />
-          ) : null}
-          {step.key === 'availability' ? (
-            <AvailabilityStep control={control} errors={errors} />
-          ) : null}
-          {step.key === 'review' ? <ReviewStep values={getValues()} /> : null}
-
-          {serverError ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorBoxText}>{serverError.message}</Text>
+          {isRestoringDraft ? (
+            <View style={styles.restoreDraftState}>
+              <ActivityIndicator color="#1769F5" size="small" />
+              <Text style={styles.restoreDraftText}>Restoring your saved draft...</Text>
             </View>
-          ) : null}
+          ) : (
+            <View pointerEvents={isBusy ? 'none' : 'auto'} style={styles.stepContent}>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>{step.title}</Text>
+                <Text style={styles.stepHelper}>{step.helper}</Text>
+              </View>
+
+              {step.key === 'vehicleDetails' ? (
+                <VehicleDetailsStep
+                  control={control}
+                  errors={errors}
+                  make={make}
+                  onOpenSelection={setSelectionField}
+                />
+              ) : null}
+              {step.key === 'vehicleLocation' ? (
+                <VehicleLocationStep
+                  control={control}
+                  errors={errors}
+                  setValue={setValue}
+                />
+              ) : null}
+              {step.key === 'features' ? (
+                <FeaturesStep
+                  error={errors.features?.message}
+                  featureInput={featureInput}
+                  features={features}
+                  onAddFeature={addFeature}
+                  onChangeFeatureInput={setFeatureInput}
+                  onRemoveFeature={removeFeature}
+                  onTogglePopularFeature={togglePopularFeature}
+                />
+              ) : null}
+              {step.key === 'photos' ? (
+                <PhotosStep
+                  error={photoError ?? errors.imageUrls?.message}
+                  imageUrls={imageUrls}
+                  isUploading={uploadPhotosMutation.isPending}
+                  onPickPhotos={pickPhotos}
+                  onRemovePhoto={removePhoto}
+                  onSetCoverPhoto={setCoverPhoto}
+                />
+              ) : null}
+              {step.key === 'documents' ? (
+                <DocumentsStep control={control} errors={errors} />
+              ) : null}
+              {step.key === 'pricing' ? (
+                <PricingStep control={control} errors={errors} />
+              ) : null}
+              {step.key === 'availability' ? (
+                <AvailabilityStep control={control} errors={errors} setValue={setValue} />
+              ) : null}
+              {step.key === 'review' ? (
+                <ReviewStep
+                  onEdit={(targetStep) => setStepIndex(targetStep)}
+                  values={getValues()}
+                />
+              ) : null}
+
+              {serverError || validationMessage ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorBoxText}>{serverError?.message ?? validationMessage}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
         </ScrollView>
 
         <AddVehicleFooter
-          busy={isBusy}
+          busy={isBusy || isRestoringDraft}
+          busyLabel={isRestoringDraft ? 'Restoring draft...' : undefined}
           isSubmit={step.key === 'review'}
           onPress={saveAndContinue}
         />
@@ -790,6 +885,23 @@ function LocationSearchField({
   setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
 }) {
   const [focused, setFocused] = useState(false);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (blurTimerRef.current) {
+        clearTimeout(blurTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const clearPendingBlur = () => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+  };
 
   return (
     <Controller
@@ -802,14 +914,19 @@ function LocationSearchField({
           onBlur={() => {
             onBlur();
             // Let a tapped result receive its press event before hiding the list.
-            setTimeout(() => setFocused(false), 120);
+            clearPendingBlur();
+            blurTimerRef.current = setTimeout(() => setFocused(false), 120);
           }}
           onChangeText={(nextAddress) => {
             onChange(nextAddress);
             setValue('locationId', '', { shouldDirty: true, shouldValidate: false });
           }}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            clearPendingBlur();
+            setFocused(true);
+          }}
           onSelect={(location) => {
+            clearPendingBlur();
             onChange(location.name);
             setValue('locationId', location.id, { shouldDirty: true, shouldValidate: true });
             setValue('city', location.city, { shouldDirty: true, shouldValidate: true });
@@ -844,10 +961,15 @@ function LocationSearchInput({
   value: string;
 }) {
   const query = value.trim();
+  const debouncedQuery = useDebouncedValue(query, 250);
+  const isDebouncing = query !== debouncedQuery;
   const locationsQuery = useQuery({
-    enabled: focused && query.length >= 2,
-    queryKey: ['host-vehicle-locations', 'search', query],
-    queryFn: () => locationsApi.search(query, 6),
+    enabled: focused && debouncedQuery.length >= 2,
+    queryKey: ['host-vehicle-locations', 'search', debouncedQuery],
+    queryFn: () => locationsApi.search(debouncedQuery, 6),
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 30_000,
   });
   const locations = locationsQuery.data ?? [];
 
@@ -872,7 +994,7 @@ function LocationSearchInput({
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
       {focused && query.length >= 2 ? (
         <View style={styles.locationResults}>
-          {locationsQuery.isLoading ? (
+          {isDebouncing || locationsQuery.isLoading ? (
             <Text style={styles.locationResultStatus}>Searching supported locations...</Text>
           ) : locationsQuery.isError ? (
             <Text style={styles.locationResultStatus}>Could not load locations. Try again.</Text>
@@ -905,6 +1027,17 @@ function LocationSearchInput({
       ) : null}
     </View>
   );
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(timeout);
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }
 
 function FeaturesStep({
@@ -1045,7 +1178,13 @@ function PhotosStep({
         <View style={styles.photoGrid}>
           {imageUrls.map((uri) => (
             <View key={uri} style={styles.photoTile}>
-            <Image source={{ uri }} style={styles.photo} />
+            <ExpoImage
+              cachePolicy="memory-disk"
+              contentFit="cover"
+              source={{ uri }}
+              style={styles.photo}
+              transition={100}
+            />
             {imageUrls[0] === uri ? (
               <View style={styles.coverBadge}>
                 <Text style={styles.coverBadgeText}>Cover</Text>
@@ -1099,9 +1238,11 @@ function DocumentsStep({
 }) {
   return (
     <View style={styles.form}>
-      <View style={styles.notice}>
-        <FileText color="#0F766E" size={18} />
-        <Text style={styles.noticeText}>Document uploads can be connected later; references are saved with the draft now.</Text>
+      <View style={styles.documentNotice}>
+        <FileText color="#1769F5" size={18} />
+        <Text style={styles.documentNoticeText}>
+          Document uploads can be connected later; references are saved with the draft now.
+        </Text>
       </View>
       <TextField
         control={control}
@@ -1112,12 +1253,12 @@ function DocumentsStep({
       <TextField
         control={control}
         error={errors.insurancePolicyNumber?.message}
-        label="Insurance policy"
+        label="Insurance policy number"
         name="insurancePolicyNumber"
       />
       <TextField
         control={control}
-        label="Pollution certificate"
+        label="Pollution certificate / PUC"
         name="pollutionCertificateNumber"
       />
     </View>
@@ -1132,19 +1273,18 @@ function PricingStep({
 }) {
   return (
     <View style={styles.form}>
-      <TextField
+      <CurrencyField
         control={control}
         error={errors.pricePerDay?.message}
-        keyboardType="decimal-pad"
         label="Price per day"
         name="pricePerDay"
       />
-      <TextField
+      <CurrencyField
         control={control}
         error={errors.securityDeposit?.message}
-        keyboardType="decimal-pad"
         label="Security deposit"
         name="securityDeposit"
+        placeholder="Optional"
       />
       <TextField
         control={control}
@@ -1152,6 +1292,8 @@ function PricingStep({
         keyboardType="number-pad"
         label="Mileage limit per day"
         name="mileageLimitPerDay"
+        placeholder="Optional"
+        suffix="km"
       />
       <View style={styles.row}>
         <TextField
@@ -1160,6 +1302,7 @@ function PricingStep({
           keyboardType="number-pad"
           label="Min days"
           name="minimumRentalDays"
+          suffix="days"
         />
         <TextField
           control={control}
@@ -1167,6 +1310,8 @@ function PricingStep({
           keyboardType="number-pad"
           label="Max days"
           name="maximumRentalDays"
+          placeholder="Optional"
+          suffix="days"
         />
       </View>
     </View>
@@ -1176,30 +1321,55 @@ function PricingStep({
 function AvailabilityStep({
   control,
   errors,
+  setValue,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
 }) {
+  const [pickerField, setPickerField] = useState<'availableFrom' | 'availableTo' | null>(null);
+  const availableFrom = useWatch({ control, name: 'availableFrom' });
+  const availableTo = useWatch({ control, name: 'availableTo' });
+  const pickerValue = pickerField === 'availableTo' ? availableTo : availableFrom;
+
+  const setDateValue = (date: Date) => {
+    if (!pickerField) {
+      return;
+    }
+
+    const nextValue = toDateInputValue(date);
+    setValue(pickerField, nextValue, { shouldDirty: true, shouldValidate: true });
+
+    if (
+      pickerField === 'availableFrom' &&
+      availableTo &&
+      parseDateInput(availableTo).getTime() < date.getTime()
+    ) {
+      setValue('availableTo', '', { shouldDirty: true, shouldValidate: true });
+    }
+
+    setPickerField(null);
+  };
+
   return (
     <View style={styles.form}>
-      <TextField
+      <DateField
         control={control}
         error={errors.availableFrom?.message}
         label="Available from"
         name="availableFrom"
-        placeholder="2026-09-15"
+        onPress={() => setPickerField('availableFrom')}
       />
-      <TextField
+      <DateField
         control={control}
+        error={errors.availableTo?.message}
         label="Available until"
         name="availableTo"
-        placeholder="Optional"
+        onPress={() => setPickerField('availableTo')}
+        optional
       />
-      <TextField
+      <AdvanceNoticeField
         control={control}
         error={errors.advanceNoticeHours?.message}
-        keyboardType="number-pad"
-        label="Advance notice hours"
-        name="advanceNoticeHours"
       />
       <Controller
         control={control}
@@ -1214,32 +1384,275 @@ function AvailabilityStep({
             <View style={[styles.toggleTrack, value && styles.toggleTrackActive]}>
               <View style={[styles.toggleThumb, value && styles.toggleThumbActive]} />
             </View>
-            <Text style={styles.toggleText}>Accept booking requests after approval</Text>
+            <View style={styles.toggleCopy}>
+              <Text style={styles.toggleText}>Accept booking requests after approval</Text>
+              <Text style={styles.toggleHelper}>
+                Manually review and approve each booking request.
+              </Text>
+            </View>
           </Pressable>
         )}
       />
+      {pickerField ? (
+        <NativeDatePicker
+          minimumDate={
+            pickerField === 'availableTo' && availableFrom
+              ? parseDateInput(availableFrom)
+              : new Date()
+          }
+          onClose={() => setPickerField(null)}
+          onSelect={setDateValue}
+          value={pickerValue ? parseDateInput(pickerValue) : new Date()}
+        />
+      ) : null}
     </View>
   );
 }
 
-function ReviewStep({ values }: { values: HostVehicleFormValues }) {
+function DateField({
+  control,
+  error,
+  label,
+  name,
+  onPress,
+  optional = false,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  error?: string;
+  label: string;
+  name: 'availableFrom' | 'availableTo';
+  onPress: () => void;
+  optional?: boolean;
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field: { onChange, value } }) => {
+        const dateValue = typeof value === 'string' ? value : '';
+
+        return (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{optional ? `${label} - Optional` : label}</Text>
+            <View style={styles.dateFieldRow}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onPress}
+                style={[styles.dateField, error && styles.inputError]}
+              >
+                <CalendarDays color="#52627C" size={18} />
+                <Text style={[styles.dateFieldText, !dateValue && styles.placeholderText]}>
+                  {dateValue ? formatListingDate(dateValue) : 'Select date'}
+                </Text>
+                <ChevronRight color="#52627C" size={18} />
+              </Pressable>
+              {optional && dateValue ? (
+                <Pressable
+                  accessibilityLabel="Clear available until date"
+                  accessibilityRole="button"
+                  onPress={() => onChange('')}
+                  style={styles.clearDateButton}
+                >
+                  <Text style={styles.clearDateText}>Clear</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+          </View>
+        );
+      }}
+    />
+  );
+}
+
+function AdvanceNoticeField({
+  control,
+  error,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  error?: string;
+}) {
+  const options = ['6', '12', '24', '48'];
+
+  return (
+    <Controller
+      control={control}
+      name="advanceNoticeHours"
+      render={({ field: { onChange, value } }) => (
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Advance notice</Text>
+          <View style={styles.advanceNoticeOptions}>
+            {options.map((option) => {
+              const selected = value === option;
+
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  key={option}
+                  onPress={() => onChange(option)}
+                  style={[styles.advanceNoticeOption, selected && styles.advanceNoticeOptionSelected]}
+                >
+                  <Text style={[styles.advanceNoticeOptionText, selected && styles.advanceNoticeOptionTextSelected]}>
+                    {option} hours
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+        </View>
+      )}
+    />
+  );
+}
+
+function NativeDatePicker({
+  minimumDate,
+  onClose,
+  onSelect,
+  value,
+}: {
+  minimumDate?: Date;
+  onClose: () => void;
+  onSelect: (value: Date) => void;
+  value: Date;
+}) {
+  const [selectedDate, setSelectedDate] = useState(value);
+  useWebBackGuard({ active: true, onBack: onClose });
+
+  if (Platform.OS === 'android') {
+    return (
+      <DateTimePicker
+        minimumDate={minimumDate}
+        mode="date"
+        onChange={(event, date) => {
+          if (event.type === 'set' && date) {
+            onSelect(date);
+            return;
+          }
+
+          onClose();
+        }}
+        value={value}
+      />
+    );
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible>
+      <View style={styles.datePickerOverlay}>
+        <Pressable accessibilityRole="button" onPress={onClose} style={StyleSheet.absoluteFill} />
+        <SafeAreaView edges={['bottom']} style={styles.datePickerSheet}>
+          <View style={styles.datePickerHandle} />
+          <View style={styles.datePickerHeader}>
+            <Text style={styles.datePickerTitle}>Select date</Text>
+            <Pressable accessibilityRole="button" onPress={() => onSelect(selectedDate)}>
+              <Text style={styles.datePickerDone}>Done</Text>
+            </Pressable>
+          </View>
+          <DateTimePicker
+            display="spinner"
+            minimumDate={minimumDate}
+            mode="date"
+            onChange={(_event, date) => date && setSelectedDate(date)}
+            value={selectedDate}
+          />
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+}
+
+function ReviewStep({
+  onEdit,
+  values,
+}: {
+  onEdit: (stepIndex: number) => void;
+  values: HostVehicleFormValues;
+}) {
   const rows = [
-    ['Vehicle', `${values.make || '-'} ${values.model || ''}`.trim()],
-    ['Registration', values.registrationNumber || '-'],
-    ['Location', [values.address, values.city, values.state].filter(Boolean).join(', ') || '-'],
-    ['Features', values.features.join(', ') || '-'],
-    ['Photos', `${values.imageUrls.length} added`],
-    ['Daily price', values.pricePerDay ? `₹${values.pricePerDay}` : '-'],
-    ['Availability', values.availableFrom || '-'],
+    {
+      icon: <MapPin color="#1769F5" size={19} />,
+      label: 'Location',
+      stepIndex: 1,
+      value: [values.address, values.city, values.state].filter(Boolean).join(', ') || 'Add pickup location',
+    },
+    {
+      icon: <Plus color="#1769F5" size={19} />,
+      label: 'Features',
+      stepIndex: 2,
+      value: values.features.length
+        ? `${values.features[0]}${values.features.length > 1 ? ` + ${values.features.length - 1} more` : ''}`
+        : 'Add features',
+    },
+    {
+      icon: <Camera color="#1769F5" size={19} />,
+      label: 'Photos',
+      stepIndex: 3,
+      value: `${values.imageUrls.length} ${values.imageUrls.length === 1 ? 'photo' : 'photos'} added`,
+    },
+    {
+      icon: <FileText color="#1769F5" size={19} />,
+      label: 'Documents',
+      stepIndex: 4,
+      value: getDocumentSummary(values),
+    },
+    {
+      icon: <Text style={styles.reviewCurrencyIcon}>₹</Text>,
+      label: 'Price',
+      stepIndex: 5,
+      value: values.pricePerDay ? `₹${formatIndianCurrency(values.pricePerDay)} / day` : 'Add daily price',
+    },
+    {
+      icon: <CalendarDays color="#1769F5" size={19} />,
+      label: 'Availability',
+      stepIndex: 6,
+      value: values.availableFrom ? `From ${formatListingDate(values.availableFrom)}` : 'Set availability',
+    },
   ];
 
   return (
     <View style={styles.reviewList}>
-      {rows.map(([label, value]) => (
-        <View key={label} style={styles.reviewRow}>
-          <Text style={styles.reviewLabel}>{label}</Text>
-          <Text style={styles.reviewValue}>{value}</Text>
+      <View style={styles.reviewVehicleCard}>
+        {values.imageUrls[0] ? (
+          <ExpoImage
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            source={{ uri: values.imageUrls[0] }}
+            style={styles.reviewVehicleImage}
+          />
+        ) : (
+          <View style={styles.reviewVehicleImageFallback}>
+            <CarFront color="#1769F5" size={28} />
+          </View>
+        )}
+        <View style={styles.reviewVehicleCopy}>
+          <Text numberOfLines={1} style={styles.reviewVehicleName}>
+            {`${values.make || 'Vehicle'} ${values.model || ''}`.trim()}
+          </Text>
+          <Text numberOfLines={1} style={styles.reviewVehicleMeta}>
+            {[values.manufacturingYear, values.registrationNumber].filter(Boolean).join(' • ') || 'Add vehicle details'}
+          </Text>
+          <Text numberOfLines={1} style={styles.reviewVehicleSpecs}>
+            {[`${values.seats} seats`, values.fuelType, values.transmission].filter(Boolean).join(' • ')}
+          </Text>
         </View>
+      </View>
+      {rows.map((row) => (
+        <Pressable
+          accessibilityRole="button"
+          key={row.label}
+          onPress={() => onEdit(row.stepIndex)}
+          style={({ pressed }) => [styles.reviewRow, pressed && styles.reviewRowPressed]}
+        >
+          <View style={styles.reviewRowIcon}>{row.icon}</View>
+          <View style={styles.reviewRowCopy}>
+            <Text style={styles.reviewLabel}>{row.label}</Text>
+            <Text numberOfLines={1} style={styles.reviewValue}>{row.value}</Text>
+          </View>
+          <ChevronRight color="#738099" size={19} />
+        </Pressable>
       ))}
     </View>
   );
@@ -1250,12 +1663,14 @@ function TextField({
   error,
   label,
   name,
+  suffix,
   ...inputProps
 }: {
   control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
   error?: string;
   label: string;
   name: FieldPath<HostVehicleFormValues>;
+  suffix?: string;
 } & Omit<React.ComponentProps<typeof TextInput>, 'onChange' | 'value'>) {
   return (
     <Controller
@@ -1264,22 +1679,93 @@ function TextField({
       render={({ field: { onBlur, onChange, value } }) => (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{label}</Text>
-          <TextInput
-            {...inputProps}
-            onBlur={onBlur}
-            onChangeText={onChange}
-            placeholderTextColor="#9CA3AF"
-            style={[
-              styles.input,
-              inputProps.editable === false && styles.inputReadOnly,
-              inputProps.multiline && styles.textArea,
-              error && styles.inputError,
-            ]}
-            value={typeof value === 'string' ? value : String(value ?? '')}
-          />
+          {suffix ? (
+            <View
+              style={[
+                styles.input,
+                styles.inputWithSuffix,
+                inputProps.editable === false && styles.inputReadOnly,
+                error && styles.inputError,
+              ]}
+            >
+              <TextInput
+                {...inputProps}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholderTextColor="#9CA3AF"
+                style={styles.inputWithSuffixText}
+                value={typeof value === 'string' ? value : String(value ?? '')}
+              />
+              <Text style={styles.inputSuffix}>{suffix}</Text>
+            </View>
+          ) : (
+            <TextInput
+              {...inputProps}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholderTextColor="#9CA3AF"
+              style={[
+                styles.input,
+                inputProps.editable === false && styles.inputReadOnly,
+                inputProps.multiline && styles.textArea,
+                error && styles.inputError,
+              ]}
+              value={typeof value === 'string' ? value : String(value ?? '')}
+            />
+          )}
           {error ? <Text style={styles.fieldError}>{error}</Text> : null}
         </View>
       )}
+    />
+  );
+}
+
+function CurrencyField({
+  control,
+  error,
+  label,
+  name,
+  placeholder,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  error?: string;
+  label: string;
+  name: 'pricePerDay' | 'securityDeposit';
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field: { onBlur, onChange, value } }) => {
+        const rawValue = typeof value === 'string' ? value : String(value ?? '');
+        const displayValue = focused ? rawValue : formatIndianCurrency(rawValue);
+
+        return (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{label}</Text>
+            <View style={[styles.input, styles.inputWithSuffix, error && styles.inputError]}>
+              <Text style={styles.currencyPrefix}>₹</Text>
+              <TextInput
+                keyboardType="decimal-pad"
+                onBlur={() => {
+                  onBlur();
+                  setFocused(false);
+                }}
+                onChangeText={(nextValue) => onChange(nextValue.replace(/,/g, ''))}
+                onFocus={() => setFocused(true)}
+                placeholder={placeholder}
+                placeholderTextColor="#9CA3AF"
+                style={styles.inputWithSuffixText}
+                value={displayValue}
+              />
+            </View>
+            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+          </View>
+        );
+      }}
     />
   );
 }
@@ -1506,7 +1992,7 @@ function mapListingToFormValues(vehicle: HostVehicleListing): HostVehicleFormVal
     maximumRentalDays: toStringValue(vehicle.maximumRentalDays),
     availableFrom: stringFromRecord(availability, 'availableFrom'),
     availableTo: stringFromRecord(availability, 'availableTo'),
-    advanceNoticeHours: toStringValue(availability.advanceNoticeHours),
+    advanceNoticeHours: toStringValue(availability.advanceNoticeHours) || '24',
     available: vehicle.available,
   };
 }
@@ -1535,6 +2021,60 @@ function toStringValue(value: unknown) {
   }
 
   return String(value);
+}
+
+function formatIndianCurrency(value: string) {
+  if (!value || !/^\d+(\.\d{1,2})?$/.test(value)) {
+    return value;
+  }
+
+  return Number(value).toLocaleString('en-IN', {
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseDateInput(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+
+  if (!match) {
+    return new Date();
+  }
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+
+  if (!year || !month || !day) {
+    return new Date();
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function toDateInputValue(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatListingDate(value: string) {
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(parseDateInput(value));
+}
+
+function getDocumentSummary(values: HostVehicleFormValues) {
+  const documents = [
+    values.registrationCertificateNumber && 'RC',
+    values.insurancePolicyNumber && 'Insurance',
+    values.pollutionCertificateNumber && 'PUC',
+  ].filter(Boolean);
+
+  return documents.length ? `${documents.join(', ')} added` : 'Add document references';
 }
 
 function stringFromRecord(record: Record<string, unknown>, key: string) {
@@ -1571,6 +2111,9 @@ const styles = StyleSheet.create({
   stepHeader: {
     gap: 6,
   },
+  stepContent: {
+    gap: 20,
+  },
   stepTitle: {
     color: '#101A35',
     fontSize: 24,
@@ -1582,6 +2125,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
+  },
+  restoreDraftState: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  restoreDraftText: {
+    color: '#52627C',
+    fontSize: 14,
+    fontWeight: '800',
   },
   form: {
     gap: 16,
@@ -1610,6 +2164,30 @@ const styles = StyleSheet.create({
   inputReadOnly: {
     backgroundColor: '#F8FAFC',
     color: '#52627C',
+  },
+  inputWithSuffix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  inputWithSuffixText: {
+    flex: 1,
+    minWidth: 0,
+    color: '#17213B',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingVertical: 14,
+  },
+  inputSuffix: {
+    color: '#738099',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  currencyPrefix: {
+    color: '#17213B',
+    fontSize: 18,
+    fontWeight: '900',
   },
   inputError: {
     borderColor: '#DC2626',
@@ -1963,27 +2541,125 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  notice: {
+  documentNotice: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 9,
-    borderRadius: 8,
-    backgroundColor: '#F0FDFA',
+    borderRadius: 12,
+    backgroundColor: '#F0F6FF',
     padding: 12,
   },
-  noticeText: {
+  documentNoticeText: {
     flex: 1,
-    color: '#0F766E',
+    color: '#245AAE',
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 19,
   },
+  dateFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateField: {
+    minHeight: 52,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  dateFieldText: {
+    flex: 1,
+    color: '#17213B',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  clearDateButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F0F6FF',
+    paddingHorizontal: 11,
+  },
+  clearDateText: {
+    color: '#1769F5',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  advanceNoticeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  advanceNoticeOption: {
+    minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  advanceNoticeOptionSelected: {
+    borderColor: '#0F9D78',
+    backgroundColor: '#E1F7F0',
+  },
+  advanceNoticeOptionText: {
+    color: '#34415D',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  advanceNoticeOptionTextSelected: {
+    color: '#08765B',
+  },
+  datePickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(16, 26, 53, 0.32)',
+  },
+  datePickerSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 18,
+  },
+  datePickerHandle: {
+    alignSelf: 'center',
+    height: 4,
+    width: 40,
+    borderRadius: 999,
+    backgroundColor: '#DCE4EF',
+    marginTop: 10,
+  },
+  datePickerHeader: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  datePickerTitle: {
+    color: '#17213B',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  datePickerDone: {
+    color: '#1769F5',
+    fontSize: 15,
+    fontWeight: '900',
+  },
   toggleRow: {
-    minHeight: 56,
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
@@ -2010,34 +2686,156 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 20 }],
   },
   toggleText: {
-    flex: 1,
     color: '#111827',
     fontSize: 14,
     fontWeight: '900',
     lineHeight: 20,
   },
+  toggleCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  toggleHelper: {
+    color: '#738099',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+  },
   reviewList: {
     gap: 10,
   },
+  reviewVehicleCard: {
+    minHeight: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+  },
+  reviewVehicleImage: {
+    height: 78,
+    width: 96,
+    borderRadius: 10,
+    backgroundColor: '#F0F6FF',
+  },
+  reviewVehicleImageFallback: {
+    height: 78,
+    width: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F0F6FF',
+  },
+  reviewVehicleCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  reviewVehicleName: {
+    color: '#17213B',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  reviewVehicleMeta: {
+    color: '#52627C',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  reviewVehicleSpecs: {
+    color: '#738099',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   reviewRow: {
-    gap: 5,
-    borderRadius: 8,
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
-    padding: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  reviewRowPressed: {
+    backgroundColor: '#F0F6FF',
+  },
+  reviewRowIcon: {
+    height: 34,
+    width: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F0F6FF',
+  },
+  reviewRowCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   reviewLabel: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: '#17213B',
+    fontSize: 13,
     fontWeight: '900',
-    textTransform: 'uppercase',
   },
   reviewValue: {
-    color: '#111827',
+    color: '#738099',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+  },
+  reviewCurrencyIcon: {
+    color: '#1769F5',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  submissionComplete: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 28,
+  },
+  submissionIcon: {
+    height: 76,
+    width: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 38,
+    backgroundColor: '#0F9D78',
+    marginBottom: 4,
+  },
+  submissionTitle: {
+    color: '#17213B',
+    fontSize: 23,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  submissionBody: {
+    color: '#6B7892',
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  submissionButton: {
+    minHeight: 52,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+    backgroundColor: '#1769F5',
+    marginTop: 16,
+  },
+  submissionButtonText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '900',
-    lineHeight: 21,
   },
   errorBox: {
     borderRadius: 8,

@@ -3,11 +3,12 @@ import { Check, ChevronRight } from 'lucide-react-native';
 
 type AddVehicleFooterProps = {
   busy: boolean;
+  busyLabel?: string;
   isSubmit: boolean;
   onPress: () => void;
 };
 
-export function AddVehicleFooter({ busy, isSubmit, onPress }: AddVehicleFooterProps) {
+export function AddVehicleFooter({ busy, busyLabel, isSubmit, onPress }: AddVehicleFooterProps) {
   return (
     <View style={styles.container}>
       <Pressable
@@ -21,8 +22,12 @@ export function AddVehicleFooter({ busy, isSubmit, onPress }: AddVehicleFooterPr
         ]}
       >
         {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : null}
-        <Text style={styles.buttonText}>
-          {busy ? (isSubmit ? 'Submitting...' : 'Saving...') : isSubmit ? 'Submit for approval' : 'Save and continue'}
+        <Text numberOfLines={1} style={styles.buttonText}>
+          {busy
+            ? busyLabel ?? (isSubmit ? 'Submitting...' : 'Saving...')
+            : isSubmit
+              ? 'Submit for approval'
+              : 'Save and continue'}
         </Text>
         {!busy && (isSubmit ? <Check color="#FFFFFF" size={19} /> : <ChevronRight color="#FFFFFF" size={19} />)}
       </Pressable>

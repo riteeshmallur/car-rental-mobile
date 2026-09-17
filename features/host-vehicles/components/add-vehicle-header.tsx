@@ -4,6 +4,7 @@ import { ArrowLeft, Check, RotateCcw } from 'lucide-react-native';
 export type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
 type AddVehicleHeaderProps = {
+  disabled?: boolean;
   stepNumber: number;
   totalSteps: number;
   saveStatus: DraftSaveStatus;
@@ -12,6 +13,7 @@ type AddVehicleHeaderProps = {
 };
 
 export function AddVehicleHeader({
+  disabled = false,
   onBack,
   onRetry,
   saveStatus,
@@ -24,8 +26,10 @@ export function AddVehicleHeader({
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           onPress={onBack}
-          style={styles.iconButton}
+          style={[styles.iconButton, disabled && styles.iconButtonDisabled]}
         >
           <ArrowLeft color="#111827" size={22} />
         </Pressable>
@@ -108,6 +112,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E1E7F0',
     backgroundColor: '#FFFFFF',
+  },
+  iconButtonDisabled: {
+    opacity: 0.5,
   },
   titleGroup: {
     flex: 1,

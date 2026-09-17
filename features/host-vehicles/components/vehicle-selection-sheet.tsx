@@ -11,6 +11,9 @@ import {
   View,
 } from 'react-native';
 import { Check, Search, X } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 
 export type VehicleSelectionOption = {
   label: string;
@@ -35,6 +38,7 @@ export function VehicleSelectionSheet({
   visible,
 }: VehicleSelectionSheetProps) {
   const [search, setSearch] = useState('');
+  useWebBackGuard({ active: visible, onBack: onClose });
 
   useEffect(() => {
     if (!visible) {
@@ -57,11 +61,11 @@ export function VehicleSelectionSheet({
       visible={visible}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.backdrop} />
-        <View style={styles.sheet}>
+        <SafeAreaView edges={['bottom']} style={styles.sheet}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
@@ -113,7 +117,7 @@ export function VehicleSelectionSheet({
             showsVerticalScrollIndicator={false}
             style={styles.list}
           />
-        </View>
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
   );
