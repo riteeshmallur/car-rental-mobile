@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  CalendarDays,
   Camera,
-  Check,
+  CarFront,
   ChevronRight,
   FileText,
+  Palette,
   Plus,
   Trash2,
 } from 'lucide-react-native';
@@ -41,6 +42,15 @@ import {
   type UpsertHostVehiclePayload,
 } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
+import { AddVehicleFooter } from '@/features/host-vehicles/components/add-vehicle-footer';
+import {
+  AddVehicleHeader,
+  type DraftSaveStatus,
+} from '@/features/host-vehicles/components/add-vehicle-header';
+import {
+  VehicleSelectionSheet,
+  type VehicleSelectionOption,
+} from '@/features/host-vehicles/components/vehicle-selection-sheet';
 
 type StepKey =
   | 'vehicleDetails'
@@ -63,7 +73,7 @@ const steps: WizardStep[] = [
   {
     key: 'vehicleDetails',
     title: 'Vehicle details',
-    helper: 'Core details customers use to compare your car.',
+    helper: 'Tell us about your vehicle.',
     fields: [
       'make',
       'model',
@@ -141,6 +151,41 @@ const fuelTypes = [
   ['hybrid', 'Hybrid'],
 ] as const;
 
+const makeOptions: VehicleSelectionOption[] = [
+  { label: 'Hyundai', value: 'Hyundai' },
+  { label: 'Maruti Suzuki', value: 'Maruti Suzuki' },
+  { label: 'Honda', value: 'Honda' },
+  { label: 'Kia', value: 'Kia' },
+  { label: 'Tata', value: 'Tata' },
+  { label: 'Toyota', value: 'Toyota' },
+  { label: 'Mahindra', value: 'Mahindra' },
+];
+
+const modelOptionsByMake: Record<string, VehicleSelectionOption[]> = {
+  Honda: ['City', 'Amaze', 'Elevate', 'Civic'].map((model) => ({ label: model, value: model })),
+  Hyundai: ['Creta', 'Venue', 'i20', 'Verna'].map((model) => ({ label: model, value: model })),
+  Kia: ['Seltos', 'Sonet', 'Carens'].map((model) => ({ label: model, value: model })),
+  Mahindra: ['XUV 700', 'Scorpio N', 'Thar', 'XUV 3XO'].map((model) => ({ label: model, value: model })),
+  'Maruti Suzuki': ['Swift', 'Baleno', 'Brezza', 'Ertiga'].map((model) => ({ label: model, value: model })),
+  Tata: ['Nexon', 'Punch', 'Harrier', 'Safari'].map((model) => ({ label: model, value: model })),
+  Toyota: ['Innova Hycross', 'Fortuner', 'Urban Cruiser'].map((model) => ({ label: model, value: model })),
+};
+
+const yearOptions: VehicleSelectionOption[] = Array.from({ length: 111 }, (_, index) => {
+  const year = String(2026 - index);
+  return { label: year, value: year };
+});
+
+const colourOptions: VehicleSelectionOption[] = [
+  'White',
+  'Black',
+  'Silver',
+  'Grey',
+  'Red',
+  'Blue',
+  'Brown',
+].map((colour) => ({ label: colour, value: colour }));
+
 export function HostAddVehicleWizardScreen() {
   const params = useLocalSearchParams<{ vehicleId?: string | string[] }>();
   const requestedVehicleId = Array.isArray(params.vehicleId)
@@ -151,6 +196,10 @@ export function HostAddVehicleWizardScreen() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
   const [resumeChecked, setResumeChecked] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<DraftSaveStatus>('idle');
+  const [selectionField, setSelectionField] = useState<
+    'make' | 'model' | 'manufacturingYear' | 'colour' | null
+  >(null);
 
   const form = useForm<HostVehicleFormValues>({
     defaultValues: hostVehicleDefaultValues,
@@ -188,6 +237,7 @@ export function HostAddVehicleWizardScreen() {
       setDraftId(draft.id);
       reset(mapListingToFormValues(draft));
       setStepIndex(getStepIndex(draft.draftStep));
+      setSaveStatus('saved');
     }
 
     setResumeChecked(true);
@@ -201,10 +251,17 @@ export function HostAddVehicleWizardScreen() {
 
       return vehiclesApi.createDraft(payload);
     },
+    onMutate: () => {
+      setSaveStatus('saving');
+    },
     onSuccess: (vehicle) => {
       setDraftId(vehicle.id);
       reset(mapListingToFormValues(vehicle));
       queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
+      setSaveStatus('saved');
+    },
+    onError: () => {
+      setSaveStatus('failed');
     },
   });
 
@@ -243,9 +300,23 @@ export function HostAddVehicleWizardScreen() {
   });
 
   const step = steps[stepIndex];
-  const progress = ((stepIndex + 1) / steps.length) * 100;
   const features = watch('features');
   const imageUrls = watch('imageUrls');
+  const make = watch('make');
+  const selectedValue = selectionField ? String(watch(selectionField) ?? '') : '';
+  const baseSelectionOptions = selectionField
+    ? selectionField === 'make'
+      ? makeOptions
+      : selectionField === 'model'
+        ? modelOptionsByMake[make] ?? []
+        : selectionField === 'manufacturingYear'
+          ? yearOptions
+          : colourOptions
+    : [];
+  const selectionOptions =
+    selectionField && selectedValue && !baseSelectionOptions.some((option) => option.value === selectedValue)
+      ? [{ label: selectedValue, value: selectedValue }, ...baseSelectionOptions]
+      : baseSelectionOptions;
 
   const serverError = useMemo(() => {
     const error =
@@ -314,9 +385,11 @@ export function HostAddVehicleWizardScreen() {
   };
 
   const saveAndContinue = async () => {
+    setSaveStatus('saving');
     const valid = step.fields.length ? await trigger(step.fields) : true;
 
     if (!valid) {
+      setSaveStatus('idle');
       return;
     }
 
@@ -356,7 +429,12 @@ export function HostAddVehicleWizardScreen() {
       setStepIndex((current) => Math.min(current + 1, steps.length - 1));
     } catch {
       // Mutation state renders the backend or upload error without an unhandled promise.
+      setSaveStatus('failed');
     }
+  };
+
+  const retrySave = () => {
+    void saveAndContinue();
   };
 
   const handleInternalBack = useCallback(() => {
@@ -385,26 +463,13 @@ export function HostAddVehicleWizardScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            onPress={goBack}
-            style={styles.iconButton}
-          >
-            <ArrowLeft color="#111827" size={22} />
-          </Pressable>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>Add vehicle</Text>
-            <Text style={styles.subtitle}>
-              Step {stepIndex + 1} of {steps.length}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
-        </View>
+        <AddVehicleHeader
+          onBack={goBack}
+          onRetry={retrySave}
+          saveStatus={saveStatus}
+          stepNumber={stepIndex + 1}
+          totalSteps={steps.length}
+        />
 
         <ScrollView
           contentContainerStyle={styles.content}
@@ -412,20 +477,18 @@ export function HostAddVehicleWizardScreen() {
           style={styles.contentScroll}
           showsVerticalScrollIndicator={false}
         >
-          {draftId ? (
-            <View style={styles.resumeBanner}>
-              <Check color="#047857" size={18} />
-              <Text style={styles.resumeText}>Draft saved. You can leave and resume later.</Text>
-            </View>
-          ) : null}
-
           <View style={styles.stepHeader}>
             <Text style={styles.stepTitle}>{step.title}</Text>
             <Text style={styles.stepHelper}>{step.helper}</Text>
           </View>
 
           {step.key === 'vehicleDetails' ? (
-            <VehicleDetailsStep control={control} errors={errors} />
+            <VehicleDetailsStep
+              control={control}
+              errors={errors}
+              make={make}
+              onOpenSelection={setSelectionField}
+            />
           ) : null}
           {step.key === 'vehicleLocation' ? (
             <VehicleLocationStep control={control} errors={errors} />
@@ -466,36 +529,36 @@ export function HostAddVehicleWizardScreen() {
           ) : null}
         </ScrollView>
 
-        <View style={styles.footer}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={isBusy}
-            onPress={saveAndContinue}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.pressed,
-              isBusy && styles.disabled,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {step.key === 'review'
-                ? submitMutation.isPending
-                  ? 'Submitting...'
-                  : 'Submit for approval'
-                : uploadPhotosMutation.isPending
-                  ? 'Uploading photos...'
-                : saveMutation.isPending
-                  ? 'Saving...'
-                  : 'Save and continue'}
-            </Text>
-            {step.key === 'review' ? (
-              <Check color="#FFFFFF" size={18} />
-            ) : (
-              <ChevronRight color="#FFFFFF" size={18} />
-            )}
-          </Pressable>
-        </View>
+        <AddVehicleFooter
+          busy={isBusy}
+          isSubmit={step.key === 'review'}
+          onPress={saveAndContinue}
+        />
       </KeyboardAvoidingView>
+      {selectionField ? (
+        <VehicleSelectionSheet
+          onClose={() => setSelectionField(null)}
+          onSelect={(value) => {
+            if (selectionField === 'make') {
+              setValue('make', value, { shouldDirty: true, shouldValidate: true });
+              setValue('model', '', { shouldDirty: true, shouldValidate: true });
+              return;
+            }
+
+            setValue(selectionField, value, { shouldDirty: true, shouldValidate: true });
+          }}
+          options={selectionOptions}
+          title={
+            selectionField === 'manufacturingYear'
+              ? 'Select year'
+              : selectionField === 'colour'
+                ? 'Select colour'
+                : `Select ${selectionField}`
+          }
+          value={selectedValue}
+          visible
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -503,37 +566,60 @@ export function HostAddVehicleWizardScreen() {
 function VehicleDetailsStep({
   control,
   errors,
+  make,
+  onOpenSelection,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  make: string;
+  onOpenSelection: (field: 'make' | 'model' | 'manufacturingYear' | 'colour') => void;
 }) {
   return (
     <View style={styles.form}>
-      <TextField control={control} error={errors.make?.message} label="Make" name="make" />
-      <TextField control={control} error={errors.model?.message} label="Model" name="model" />
+      <SelectField
+        control={control}
+        error={errors.make?.message}
+        icon={<CarFront color="#52627C" size={18} />}
+        label="Make"
+        name="make"
+        onPress={() => onOpenSelection('make')}
+        placeholder="Select make"
+      />
+      <SelectField
+        control={control}
+        disabled={!make}
+        error={errors.model?.message}
+        icon={<CarFront color="#52627C" size={18} />}
+        label="Model"
+        name="model"
+        onPress={() => onOpenSelection('model')}
+        placeholder={make ? 'Select model' : 'Select make first'}
+      />
       <View style={styles.row}>
-        <TextField
+        <SelectField
           control={control}
           error={errors.manufacturingYear?.message}
-          keyboardType="number-pad"
+          icon={<CalendarDays color="#52627C" size={18} />}
           label="Year"
           name="manufacturingYear"
+          onPress={() => onOpenSelection('manufacturingYear')}
+          placeholder="Select year"
         />
         <TextField
           control={control}
           error={errors.registrationNumber?.message}
-          label="Registration"
+          label="Registration number"
           name="registrationNumber"
           autoCapitalize="characters"
         />
       </View>
-      <SegmentField control={control} label="Type" name="vehicleType" options={vehicleTypes} />
+      <SegmentField control={control} label="Vehicle type" name="vehicleType" options={vehicleTypes} />
       <SegmentField
         control={control}
         label="Transmission"
         name="transmission"
         options={transmissions}
       />
-      <SegmentField control={control} label="Fuel" name="fuelType" options={fuelTypes} />
+      <SegmentField control={control} label="Fuel type" name="fuelType" options={fuelTypes} />
       <View style={styles.row}>
         <TextField
           control={control}
@@ -550,7 +636,14 @@ function VehicleDetailsStep({
           name="doors"
         />
       </View>
-      <TextField control={control} label="Colour" name="colour" />
+      <SelectField
+        control={control}
+        icon={<Palette color="#52627C" size={18} />}
+        label="Colour"
+        name="colour"
+        onPress={() => onOpenSelection('colour')}
+        placeholder="Select colour"
+      />
       <TextField
         control={control}
         error={errors.description?.message}
@@ -896,6 +989,56 @@ function TextField({
   );
 }
 
+function SelectField({
+  control,
+  disabled = false,
+  error,
+  icon,
+  label,
+  name,
+  onPress,
+  placeholder,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  disabled?: boolean;
+  error?: string;
+  icon?: React.ReactNode;
+  label: string;
+  name: FieldPath<HostVehicleFormValues>;
+  onPress: () => void;
+  placeholder: string;
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field: { value } }) => {
+        const displayValue = value === null || value === undefined ? '' : String(value);
+
+        return (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{label}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled }}
+              disabled={disabled}
+              onPress={onPress}
+              style={[styles.selectInput, disabled && styles.selectInputDisabled, error && styles.inputError]}
+            >
+              {icon ? <View style={styles.selectIcon}>{icon}</View> : null}
+              <Text style={[styles.selectText, !displayValue && styles.placeholderText]}>
+                {displayValue || placeholder}
+              </Text>
+              <ChevronRight color="#52627C" size={18} />
+            </Pressable>
+            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+          </View>
+        );
+      }}
+    />
+  );
+}
+
 function SegmentField({
   control,
   label,
@@ -1120,103 +1263,51 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  header: {
-    minHeight: 76,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  iconButton: {
-    height: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    color: '#111827',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  subtitle: {
-    marginTop: 2,
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: '#E5E7EB',
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#0F766E',
-  },
   content: {
-    gap: 18,
-    padding: 16,
-    paddingBottom: 28,
+    gap: 20,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 24,
   },
   contentScroll: {
     flex: 1,
     minHeight: 0,
   },
-  resumeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 8,
-    backgroundColor: '#ECFDF5',
-    padding: 12,
-  },
-  resumeText: {
-    flex: 1,
-    color: '#047857',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 19,
-  },
   stepHeader: {
     gap: 6,
   },
   stepTitle: {
-    color: '#111827',
-    fontSize: 26,
+    color: '#101A35',
+    fontSize: 24,
     fontWeight: '900',
+    lineHeight: 30,
   },
   stepHelper: {
-    color: '#4B5563',
+    color: '#6B7892',
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
   },
   form: {
-    gap: 14,
+    gap: 16,
   },
   inputGroup: {
     flex: 1,
     minWidth: 0,
-    gap: 7,
+    gap: 8,
   },
   label: {
-    color: '#374151',
+    color: '#17213B',
     fontSize: 13,
     fontWeight: '900',
   },
   input: {
-    minHeight: 50,
-    borderRadius: 8,
+    minHeight: 52,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#DCE4EF',
     backgroundColor: '#FFFFFF',
-    color: '#111827',
+    color: '#17213B',
     fontSize: 15,
     fontWeight: '700',
     paddingHorizontal: 14,
@@ -1245,25 +1336,53 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   segmentButton: {
-    minHeight: 40,
+    minHeight: 44,
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#DCE4EF',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 13,
+    paddingHorizontal: 14,
   },
   segmentButtonActive: {
-    borderColor: '#0F766E',
-    backgroundColor: '#CCFBF1',
+    borderColor: '#0F9D78',
+    backgroundColor: '#E1F7F0',
   },
   segmentText: {
-    color: '#374151',
+    color: '#34415D',
     fontSize: 13,
     fontWeight: '900',
   },
   segmentTextActive: {
-    color: '#0F766E',
+    color: '#08765B',
+  },
+  selectInput: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCE4EF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+  },
+  selectInputDisabled: {
+    backgroundColor: '#F3F6FA',
+    opacity: 0.78,
+  },
+  selectIcon: {
+    width: 20,
+    alignItems: 'center',
+  },
+  selectText: {
+    flex: 1,
+    color: '#17213B',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  placeholderText: {
+    color: '#8B96AA',
   },
   inlineInputRow: {
     flexDirection: 'row',
@@ -1277,8 +1396,8 @@ const styles = StyleSheet.create({
     width: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    borderRadius: 12,
+    backgroundColor: '#1769F5',
   },
   chipGrid: {
     flexDirection: 'row',
@@ -1302,12 +1421,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   photoPickerButton: {
-    minHeight: 58,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
@@ -1430,31 +1549,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 19,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-  },
-  primaryButton: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 8,
-    backgroundColor: '#0B4FE8',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.82,
-  },
-  disabled: {
-    opacity: 0.62,
   },
 });
