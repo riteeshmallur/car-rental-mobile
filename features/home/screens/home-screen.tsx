@@ -30,8 +30,7 @@ export function HomeScreen() {
   const setSelectedLocation = useCustomerSearchStore(
     (state) => state.setSelectedLocation,
   );
-  const setPickupAt = useCustomerSearchStore((state) => state.setPickupAt);
-  const setReturnAt = useCustomerSearchStore((state) => state.setReturnAt);
+  const setRentalWindow = useCustomerSearchStore((state) => state.setRentalWindow);
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -178,8 +177,7 @@ export function HomeScreen() {
       <DateTimePickerSheet
         field={activeDateTimeField}
         location={location}
-        onChangePickupAt={setPickupAt}
-        onChangeReturnAt={setReturnAt}
+        onApplyRentalWindow={setRentalWindow}
         onClose={() => setActiveDateTimeField(null)}
         rentalWindow={rentalWindow}
       />

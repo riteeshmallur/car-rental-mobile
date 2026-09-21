@@ -41,21 +41,21 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radii.md,
-    backgroundColor: colors.brand,
+    borderRadius: 14,
+    backgroundColor: '#0757F8',
     paddingHorizontal: 18,
     ...shadows.card,
   },
   buttonDisabled: {
-    backgroundColor: '#98A2B3',
-    opacity: 1,
+    backgroundColor: '#0757F8',
+    opacity: 0.52,
   },
   buttonPressed: {
     backgroundColor: colors.brandPressed,
   },
   buttonText: {
     color: colors.surface,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
 });

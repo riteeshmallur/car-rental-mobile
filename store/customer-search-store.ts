@@ -10,6 +10,7 @@ type CustomerSearchState = {
   selectedLocation: LocationSearchResult | null;
   rentalWindow: RentalWindow;
   setSelectedLocation: (location: LocationSearchResult) => void;
+  setRentalWindow: (rentalWindow: RentalWindow) => void;
   setPickupAt: (pickupAt: Date) => void;
   setReturnAt: (returnAt: Date) => void;
 };
@@ -24,10 +25,23 @@ function ensureReturnAfterPickup(pickupAt: Date, returnAt: Date) {
   return adjustedReturnAt;
 }
 
+function normalizeRentalWindow({ pickupAt, returnAt }: RentalWindow): RentalWindow {
+  const nextPickupAt = new Date(pickupAt);
+  const nextReturnAt = ensureReturnAfterPickup(nextPickupAt, new Date(returnAt));
+
+  return {
+    pickupAt: nextPickupAt,
+    returnAt: nextReturnAt,
+  };
+}
+
 export const useCustomerSearchStore = create<CustomerSearchState>((set) => ({
   selectedLocation: null,
   rentalWindow: getDefaultRentalWindow(),
   setSelectedLocation: (location) => set({ selectedLocation: location }),
+  setRentalWindow: (rentalWindow) => set({
+    rentalWindow: normalizeRentalWindow(rentalWindow),
+  }),
   setPickupAt: (pickupAt) =>
     set((state) => ({
       rentalWindow: {

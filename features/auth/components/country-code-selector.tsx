@@ -69,20 +69,20 @@ export function CountryCodeSelector({
 
 const styles = StyleSheet.create({
   trigger: {
-    minHeight: 54,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#D9E1EF',
     borderRadius: radii.md,
     backgroundColor: colors.surface,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   triggerText: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   pressed: {

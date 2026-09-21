@@ -26,11 +26,14 @@ type DateTimePickerSheetProps = {
   location?: LocationSearchResult | null;
   rentalWindow: RentalWindow;
   onClose: () => void;
-  onChangePickupAt: (value: Date) => void;
-  onChangeReturnAt: (value: Date) => void;
+  onApplyRentalWindow: (value: RentalWindow) => void;
 };
 
 type SelectionStage = 'pickup' | 'return';
+
+const timeChoiceHeight = 44;
+const timeViewportHeight = 174;
+const timeChoicePadding = (timeViewportHeight - timeChoiceHeight) / 2;
 
 function sameDate(left: Date, right: Date) {
   return (
@@ -129,8 +132,7 @@ function makeReturnAfter(pickupAt: Date, currentReturnAt: Date) {
 export function DateTimePickerSheet({
   field,
   location,
-  onChangePickupAt,
-  onChangeReturnAt,
+  onApplyRentalWindow,
   onClose,
   rentalWindow,
 }: DateTimePickerSheetProps) {
@@ -155,7 +157,8 @@ export function DateTimePickerSheet({
       ? initialReturn
       : initialPickup;
     setVisibleMonth(new Date(focusDate.getFullYear(), focusDate.getMonth(), 1));
-  }, [field, isOpen, rentalWindow.pickupAt, rentalWindow.returnAt]);
+  // Keep selections local until Continue so parent updates cannot reset a choice.
+  }, [field, isOpen]);
 
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
   const activeDate = stage === 'pickup' ? pickupAt : returnAt;
@@ -217,8 +220,10 @@ export function DateTimePickerSheet({
       return;
     }
 
-    onChangePickupAt(pickupAt);
-    onChangeReturnAt(returnAt);
+    onApplyRentalWindow({
+      pickupAt: new Date(pickupAt),
+      returnAt: new Date(returnAt),
+    });
     onClose();
   };
 
@@ -404,11 +409,51 @@ function TimePickerColumn({
 }) {
   const choices = getTimeChoices(value);
   const scrollRef = useRef<ScrollView>(null);
+  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scrollToChoice = (hour: number, animated = false) => {
+    scrollRef.current?.scrollTo({
+      animated,
+      y: Math.max(0, hour * timeChoiceHeight),
+    });
+  };
 
   useEffect(() => {
-    const selectedOffset = Math.max(value.getHours() - 2, 0) * 44;
-    scrollRef.current?.scrollTo({ animated: false, y: selectedOffset });
+    scrollToChoice(value.getHours());
   }, [value]);
+
+  useEffect(() => () => {
+    if (scrollEndTimer.current) {
+      clearTimeout(scrollEndTimer.current);
+    }
+  }, []);
+
+  const selectScrolledChoice = (offset: number) => {
+    const index = Math.max(
+      0,
+      Math.min(choices.length - 1, Math.round(offset / timeChoiceHeight)),
+    );
+    const choice = choices[index];
+
+    if (!choice || !canSelect(choice)) {
+      scrollToChoice(value.getHours(), true);
+      return;
+    }
+
+    if (!sameTime(value, choice)) {
+      onChange(choice);
+    }
+  };
+
+  const queueScrolledChoice = (offset: number) => {
+    if (scrollEndTimer.current) {
+      clearTimeout(scrollEndTimer.current);
+    }
+
+    scrollEndTimer.current = setTimeout(() => {
+      selectScrolledChoice(offset);
+    }, 110);
+  };
 
   return (
     <View style={styles.timeColumn}>
@@ -417,11 +462,26 @@ function TimePickerColumn({
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.timeChoices}
+          decelerationRate="fast"
+          disableIntervalMomentum
           nestedScrollEnabled
-          onContentSizeChange={() => {
-            const selectedOffset = Math.max(value.getHours() - 2, 0) * 44;
-            scrollRef.current?.scrollTo({ animated: false, y: selectedOffset });
+          onMomentumScrollEnd={(event) => {
+            if (scrollEndTimer.current) {
+              clearTimeout(scrollEndTimer.current);
+            }
+            selectScrolledChoice(event.nativeEvent.contentOffset.y);
           }}
+          onScroll={(event) => {
+            queueScrolledChoice(event.nativeEvent.contentOffset.y);
+          }}
+          onScrollEndDrag={(event) => {
+            if (!event.nativeEvent.velocity?.y) {
+              selectScrolledChoice(event.nativeEvent.contentOffset.y);
+            }
+          }}
+          scrollEventThrottle={16}
+          snapToAlignment="start"
+          snapToInterval={timeChoiceHeight}
           showsVerticalScrollIndicator={false}
           style={styles.timeScroll}
         >
@@ -540,14 +600,14 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
   timeColumn: { flex: 1 },
   timeTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center', textTransform: 'uppercase' },
-  timeViewport: { height: 174, marginTop: 6, position: 'relative' },
+  timeViewport: { height: timeViewportHeight, marginTop: 6, position: 'relative' },
   timeScroll: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  timeChoices: { alignItems: 'center', gap: 2, paddingVertical: 66 },
-  timeChoice: { minHeight: 42, width: '100%', alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
+  timeChoices: { alignItems: 'center', paddingVertical: timeChoicePadding },
+  timeChoice: { height: timeChoiceHeight, width: '100%', alignItems: 'center', justifyContent: 'center' },
   timeChoiceDisabled: { opacity: 0.5 },
   timeGuide: { position: 'absolute', left: 18, right: 18, height: 1, backgroundColor: colors.text },
-  timeGuideTop: { top: 66 },
-  timeGuideBottom: { top: 108 },
+  timeGuideTop: { top: timeChoicePadding },
+  timeGuideBottom: { top: timeChoicePadding + timeChoiceHeight },
   timeText: { color: colors.ink, fontSize: 21, fontWeight: '700' },
   timeTextMuted: { color: '#64748B' },
   timeTextDisabled: { color: '#CBD5E1' },

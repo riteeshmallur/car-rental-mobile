@@ -74,9 +74,18 @@ export function PhoneLoginScreen() {
 
   return (
     <AuthShell
-      footer={<Text style={styles.devHint}>Development OTP: 123456</Text>}
+      footer={
+        <>
+          <Text style={styles.terms}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>.
+          </Text>
+        </>
+      }
       subtitle="Enter your mobile number and we will send a 6 digit verification code."
       title="Log in with mobile"
+      variant="journey"
     >
       <View style={styles.form}>
         <View style={styles.phoneRow}>
@@ -99,7 +108,7 @@ export function PhoneLoginScreen() {
                 onBlur={onBlur}
                 onChangeText={(nextValue) => onChange(nextValue.replace(/\D/g, ''))}
                 placeholder="Mobile number"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor="#77839A"
                 style={[
                   styles.phoneInput,
                   errors.phoneNumber && styles.inputError,
@@ -131,19 +140,19 @@ const styles = StyleSheet.create({
   },
   phoneRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   phoneInput: {
-    minHeight: 54,
+    minHeight: 52,
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#D9E1EF',
     borderRadius: radii.md,
     backgroundColor: colors.surface,
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: '700',
-    paddingHorizontal: 14,
+    color: '#081630',
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 16,
   },
   inputError: {
     borderColor: colors.error,
@@ -153,10 +162,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  devHint: {
-    color: colors.muted,
+  terms: {
+    color: '#68758C',
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 20,
+    paddingHorizontal: 10,
     textAlign: 'center',
+  },
+  termsLink: {
+    color: colors.brand,
+    fontWeight: '700',
   },
 });
