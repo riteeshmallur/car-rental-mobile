@@ -1,8 +1,11 @@
 import { apiRequest } from '@/services/api/client';
 import {
   type Booking,
+  type BookingPayment,
+  type BookingReceipt,
   type CreateBookingPayload,
   type RenterBooking,
+  type RenterTrip,
 } from '@/types/car';
 
 export const bookingsApi = {
@@ -25,10 +28,68 @@ export const bookingsApi = {
       url: `/bookings/${bookingId}`,
     });
   },
-  cancel(bookingId: string) {
+  findTrip(bookingId: string) {
+    return apiRequest<RenterTrip>({
+      method: 'GET',
+      url: `/bookings/${bookingId}/trip`,
+    });
+  },
+  findPayment(bookingId: string) {
+    return apiRequest<BookingPayment>({
+      method: 'GET',
+      url: `/bookings/${bookingId}/payment`,
+    });
+  },
+  findReceipt(bookingId: string) {
+    return apiRequest<BookingReceipt>({
+      method: 'GET',
+      url: `/bookings/${bookingId}/receipt`,
+    });
+  },
+  cancel(bookingId: string, payload: { reason?: string; note?: string } = {}) {
     return apiRequest<Booking>({
       method: 'POST',
       url: `/bookings/${bookingId}/cancel`,
+      data: payload,
+    });
+  },
+  extend(bookingId: string, payload: { returnAt: string }) {
+    return apiRequest<Booking>({
+      method: 'POST',
+      url: `/bookings/${bookingId}/extend`,
+      data: payload,
+    });
+  },
+  returnVehicle(
+    bookingId: string,
+    payload: {
+      odometerReading: number;
+      fuelLevel: 'empty' | 'quarter' | 'half' | 'three_quarters' | 'full';
+      returnedAt?: string;
+      note?: string;
+    },
+  ) {
+    return apiRequest<Booking>({
+      method: 'POST',
+      url: `/bookings/${bookingId}/return`,
+      data: payload,
+    });
+  },
+  dispute(bookingId: string, payload: { reason: string; evidenceUrls?: string[] }) {
+    return apiRequest<Booking>({
+      method: 'POST',
+      url: `/bookings/${bookingId}/dispute`,
+      data: payload,
+    });
+  },
+  createReview(
+    bookingId: string,
+    payload: { rating: number; comment?: string; reviewType?: 'vehicle' | 'host' },
+  ) {
+    return apiRequest<RenterTrip['review']>({
+      method: 'POST',
+      url: `/bookings/${bookingId}/reviews`,
+      data: payload,
     });
   },
 };

@@ -304,7 +304,13 @@ export type Booking = {
   updatedAt: string;
 };
 
-export type RenterTripPhase = 'upcoming' | 'active' | 'past' | 'cancelled';
+export type RenterTripPhase =
+  | 'upcoming'
+  | 'active'
+  | 'return_pending'
+  | 'completed'
+  | 'cancelled'
+  | 'disputed';
 
 export type RenterBooking = Booking & {
   reference: string;
@@ -327,6 +333,127 @@ export type RenterBooking = Booking & {
     name: string;
     phoneNumber: string | null;
   };
+};
+
+export type RenterTripStage =
+  | 'upcoming'
+  | 'confirmed'
+  | 'active'
+  | 'return_pending'
+  | 'completed'
+  | 'cancelled'
+  | 'disputed'
+  | 'pending';
+
+export type RenterTripCapabilities = {
+  viewBookingDetails: boolean;
+  viewPickupInformation: boolean;
+  cancel: boolean;
+  viewTripDetails: boolean;
+  requestExtension: boolean;
+  viewReturnInstructions: boolean;
+  reportIssue: boolean;
+  viewReturnStatus: boolean;
+  review: boolean;
+  viewReceipt: boolean;
+  viewCancellationRefund: boolean;
+  viewDisputeStatus: boolean;
+};
+
+export type RenterTrip = {
+  id: string;
+  reference: string;
+  status: string;
+  stage: RenterTripStage;
+  paymentStatus: string | null;
+  pickupAt: string;
+  returnAt: string;
+  currency: string;
+  pricing: {
+    basePrice: string | null;
+    serviceFee: string | null;
+    taxes: string | null;
+    securityDeposit: string | null;
+    discounts: string | null;
+    totalPrice: string;
+  };
+  vehicle: {
+    id: string;
+    make: string;
+    model: string;
+    imageUrl: string | null;
+  };
+  pickup: {
+    verifiedAt: string | null;
+    location: {
+      name: string | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      country: string | null;
+    };
+    hostName: string;
+    hostPhoneNumber: string | null;
+  };
+  return: {
+    returnedAt: string | null;
+    inspectionStatus: 'not_started' | 'recorded';
+  };
+  cancellation: {
+    reason: string | null;
+    refundAmount: string | null;
+    refundStatus: string | null;
+  } | null;
+  dispute: {
+    id: string;
+    status: string;
+    reason: string;
+    openedAt: string;
+  } | null;
+  review: {
+    id: string;
+    reviewType: 'vehicle' | 'host';
+    rating: number;
+    comment: string | null;
+    status: 'pending' | 'published' | 'rejected' | 'hidden';
+    createdAt: string;
+  } | null;
+  capabilities: RenterTripCapabilities;
+};
+
+export type BookingPayment = {
+  id: string;
+  bookingId: string;
+  provider: string;
+  providerPaymentId: string | null;
+  providerTransactionId: string | null;
+  status: string;
+  amount: string;
+  currency: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+  refunds: Array<{
+    id: string;
+    amount: string;
+    currency: string;
+    status: 'pending' | 'succeeded' | 'failed' | 'cancelled';
+    reason: string | null;
+    createdAt: string;
+  }>;
+};
+
+export type BookingReceipt = {
+  bookingId: string;
+  reference: string;
+  issuedAt: string;
+  currency: string;
+  paymentStatus: string | null;
+  vehicle: RenterTrip['vehicle'];
+  pickupAt: string;
+  returnAt: string;
+  pricing: RenterTrip['pricing'];
 };
 
 export type HostBookingPhase =

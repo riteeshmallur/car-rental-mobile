@@ -1,22 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  CalendarClock,
-  CarFront,
-  MessageCircle,
-  RefreshCw,
-  Star,
-  XCircle,
-} from 'lucide-react-native';
+import { CalendarClock, CarFront, RefreshCw } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
-  Linking,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -24,25 +16,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
-import {
-  formatMoney,
-  getCarImageUrl,
-} from '@/features/customer/utils/car-formatters';
-import { bookingsApi } from '@/services/bookings/bookings-api';
+import { formatMoney, getCarImageUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
+import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterBooking, type RenterTripPhase } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 
-type TripTab = {
-  label: string;
-  value: RenterTripPhase;
-};
+type TripTab = { label: string; value: RenterTripPhase };
 
 const tabs: TripTab[] = [
   { label: 'Upcoming', value: 'upcoming' },
   { label: 'Active', value: 'active' },
-  { label: 'Past', value: 'past' },
+  { label: 'Return pending', value: 'return_pending' },
+  { label: 'Completed', value: 'completed' },
   { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Disputed', value: 'disputed' },
 ];
 
 function formatDateTime(value: string) {
@@ -52,11 +40,11 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function formatStatus(value: string) {
-  return value.replace(/_/g, ' ');
+function titleCase(value: string | null | undefined) {
+  return (value ?? 'Pending').replace(/_/g, ' ');
 }
 
-function getLocationLabel(booking: RenterBooking) {
+function locationLabel(booking: RenterBooking) {
   return [
     booking.pickupLocation.name,
     booking.pickupLocation.city,
@@ -67,7 +55,6 @@ function getLocationLabel(booking: RenterBooking) {
 }
 
 export function TripsScreen() {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<RenterTripPhase>('upcoming');
   useSafeBack({ fallback: '/(customer)/home' });
 
@@ -76,62 +63,26 @@ export function TripsScreen() {
     queryFn: bookingsApi.listRenterBookings,
   });
 
-  const cancelMutation = useMutation({
-    mutationFn: bookingsApi.cancel,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['renters', 'me', 'bookings'],
-      });
-    },
-  });
-
   const bookingsByTab = useMemo(() => {
-    const source = bookingsQuery.data ?? [];
+    const grouped: Record<RenterTripPhase, RenterBooking[]> = {
+      upcoming: [],
+      active: [],
+      return_pending: [],
+      completed: [],
+      cancelled: [],
+      disputed: [],
+    };
 
-    return source.reduce<Record<RenterTripPhase, RenterBooking[]>>(
-      (acc, booking) => {
-        acc[booking.tripPhase].push(booking);
-        return acc;
-      },
-      {
-        upcoming: [],
-        active: [],
-        past: [],
-        cancelled: [],
-      },
-    );
-  }, [bookingsQuery.data]);
-
-  const visibleBookings = bookingsByTab[activeTab];
-  const isRefreshing = bookingsQuery.isRefetching && !bookingsQuery.isLoading;
-
-  const requestCancel = (booking: RenterBooking) => {
-    Alert.alert(
-      'Cancel booking',
-      `Cancel ${booking.vehicle.make} ${booking.vehicle.model}?`,
-      [
-        { text: 'Keep booking', style: 'cancel' },
-        {
-          text: 'Cancel booking',
-          style: 'destructive',
-          onPress: () => cancelMutation.mutate(booking.id),
-        },
-      ],
-    );
-  };
-
-  const showUnavailableAction = (message: string) => {
-    Alert.alert('Not available yet', message);
-  };
-
-  const contactHost = (booking: RenterBooking) => {
-    if (!booking.host.phoneNumber) {
-      showUnavailableAction('The host has not shared a phone number.');
-      return;
+    for (const booking of bookingsQuery.data ?? []) {
+      if (booking.tripPhase in grouped) {
+        grouped[booking.tripPhase].push(booking);
+      }
     }
 
-    void Linking.openURL(`tel:${booking.host.phoneNumber}`);
-  };
+    return grouped;
+  }, [bookingsQuery.data]);
+
+  const isRefreshing = bookingsQuery.isRefetching && !bookingsQuery.isLoading;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -141,41 +92,47 @@ export function TripsScreen() {
             <Text style={styles.eyebrow}>Customer</Text>
             <Text style={styles.title}>Trips</Text>
           </View>
-          {bookingsQuery.isFetching ? (
-            <ActivityIndicator color="#111827" />
-          ) : (
-            <Pressable
-              accessibilityLabel="Refresh trips"
-              accessibilityRole="button"
-              onPress={() => void bookingsQuery.refetch()}
-              style={styles.iconButton}
-            >
+          <Pressable
+            accessibilityLabel="Refresh trips"
+            accessibilityRole="button"
+            disabled={bookingsQuery.isFetching}
+            onPress={() => void bookingsQuery.refetch()}
+            style={styles.iconButton}
+          >
+            {bookingsQuery.isFetching ? (
+              <ActivityIndicator color="#0B4FE8" size="small" />
+            ) : (
               <RefreshCw color="#111827" size={20} />
-            </Pressable>
-          )}
+            )}
+          </Pressable>
         </View>
 
-        <View style={styles.tabs}>
+        <ScrollView
+          contentContainerStyle={styles.tabsContent}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabs}
+        >
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.value;
-
+            const active = tab.value === activeTab;
             return (
               <Pressable
-                accessibilityRole="button"
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
                 key={tab.value}
                 onPress={() => setActiveTab(tab.value)}
-                style={[styles.tab, isActive && styles.activeTab]}
+                style={[styles.tab, active && styles.activeTab]}
               >
-                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                <Text style={[styles.tabText, active && styles.activeTabText]}>
                   {tab.label}
                 </Text>
-                <Text style={[styles.tabCount, isActive && styles.activeTabText]}>
+                <Text style={[styles.tabCount, active && styles.activeTabText]}>
                   {bookingsByTab[tab.value].length}
                 </Text>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {bookingsQuery.isLoading ? (
           <TripsSkeleton />
@@ -188,6 +145,9 @@ export function TripsScreen() {
           />
         ) : (
           <FlatList
+            contentContainerStyle={styles.listContent}
+            data={bookingsByTab[activeTab]}
+            keyExtractor={(item) => item.id}
             ListEmptyComponent={
               <StateMessage
                 body={`You do not have ${tabs
@@ -196,48 +156,15 @@ export function TripsScreen() {
                 title="No trips here"
               />
             }
-            contentContainerStyle={styles.listContent}
-            data={visibleBookings}
-            keyExtractor={(item) => item.id}
-            style={styles.listView}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void bookingsQuery.refetch()}
                 refreshing={isRefreshing}
               />
             }
-            renderItem={({ item }) => (
-              <BookingCard
-                booking={item}
-                isCancelling={
-                  cancelMutation.isPending && cancelMutation.variables === item.id
-                }
-                onCancel={() => requestCancel(item)}
-                onContactHost={() => contactHost(item)}
-                onExtend={() =>
-                  showUnavailableAction(
-                    'Booking extension will be available after the backend exposes an extend API.',
-                  )
-                }
-                onLeaveReview={() =>
-                  showUnavailableAction(
-                    'Reviews will be available after the review submission API is connected.',
-                  )
-                }
-                onReturnInstructions={() =>
-                  showUnavailableAction(
-                    'Return instructions will be shown once host handoff details are available.',
-                  )
-                }
-                onViewDetails={() =>
-                  router.push({
-                    pathname: '/(customer)/booking/[id]',
-                    params: { id: item.id, origin: 'customer-trips' },
-                  })
-                }
-              />
-            )}
+            renderItem={({ item }) => <BookingCard booking={item} />}
             showsVerticalScrollIndicator={false}
+            style={styles.list}
           />
         )}
       </View>
@@ -246,31 +173,21 @@ export function TripsScreen() {
   );
 }
 
-function BookingCard({
-  booking,
-  isCancelling,
-  onCancel,
-  onContactHost,
-  onExtend,
-  onLeaveReview,
-  onReturnInstructions,
-  onViewDetails,
-}: {
-  booking: RenterBooking;
-  isCancelling: boolean;
-  onCancel: () => void;
-  onContactHost: () => void;
-  onExtend: () => void;
-  onLeaveReview: () => void;
-  onReturnInstructions: () => void;
-  onViewDetails: () => void;
-}) {
-  const imageUrl = getCarImageUrl(booking.vehicle.imageUrl);
+function BookingCard({ booking }: { booking: RenterBooking }) {
   const vehicleName = `${booking.vehicle.make} ${booking.vehicle.model}`;
-  const locationLabel = getLocationLabel(booking) || 'Pickup location';
+  const imageUrl = getCarImageUrl(booking.vehicle.imageUrl);
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() =>
+        router.push({
+          pathname: '/(customer)/booking/[id]',
+          params: { id: booking.id, origin: 'customer-trips' },
+        })
+      }
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
       <View style={styles.cardTop}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.vehicleImage} />
@@ -284,162 +201,48 @@ function BookingCard({
             <Text numberOfLines={1} style={styles.vehicleName}>
               {vehicleName}
             </Text>
-            <View style={[styles.statusBadge, getStatusStyle(booking.tripPhase)]}>
-              <Text style={styles.statusText}>{formatStatus(booking.status)}</Text>
-            </View>
+            <StatusBadge phase={booking.tripPhase} />
           </View>
           <Text numberOfLines={1} selectable style={styles.reference}>
             Ref {booking.reference.slice(0, 8).toUpperCase()}
           </Text>
           <Text numberOfLines={1} style={styles.location}>
-            {locationLabel}
+            {locationLabel(booking) || 'Pickup location'}
           </Text>
         </View>
       </View>
 
-      <View style={styles.datePanel}>
-        <DateBlock label="Pickup" value={booking.pickupAt} />
-        <View style={styles.dateDivider} />
-        <DateBlock label="Return" value={booking.returnAt} />
+      <View style={styles.dateRow}>
+        <CalendarClock color="#64748B" size={17} />
+        <View style={styles.dateCopy}>
+          <Text style={styles.dateLabel}>Pickup</Text>
+          <Text numberOfLines={1} style={styles.dateValue}>
+            {formatDateTime(booking.pickupAt)}
+          </Text>
+        </View>
+        <View style={styles.dateCopy}>
+          <Text style={styles.dateLabel}>Return</Text>
+          <Text numberOfLines={1} style={styles.dateValue}>
+            {formatDateTime(booking.returnAt)}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.paymentRow}>
-        <Text style={styles.paymentLabel}>Total paid</Text>
+      <View style={styles.footerRow}>
+        <Text style={styles.paymentLabel}>{titleCase(booking.paymentStatus)}</Text>
         <Text style={styles.paymentAmount}>{formatMoney(booking.totalPaid)}</Text>
       </View>
-
-      <ActionRow
-        booking={booking}
-        isCancelling={isCancelling}
-        onCancel={onCancel}
-        onContactHost={onContactHost}
-        onExtend={onExtend}
-        onLeaveReview={onLeaveReview}
-        onReturnInstructions={onReturnInstructions}
-        onViewDetails={onViewDetails}
-      />
-    </View>
-  );
-}
-
-function DateBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.dateBlock}>
-      <View style={styles.inlineRow}>
-        <CalendarClock color="#6B7280" size={15} />
-        <Text style={styles.dateLabel}>{label}</Text>
-      </View>
-      <Text style={styles.dateValue}>{formatDateTime(value)}</Text>
-    </View>
-  );
-}
-
-function ActionRow({
-  booking,
-  isCancelling,
-  onCancel,
-  onContactHost,
-  onExtend,
-  onLeaveReview,
-  onReturnInstructions,
-  onViewDetails,
-}: {
-  booking: RenterBooking;
-  isCancelling: boolean;
-  onCancel: () => void;
-  onContactHost: () => void;
-  onExtend: () => void;
-  onLeaveReview: () => void;
-  onReturnInstructions: () => void;
-  onViewDetails: () => void;
-}) {
-  if (booking.tripPhase === 'upcoming') {
-    return (
-      <View style={styles.actions}>
-        <ActionButton label="View details" onPress={onViewDetails} variant="dark" />
-        <ActionButton
-          icon={<XCircle color="#991B1B" size={16} />}
-          isLoading={isCancelling}
-          label="Cancel"
-          onPress={onCancel}
-          variant="danger"
-        />
-      </View>
-    );
-  }
-
-  if (booking.tripPhase === 'active') {
-    return (
-      <View style={styles.actions}>
-        <ActionButton
-          icon={<MessageCircle color="#111827" size={16} />}
-          label="Contact host"
-          onPress={onContactHost}
-        />
-        <ActionButton label="Extend" onPress={onExtend} />
-        <ActionButton label="Return instructions" onPress={onReturnInstructions} />
-      </View>
-    );
-  }
-
-  if (booking.tripPhase === 'past') {
-    return (
-      <View style={styles.actions}>
-        <ActionButton
-          icon={<Star color="#111827" size={16} />}
-          label="Leave review"
-          onPress={onLeaveReview}
-          variant="dark"
-        />
-        <ActionButton label="View details" onPress={onViewDetails} />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.actions}>
-      <ActionButton label="View details" onPress={onViewDetails} />
-    </View>
-  );
-}
-
-function ActionButton({
-  icon,
-  isLoading,
-  label,
-  onPress,
-  variant = 'light',
-}: {
-  icon?: React.ReactNode;
-  isLoading?: boolean;
-  label: string;
-  onPress: () => void;
-  variant?: 'light' | 'dark' | 'danger';
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={isLoading}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionButton,
-        variant === 'dark' && styles.darkAction,
-        variant === 'danger' && styles.dangerAction,
-        pressed && styles.pressed,
-        isLoading && styles.disabled,
-      ]}
-    >
-      {isLoading ? <ActivityIndicator color="#991B1B" size="small" /> : icon}
-      <Text
-        style={[
-          styles.actionText,
-          variant === 'dark' && styles.darkActionText,
-          variant === 'danger' && styles.dangerActionText,
-        ]}
-      >
-        {isLoading ? 'Cancelling' : label}
-      </Text>
     </Pressable>
+  );
+}
+
+function StatusBadge({ phase }: { phase: RenterTripPhase }) {
+  return (
+    <View style={[styles.statusBadge, statusStyle(phase)]}>
+      <Text style={[styles.statusText, statusTextStyle(phase)]}>
+        {titleCase(phase)}
+      </Text>
+    </View>
   );
 }
 
@@ -447,16 +250,13 @@ function TripsSkeleton() {
   return (
     <View style={styles.skeletonList}>
       {[0, 1, 2].map((item) => (
-        <View key={item} style={styles.card}>
-          <View style={styles.cardTop}>
-            <View style={styles.skeletonImage} />
-            <View style={styles.skeletonCopy}>
-              <View style={styles.skeletonLineWide} />
-              <View style={styles.skeletonLine} />
-              <View style={styles.skeletonLineShort} />
-            </View>
+        <View key={item} style={styles.skeletonCard}>
+          <View style={styles.skeletonImage} />
+          <View style={styles.skeletonCopy}>
+            <View style={styles.skeletonWide} />
+            <View style={styles.skeletonShort} />
+            <View style={styles.skeletonMedium} />
           </View>
-          <View style={styles.skeletonPanel} />
         </View>
       ))}
     </View>
@@ -479,343 +279,67 @@ function StateMessage({
       <Text style={styles.stateTitle}>{title}</Text>
       <Text style={styles.stateBody}>{body}</Text>
       {actionLabel && onAction ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={onAction}
-          style={styles.stateButton}
-        >
-          <Text style={styles.stateButtonText}>{actionLabel}</Text>
+        <Pressable accessibilityRole="button" onPress={onAction} style={styles.retryButton}>
+          <Text style={styles.retryText}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-function getStatusStyle(phase: RenterTripPhase) {
+function statusStyle(phase: RenterTripPhase) {
   switch (phase) {
-    case 'active':
-      return styles.activeStatus;
-    case 'past':
-      return styles.pastStatus;
-    case 'cancelled':
-      return styles.cancelledStatus;
-    default:
-      return styles.upcomingStatus;
+    case 'active': return styles.activeStatus;
+    case 'return_pending': return styles.returnStatus;
+    case 'completed': return styles.completedStatus;
+    case 'cancelled': return styles.cancelledStatus;
+    case 'disputed': return styles.disputedStatus;
+    default: return styles.upcomingStatus;
+  }
+}
+
+function statusTextStyle(phase: RenterTripPhase) {
+  switch (phase) {
+    case 'cancelled': return styles.cancelledStatusText;
+    case 'disputed': return styles.disputedStatusText;
+    case 'return_pending': return styles.returnStatusText;
+    default: return styles.defaultStatusText;
   }
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F7FAFF',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  header: {
-    minHeight: 76,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  eyebrow: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: '#111827',
-    fontSize: 30,
-    fontWeight: '900',
-  },
-  iconButton: {
-    height: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 12,
-  },
-  tab: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  activeTab: {
-    borderColor: '#0B4FE8',
-    backgroundColor: '#0B4FE8',
-  },
-  tabText: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  tabCount: {
-    color: '#6B7280',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  activeTabText: {
-    color: '#FFFFFF',
-  },
-  listContent: {
-    gap: 14,
-    paddingBottom: 24,
-  },
-  listView: {
-    flex: 1,
-    minHeight: 0,
-  },
-  card: {
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  vehicleImage: {
-    height: 86,
-    width: 104,
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  imageFallback: {
-    height: 86,
-    width: 104,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#EAF2FF',
-  },
-  cardCopy: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 7,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  vehicleName: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  reference: {
-    color: '#4B5563',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  location: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  upcomingStatus: {
-    backgroundColor: '#DBEAFE',
-  },
-  activeStatus: {
-    backgroundColor: '#DCFCE7',
-  },
-  pastStatus: {
-    backgroundColor: '#F3F4F6',
-  },
-  cancelledStatus: {
-    backgroundColor: '#FEE2E2',
-  },
-  statusText: {
-    color: '#111827',
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'capitalize',
-  },
-  datePanel: {
-    flexDirection: 'row',
-    gap: 10,
-    borderRadius: 8,
-    backgroundColor: '#F7FAFF',
-    padding: 10,
-  },
-  dateBlock: {
-    flex: 1,
-    gap: 6,
-  },
-  inlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  dateLabel: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  dateValue: {
-    color: '#111827',
-    fontSize: 13,
-    fontWeight: '900',
-    lineHeight: 18,
-  },
-  dateDivider: {
-    width: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  paymentLabel: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  paymentAmount: {
-    color: '#111827',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  actionButton: {
-    minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-  },
-  darkAction: {
-    borderColor: '#0B4FE8',
-    backgroundColor: '#0B4FE8',
-  },
-  dangerAction: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
-  },
-  actionText: {
-    color: '#111827',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  darkActionText: {
-    color: '#FFFFFF',
-  },
-  dangerActionText: {
-    color: '#991B1B',
-  },
-  pressed: {
-    opacity: 0.76,
-  },
-  disabled: {
-    opacity: 0.7,
-  },
-  skeletonList: {
-    gap: 14,
-    paddingBottom: 24,
-  },
-  skeletonImage: {
-    height: 86,
-    width: 104,
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  skeletonCopy: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 9,
-  },
-  skeletonLineWide: {
-    height: 16,
-    width: '86%',
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  skeletonLine: {
-    height: 12,
-    width: '64%',
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  skeletonLineShort: {
-    height: 12,
-    width: '42%',
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
-  },
-  skeletonPanel: {
-    height: 76,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-  },
-  state: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    padding: 24,
-  },
-  stateTitle: {
-    color: '#111827',
-    fontSize: 20,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  stateBody: {
-    color: '#6B7280',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-  stateButton: {
-    minHeight: 42,
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#0B4FE8',
-    paddingHorizontal: 18,
-    marginTop: 4,
-  },
-  stateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
+  safeArea: { flex: 1, backgroundColor: '#F7FAFF' },
+  container: { flex: 1, minHeight: 0, paddingHorizontal: 16 },
+  header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76 },
+  eyebrow: { color: '#64748B', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+  title: { color: '#0F172A', fontSize: 26, fontWeight: '900' },
+  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  tabs: { flexGrow: 0, marginBottom: 12 },
+  tabsContent: { gap: 8, paddingRight: 16 },
+  tab: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 6, minHeight: 40, paddingHorizontal: 12 },
+  activeTab: { backgroundColor: '#0B4FE8', borderColor: '#0B4FE8' },
+  tabText: { color: '#334155', fontSize: 13, fontWeight: '800' },
+  tabCount: { color: '#64748B', fontSize: 12, fontWeight: '900' },
+  activeTabText: { color: '#FFFFFF' },
+  list: { flex: 1, minHeight: 0 },
+  listContent: { gap: 12, paddingBottom: 22 },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 16, borderWidth: 1, gap: 14, padding: 14 },
+  cardTop: { flexDirection: 'row', gap: 12 },
+  vehicleImage: { backgroundColor: '#F1F5F9', borderRadius: 12, height: 82, width: 100 },
+  imageFallback: { alignItems: 'center', backgroundColor: '#EEF4FF', borderRadius: 12, height: 82, justifyContent: 'center', width: 100 },
+  cardCopy: { flex: 1, gap: 5, minWidth: 0 },
+  titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
+  vehicleName: { color: '#0F172A', flex: 1, fontSize: 17, fontWeight: '900' },
+  reference: { color: '#64748B', fontSize: 12, fontWeight: '700' },
+  location: { color: '#475569', fontSize: 13, fontWeight: '700' },
+  statusBadge: { borderRadius: 12, maxWidth: 122, paddingHorizontal: 8, paddingVertical: 4 },
+  statusText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  upcomingStatus: { backgroundColor: '#EAF2FF' }, activeStatus: { backgroundColor: '#DCFCE7' }, returnStatus: { backgroundColor: '#FFF7D6' }, completedStatus: { backgroundColor: '#E6F8F2' }, cancelledStatus: { backgroundColor: '#FEECEC' }, disputedStatus: { backgroundColor: '#FFF0E5' },
+  defaultStatusText: { color: '#0B4FE8' }, returnStatusText: { color: '#A16207' }, cancelledStatusText: { color: '#B91C1C' }, disputedStatusText: { color: '#C2410C' },
+  dateRow: { alignItems: 'center', borderTopColor: '#EEF2F7', borderTopWidth: 1, flexDirection: 'row', gap: 10, paddingTop: 12 },
+  dateCopy: { flex: 1, minWidth: 0 }, dateLabel: { color: '#64748B', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#1E293B', fontSize: 12, fontWeight: '800', marginTop: 2 },
+  footerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, paymentLabel: { color: '#64748B', fontSize: 12, fontWeight: '800', textTransform: 'capitalize' }, paymentAmount: { color: '#0F172A', fontSize: 16, fontWeight: '900' },
+  pressed: { opacity: 0.75 },
+  skeletonList: { gap: 12, paddingTop: 4 }, skeletonCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, flexDirection: 'row', gap: 12, padding: 14 }, skeletonImage: { backgroundColor: '#E8EEF7', borderRadius: 12, height: 82, width: 100 }, skeletonCopy: { flex: 1, gap: 10 }, skeletonWide: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 14, width: '80%' }, skeletonMedium: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '65%' }, skeletonShort: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '42%' },
+  state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900', textAlign: 'center' }, stateBody: { color: '#64748B', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B4FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 });
