@@ -1,5 +1,5 @@
-import { CustomerPlaceholderScreen } from '@/features/customer/screens/customer-placeholder-screen';
+import { SearchResultsScreen } from '@/features/customer/screens/search-results-screen';
 
 export default function CustomerSearchRoute() {
-  return <CustomerPlaceholderScreen title="Search" />;
+  return <SearchResultsScreen />;
 }

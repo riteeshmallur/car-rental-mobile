@@ -1,10 +1,11 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   ArrowDownUp,
   Armchair,
   CarFront,
+  CalendarDays,
   ChevronDown,
   CircleDollarSign,
   Fuel,
@@ -35,11 +36,18 @@ import { BottomNavigation } from '@/features/customer/components/bottom-navigati
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import {
+  DateTimePickerSheet,
+  type DateTimeField,
+} from '@/features/customer/components/date-time-picker-sheet';
+import {
   formatDailyPrice,
   formatMoney,
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
+import { formatDate, formatTime } from '@/features/customer/utils/rental-window';
 import { carsApi } from '@/services/cars/cars-api';
+import { rentersApi } from '@/services/renters/renters-api';
+import { useCustomerSearchStore } from '@/store/customer-search-store';
 import {
   type VehicleSearchParams,
   type VehicleSearchResult,
@@ -51,6 +59,7 @@ const pageSize = 10;
 
 const sortOptions: Array<{ label: string; value: VehicleSearchSort }> = [
   { label: 'Recommended', value: 'recommended' },
+  { label: 'Distance', value: 'distance' },
   { label: 'Price low to high', value: 'price_low_to_high' },
   { label: 'Price high to low', value: 'price_high_to_low' },
   { label: 'Rating', value: 'rating' },
@@ -115,13 +124,33 @@ export function SearchResultsScreen() {
   const locationId = getParam(params.locationId);
   const pickupDateTime = getParam(params.pickupDateTime);
   const returnDateTime = getParam(params.returnDateTime);
-  const hasParams = Boolean(locationId && pickupDateTime && returnDateTime);
+  const selectedLocation = useCustomerSearchStore((state) => state.selectedLocation);
+  const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
+  const setRentalWindow = useCustomerSearchStore((state) => state.setRentalWindow);
+  const activeLocationId = selectedLocation?.id ?? locationId;
+  const activePickupDateTime = selectedLocation
+    ? rentalWindow.pickupAt.toISOString()
+    : pickupDateTime;
+  const activeReturnDateTime = selectedLocation
+    ? rentalWindow.returnAt.toISOString()
+    : returnDateTime;
+  const hasSearchCriteria = Boolean(
+    activeLocationId && activePickupDateTime && activeReturnDateTime,
+  );
   const [filters, setFilters] = useState<VehicleFilters>({});
   const [sort, setSort] = useState<VehicleSearchSort>('recommended');
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Map<string, boolean>>(
+    () => new Map(),
+  );
+  const [pendingFavoriteIds, setPendingFavoriteIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setSortSheetOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<VehicleFilters>({});
+  const [activeDateTimeField, setActiveDateTimeField] =
+    useState<DateTimeField | null>(null);
+  const queryClient = useQueryClient();
 
   const closeOverlayBeforeBack = useCallback(() => {
     if (isSortSheetOpen) {
@@ -134,34 +163,39 @@ export function SearchResultsScreen() {
       return true;
     }
 
+    if (activeDateTimeField) {
+      setActiveDateTimeField(null);
+      return true;
+    }
+
     return false;
-  }, [isFilterSheetOpen, isSortSheetOpen]);
+  }, [activeDateTimeField, isFilterSheetOpen, isSortSheetOpen]);
   const goBack = useSafeBack({
     fallback: '/(customer)/home',
     onBeforeBack: closeOverlayBeforeBack,
   });
   useWebBackGuard({
-    active: isFilterSheetOpen || isSortSheetOpen,
+    active: isFilterSheetOpen || isSortSheetOpen || activeDateTimeField !== null,
     onBack: closeOverlayBeforeBack,
   });
 
   const vehiclesQuery = useInfiniteQuery({
-    enabled: hasParams,
+    enabled: hasSearchCriteria,
     initialPageParam: 1,
     queryKey: [
       'vehicles',
       'search',
-      locationId,
-      pickupDateTime,
-      returnDateTime,
+      activeLocationId,
+      activePickupDateTime,
+      activeReturnDateTime,
       filters,
       sort,
     ],
     queryFn: ({ pageParam }) =>
       carsApi.searchVehicles({
-        locationId: locationId ?? '',
-        startsAt: pickupDateTime ?? '',
-        endsAt: returnDateTime ?? '',
+        locationId: activeLocationId ?? '',
+        startsAt: activePickupDateTime ?? '',
+        endsAt: activeReturnDateTime ?? '',
         ...filters,
         sort,
         page: pageParam,
@@ -183,18 +217,55 @@ export function SearchResultsScreen() {
     (value) => value !== undefined,
   ).length;
 
+  const favouritesQuery = useQuery({
+    queryKey: ['renter', 'favourites'],
+    queryFn: rentersApi.getFavourites,
+  });
+  const savedFavouriteIds = useMemo(
+    () => new Set(favouritesQuery.data?.items.map((item) => item.vehicle.id) ?? []),
+    [favouritesQuery.data],
+  );
+  const favouriteMutation = useMutation({
+    mutationFn: ({ isFavourite, vehicleId }: { isFavourite: boolean; vehicleId: string }) =>
+      isFavourite
+        ? rentersApi.removeFavourite(vehicleId)
+        : rentersApi.addFavourite(vehicleId),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['renter', 'favourites'] });
+    },
+  });
+
+  const isFavourite = useCallback(
+    (vehicleId: string) =>
+      favoriteOverrides.get(vehicleId) ?? savedFavouriteIds.has(vehicleId),
+    [favoriteOverrides, savedFavouriteIds],
+  );
+
   const toggleFavorite = (vehicleId: string) => {
-    setFavoriteIds((current) => {
-      const next = new Set(current);
+    if (pendingFavoriteIds.has(vehicleId)) {
+      return;
+    }
 
-      if (next.has(vehicleId)) {
-        next.delete(vehicleId);
-      } else {
-        next.add(vehicleId);
-      }
+    const currentValue = isFavourite(vehicleId);
+    const nextValue = !currentValue;
+    setPendingFavoriteIds((current) => new Set(current).add(vehicleId));
+    setFavoriteOverrides((current) => new Map(current).set(vehicleId, nextValue));
 
-      return next;
-    });
+    favouriteMutation.mutate(
+      { isFavourite: currentValue, vehicleId },
+      {
+        onError: () => {
+          setFavoriteOverrides((current) => new Map(current).set(vehicleId, currentValue));
+        },
+        onSettled: () => {
+          setPendingFavoriteIds((current) => {
+            const next = new Set(current);
+            next.delete(vehicleId);
+            return next;
+          });
+        },
+      },
+    );
   };
 
   const loadNextPage = () => {
@@ -218,14 +289,49 @@ export function SearchResultsScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Available cars</Text>
             <Text numberOfLines={1} style={styles.subtitle}>
-              {hasParams
+              {hasSearchCriteria
                 ? `${total} cars for your trip`
                 : 'Search details missing'}
             </Text>
           </View>
         </View>
 
-        {hasParams ? (
+        {hasSearchCriteria ? (
+          <>
+            <View style={styles.searchDetailsRow}>
+              <Pressable
+                accessibilityLabel="Change pickup location"
+                accessibilityRole="button"
+                onPress={() => router.push('/(customer)/location')}
+                style={({ pressed }) => [styles.searchDetailButton, pressed && styles.pressed]}
+              >
+                <MapPin color={colors.brand} size={18} />
+                <View style={styles.searchDetailCopy}>
+                  <Text numberOfLines={1} style={styles.searchDetailTitle}>
+                    {selectedLocation?.name ?? 'Pickup location'}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.searchDetailMeta}>
+                    {selectedLocation?.city ?? 'Change location'}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Change rental dates and times"
+                accessibilityRole="button"
+                onPress={() => setActiveDateTimeField('pickupDate')}
+                style={({ pressed }) => [styles.searchDetailButton, pressed && styles.pressed]}
+              >
+                <CalendarDays color={colors.brand} size={18} />
+                <View style={styles.searchDetailCopy}>
+                  <Text numberOfLines={1} style={styles.searchDetailTitle}>
+                    {formatDate(rentalWindow.pickupAt)} - {formatDate(rentalWindow.returnAt)}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.searchDetailMeta}>
+                    {formatTime(rentalWindow.pickupAt)} - {formatTime(rentalWindow.returnAt)}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
           <View style={styles.actionRow}>
             <Pressable
               accessibilityLabel="Sort cars"
@@ -255,11 +361,14 @@ export function SearchResultsScreen() {
               ) : null}
             </Pressable>
           </View>
+          </>
         ) : null}
 
-        {!hasParams ? (
+        {!hasSearchCriteria ? (
           <StateMessage
+            actionLabel="Select location"
             body="Choose a pickup location and rental window from Home."
+            onAction={() => router.push('/(customer)/location')}
             title="Missing search details"
           />
         ) : vehiclesQuery.isLoading ? (
@@ -300,17 +409,18 @@ export function SearchResultsScreen() {
             }
             renderItem={({ item }) => (
               <VehicleResultCard
-                isFavorite={favoriteIds.has(item.id)}
+                isFavorite={isFavourite(item.id)}
+                isFavoritePending={pendingFavoriteIds.has(item.id)}
                 onFavoritePress={() => toggleFavorite(item.id)}
                 onPress={() =>
                   router.push({
                     pathname: '/(customer)/vehicles/[id]',
                     params: {
                       id: item.id,
-                      locationId: locationId ?? '',
+                      locationId: activeLocationId ?? '',
                       origin: 'search-results',
-                      pickupDateTime: pickupDateTime ?? '',
-                      returnDateTime: returnDateTime ?? '',
+                      pickupDateTime: activePickupDateTime ?? '',
+                      returnDateTime: activeReturnDateTime ?? '',
                     },
                   })
                 }
@@ -341,6 +451,13 @@ export function SearchResultsScreen() {
           setSort(nextSort);
           setSortSheetOpen(false);
         }}
+      />
+      <DateTimePickerSheet
+        field={activeDateTimeField}
+        location={selectedLocation}
+        onApplyRentalWindow={setRentalWindow}
+        onClose={() => setActiveDateTimeField(null)}
+        rentalWindow={rentalWindow}
       />
       <BottomNavigation />
     </SafeAreaView>
@@ -605,11 +722,13 @@ function SortSheet({
 
 function VehicleResultCard({
   isFavorite,
+  isFavoritePending,
   onFavoritePress,
   onPress,
   vehicle,
 }: {
   isFavorite: boolean;
+  isFavoritePending: boolean;
   onFavoritePress: () => void;
   onPress: () => void;
   vehicle: VehicleSearchResult;
@@ -667,6 +786,10 @@ function VehicleResultCard({
             </Text>
           </View>
 
+          <View style={styles.availabilityPill}>
+            <Text style={styles.availabilityText}>Available for your dates</Text>
+          </View>
+
           <View style={styles.priceRow}>
             <View>
               <Text style={styles.dailyPrice}>
@@ -687,6 +810,7 @@ function VehicleResultCard({
         accessibilityLabel={isFavorite ? 'Remove favorite' : 'Add favorite'}
         accessibilityRole="button"
         onPress={onFavoritePress}
+        disabled={isFavoritePending}
         style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}
       >
         <Heart
@@ -796,6 +920,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 14,
+  },
+  searchDetailsRow: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  searchDetailButton: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+  },
+  searchDetailCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  searchDetailTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  searchDetailMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   actionButton: {
     minHeight: 46,
@@ -1130,6 +1283,18 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 13,
     fontWeight: '700',
+  },
+  availabilityPill: {
+    alignSelf: 'flex-start',
+    borderRadius: radii.pill,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  availabilityText: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '800',
   },
   priceRow: {
     flexWrap: 'wrap',
