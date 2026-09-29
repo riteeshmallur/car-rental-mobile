@@ -528,6 +528,55 @@ export type HostPayoutsResponse = {
   meta: HostEarningsResponse['meta'];
 };
 
+export type HostDashboard = {
+  activeListings: number;
+  pendingListingReviews: number;
+  bookingRequests: number;
+  activeTrips: number;
+  pendingPayoutAmount: string;
+};
+
+export type HostCalendarEvent = {
+  id: string;
+  type: 'booking' | 'block';
+  vehicleId: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  label: string | null;
+};
+
+export type HostPayoutRecord = {
+  id: string;
+  status: string;
+  currency: string;
+  grossAmount: string;
+  platformCommission: string;
+  taxWithheld: string;
+  netAmount: string;
+  createdAt: string;
+  processedAt: string | null;
+};
+
+export type AvailabilityBlock = {
+  id: string;
+  vehicleId: string;
+  startsAt: string;
+  endsAt: string;
+  reason: string | null;
+};
+
+export type PricingRule = {
+  id: string;
+  vehicleId: string;
+  ruleType: 'weekend' | 'seasonal';
+  startsOn: string | null;
+  endsOn: string | null;
+  pricePerDay: string;
+  priority: number;
+  active: boolean;
+};
+
 export type CreateQuotePayload = {
   carId: string;
   pickupAt: string;

@@ -11,6 +11,7 @@ import {
   CreditCard,
   FileText,
   Headphones,
+  LayoutDashboard,
   LogOut,
   Mail,
   Phone,
@@ -117,6 +118,12 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
       ...(mode === 'host'
         ? [
             {
+              label: 'Dashboard',
+              description: 'View listing, booking, and payout activity',
+              icon: <LayoutDashboard color="#111827" size={20} />,
+              onPress: () => router.push('/(host)/dashboard' as never),
+            },
+            {
               label: 'My Cars',
               description: 'Manage your vehicle listings',
               icon: <CarFront color="#111827" size={20} />,
@@ -133,6 +140,12 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
               description: 'Track your host payouts',
               icon: <Banknote color="#111827" size={20} />,
               onPress: () => router.push('/(host)/earnings'),
+            },
+            {
+              label: 'Payouts',
+              description: 'View processed and pending payouts',
+              icon: <Banknote color="#111827" size={20} />,
+              onPress: () => router.push('/(host)/payouts' as never),
             },
           ]
         : []),
@@ -264,7 +277,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                 {mode === 'host' ? <SectionHeading title="Host workspace" /> : null}
                 {mode === 'host' ? (
                   <View style={styles.section}>
-                    {sections.slice(0, 3).map((item) => (
+                    {sections.slice(0, 5).map((item) => (
                       <SectionRow key={item.label} item={item} />
                     ))}
                   </View>
@@ -272,25 +285,25 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
                 <SectionHeading title="Account" />
                 <View style={styles.section}>
-                  {sections.slice(mode === 'host' ? 3 : 0, mode === 'host' ? 5 : 2).map((item) => (
+                  {sections.slice(mode === 'host' ? 5 : 0, mode === 'host' ? 7 : 2).map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
 
                 <SectionHeading title="Preferences" />
                 <View style={styles.section}>
-                  <SectionRow item={sections[mode === 'host' ? 5 : 2]} />
+                  <SectionRow item={sections[mode === 'host' ? 7 : 2]} />
                 </View>
 
                 <SectionHeading title="Support & Security" />
                 <View style={styles.section}>
-                  {sections.slice(mode === 'host' ? 6 : 3, mode === 'host' ? 8 : 5).map((item) => (
+                  {sections.slice(mode === 'host' ? 8 : 3, mode === 'host' ? 10 : 5).map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
 
                 <View style={styles.logoutSection}>
-                  <SectionRow item={sections[mode === 'host' ? 8 : 5]} />
+                  <SectionRow item={sections[mode === 'host' ? 10 : 5]} />
                 </View>
               </>
             ) : null}

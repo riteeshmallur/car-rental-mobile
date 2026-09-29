@@ -1,9 +1,11 @@
 import { apiRequest } from '@/services/api/client';
 import {
   type HostBooking,
+  type HostCalendarEvent,
+  type HostDashboard,
   type HostEarningsParams,
   type HostEarningsResponse,
-  type HostPayoutsResponse,
+  type HostPayoutRecord,
   type HostVehicleListing,
 } from '@/types/car';
 
@@ -79,6 +81,16 @@ export const hostsApi = {
       url: '/hosts/me/bookings',
     });
   },
+  dashboard() {
+    return apiRequest<HostDashboard>({ method: 'GET', url: '/hosts/me/dashboard' });
+  },
+  calendar(params: { startsAt?: string; endsAt?: string } = {}) {
+    return apiRequest<HostCalendarEvent[]>({
+      method: 'GET',
+      url: '/hosts/me/calendar',
+      params,
+    });
+  },
   earnings(params: HostEarningsParams = {}) {
     return apiRequest<HostEarningsResponse>({
       method: 'GET',
@@ -86,11 +98,10 @@ export const hostsApi = {
       params,
     });
   },
-  payouts(params: HostEarningsParams = {}) {
-    return apiRequest<HostPayoutsResponse>({
+  payouts() {
+    return apiRequest<HostPayoutRecord[]>({
       method: 'GET',
       url: '/hosts/me/payouts',
-      params,
     });
   },
 };

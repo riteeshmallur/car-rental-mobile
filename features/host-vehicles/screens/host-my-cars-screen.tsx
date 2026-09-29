@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   ArrowLeft,
-  CalendarClock,
   CarFront,
+  Check,
   Eye,
   Pencil,
   Plus,
@@ -69,16 +69,28 @@ export function HostMyCarsScreen() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: 'published' | 'paused';
-    }) => vehiclesApi.updateDraft(id, { status }),
+    mutationFn: ({ id, operation }: { id: string; operation: 'pause' | 'resume' }) =>
+      operation === 'pause' ? vehiclesApi.pause(id) : vehiclesApi.resume(id),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['host', 'dashboard'] });
+      Alert.alert(
+        variables.operation === 'pause' ? 'Listing paused' : 'Listing resumed',
+        variables.operation === 'pause'
+          ? 'Customers can no longer book this vehicle.'
+          : 'Customers can book this vehicle again.',
+      );
+    },
+    onError: (error) => Alert.alert('Listing update failed', normalizeApiError(error).message),
+  });
+  const submitMutation = useMutation({
+    mutationFn: vehiclesApi.submit,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['host', 'dashboard'] });
+      Alert.alert('Listing submitted', 'Your listing is now awaiting review.');
     },
+    onError: (error) => Alert.alert('Listing update failed', normalizeApiError(error).message),
   });
 
   const carsByTab = useMemo(() => {
@@ -116,14 +128,14 @@ export function HostMyCarsScreen() {
         {
           text: 'Pause',
           style: 'destructive',
-          onPress: () => statusMutation.mutate({ id: vehicle.id, status: 'paused' }),
+          onPress: () => statusMutation.mutate({ id: vehicle.id, operation: 'pause' }),
         },
       ],
     );
   };
 
   const resumeVehicle = (vehicle: HostVehicleListing) => {
-    statusMutation.mutate({ id: vehicle.id, status: 'published' });
+    statusMutation.mutate({ id: vehicle.id, operation: 'resume' });
   };
 
   return (
@@ -210,6 +222,7 @@ export function HostMyCarsScreen() {
             renderItem={({ item }) => (
               <HostCarCard
                 isUpdating={statusMutation.isPending && statusMutation.variables?.id === item.id}
+                isSubmitting={submitMutation.isPending && submitMutation.variables === item.id}
                 onEdit={() =>
                   router.push({
                     pathname: '/(host)/vehicles/new',
@@ -217,13 +230,11 @@ export function HostMyCarsScreen() {
                   })
                 }
                 onManageAvailability={() =>
-                  Alert.alert(
-                    'Manage availability',
-                    'Detailed availability blocks will be connected when the backend exposes a host availability API.',
-                  )
+                  router.push(`/(host)/vehicles/${item.id}/availability` as never)
                 }
                 onPause={() => pauseVehicle(item)}
                 onResume={() => resumeVehicle(item)}
+                onSubmit={() => submitMutation.mutate(item.id)}
                 onView={() =>
                   router.push({
                     pathname: '/(customer)/vehicles/[id]',
@@ -253,24 +264,29 @@ export function HostMyCarsScreen() {
 
 function HostCarCard({
   isUpdating,
+  isSubmitting,
   onEdit,
   onManageAvailability,
   onPause,
   onResume,
+  onSubmit,
   onView,
   vehicle,
 }: {
   isUpdating: boolean;
+  isSubmitting: boolean;
   onEdit: () => void;
   onManageAvailability: () => void;
   onPause: () => void;
   onResume: () => void;
+  onSubmit: () => void;
   onView: () => void;
   vehicle: HostVehicleListing;
 }) {
   const imageUrl = getCarImageUrl(vehicle.imageUrls[0]);
   const canPause = vehicle.status === 'PUBLISHED';
   const canResume = vehicle.status === 'PAUSED';
+  const canSubmit = vehicle.status === 'DRAFT' || vehicle.status === 'CHANGES_REQUIRED';
   const availability = getAvailabilityLabel(vehicle);
 
   return (
@@ -296,19 +312,15 @@ function HostCarCard({
           <Text style={styles.price}>
             {vehicle.pricePerDay ? `${formatMoney(vehicle.pricePerDay)}/day` : 'Price not set'}
           </Text>
-          <View style={styles.metaRow}>
-            <CalendarClock color="#6B7280" size={15} />
-            <Text numberOfLines={1} style={styles.metaText}>
-              Upcoming booking: None
-            </Text>
-          </View>
           <Text style={styles.availability}>{availability}</Text>
         </View>
       </View>
 
       <View style={styles.actionGrid}>
         <ActionButton icon={<Pencil color="#111827" size={16} />} label="Edit" onPress={onEdit} />
-        <ActionButton icon={<Eye color="#111827" size={16} />} label="View" onPress={onView} />
+        {vehicle.status === 'PUBLISHED' ? (
+          <ActionButton icon={<Eye color="#111827" size={16} />} label="View" onPress={onView} />
+        ) : null}
         {canResume ? (
           <ActionButton
             disabled={isUpdating}
@@ -329,6 +341,14 @@ function HostCarCard({
           label="Availability"
           onPress={onManageAvailability}
         />
+        {canSubmit ? (
+          <ActionButton
+            disabled={isSubmitting}
+            icon={<Check color="#047857" size={16} />}
+            label={isSubmitting ? 'Submitting' : 'Submit listing'}
+            onPress={onSubmit}
+          />
+        ) : null}
       </View>
     </View>
   );

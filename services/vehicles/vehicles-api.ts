@@ -1,11 +1,13 @@
 import { apiRequest } from '@/services/api/client';
 import { Platform } from 'react-native';
 import {
+  type AvailabilityBlock,
   type VehicleAvailability,
   type VehicleDetail,
   type VehicleDetailsParams,
   type VehicleReviewsResponse,
   type HostVehicleListing,
+  type PricingRule,
   type UpsertHostVehiclePayload,
 } from '@/types/car';
 
@@ -73,5 +75,40 @@ export const vehiclesApi = {
       method: 'POST',
       url: `/vehicles/${vehicleId}/submit`,
     });
+  },
+  createAvailabilityBlock(
+    vehicleId: string,
+    payload: { startsAt: string; endsAt: string; reason?: string },
+  ) {
+    return apiRequest<AvailabilityBlock>({
+      method: 'POST',
+      url: `/vehicles/${vehicleId}/blocks`,
+      data: payload,
+    });
+  },
+  removeAvailabilityBlock(vehicleId: string, blockId: string) {
+    return apiRequest<null>({ method: 'DELETE', url: `/vehicles/${vehicleId}/blocks/${blockId}` });
+  },
+  createPricingRule(
+    vehicleId: string,
+    payload: {
+      ruleType: 'weekend' | 'seasonal';
+      startsOn?: string;
+      endsOn?: string;
+      pricePerDay: number;
+      priority?: number;
+    },
+  ) {
+    return apiRequest<PricingRule>({
+      method: 'POST',
+      url: `/vehicles/${vehicleId}/pricing-rules`,
+      data: payload,
+    });
+  },
+  pause(vehicleId: string) {
+    return apiRequest<HostVehicleListing>({ method: 'POST', url: `/vehicles/${vehicleId}/pause` });
+  },
+  resume(vehicleId: string) {
+    return apiRequest<HostVehicleListing>({ method: 'POST', url: `/vehicles/${vehicleId}/resume` });
   },
 };

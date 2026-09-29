@@ -92,4 +92,10 @@ export const bookingsApi = {
       data: payload,
     });
   },
+  approve(bookingId: string, payload: { note?: string } = {}) {
+    return apiRequest<Booking>({ method: 'POST', url: `/bookings/${bookingId}/approve`, data: payload });
+  },
+  reject(bookingId: string, payload: { reason?: string; note?: string } = {}) {
+    return apiRequest<Booking>({ method: 'POST', url: `/bookings/${bookingId}/reject`, data: payload });
+  },
 };
