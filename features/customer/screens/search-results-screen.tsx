@@ -219,7 +219,7 @@ export function SearchResultsScreen() {
 
   const favouritesQuery = useQuery({
     queryKey: ['renter', 'favourites'],
-    queryFn: rentersApi.getFavourites,
+    queryFn: () => rentersApi.getFavourites(1, 50),
   });
   const savedFavouriteIds = useMemo(
     () => new Set(favouritesQuery.data?.items.map((item) => item.vehicle.id) ?? []),

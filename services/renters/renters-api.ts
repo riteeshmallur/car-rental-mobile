@@ -1,13 +1,21 @@
 import { apiRequest } from '@/services/api/client';
 
-type RenterFavourite = {
+export type RenterFavourite = {
   id: string;
+  createdAt: string;
   vehicle: {
     id: string;
+    make: string;
+    model: string;
+    imageUrl: string | null;
+    pricePerDay: string;
+    pickupLocation: string | null;
+    averageRating: number;
+    reviewCount: number;
   };
 };
 
-type RenterFavouritesResponse = {
+export type RenterFavouritesResponse = {
   items: RenterFavourite[];
   meta: {
     page: number;
@@ -19,11 +27,11 @@ type RenterFavouritesResponse = {
 };
 
 export const rentersApi = {
-  getFavourites() {
+  getFavourites(page = 1, limit = 20) {
     return apiRequest<RenterFavouritesResponse>({
       method: 'GET',
       url: '/renters/me/favourites',
-      params: { page: 1, limit: 100 },
+      params: { page, limit },
     });
   },
   addFavourite(vehicleId: string) {

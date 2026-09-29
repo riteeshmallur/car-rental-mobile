@@ -1,5 +1,5 @@
-import { CustomerPlaceholderScreen } from '@/features/customer/screens/customer-placeholder-screen';
+import { FavoritesScreen } from '@/features/customer/screens/favorites-screen';
 
 export default function CustomerFavoritesRoute() {
-  return <CustomerPlaceholderScreen title="Favorites" />;
+  return <FavoritesScreen />;
 }

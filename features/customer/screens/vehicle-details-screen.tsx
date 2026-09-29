@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { type ReactNode } from 'react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -38,6 +38,7 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
+import { rentersApi } from '@/services/renters/renters-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { type VehicleDetail } from '@/types/car';
@@ -70,7 +71,8 @@ export function VehicleDetailsScreen() {
     getParam(params.pickupDateTime) ?? rentalWindow.pickupAt.toISOString();
   const returnDateTime =
     getParam(params.returnDateTime) ?? rentalWindow.returnAt.toISOString();
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteOverride, setFavoriteOverride] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
   const backFallback = useMemo<Href>(() => {
     if (
       origin === 'search-results' &&
@@ -86,6 +88,10 @@ export function VehicleDetailsScreen() {
 
     if (origin === 'host-cars') {
       return '/(host)/cars';
+    }
+
+    if (origin === 'favorites') {
+      return '/(customer)/favorites';
     }
 
     return '/(customer)/home';
@@ -107,6 +113,43 @@ export function VehicleDetailsScreen() {
     queryKey: ['vehicles', 'reviews', vehicleId],
     queryFn: () => vehiclesApi.findReviews(vehicleId ?? '', 1, 3),
   });
+
+  const favouritesQuery = useQuery({
+    queryKey: ['renter', 'favourites'],
+    queryFn: () => rentersApi.getFavourites(1, 50),
+  });
+  const isFavorite =
+    favoriteOverride ??
+    favouritesQuery.data?.items.some((item) => item.vehicle.id === vehicleId) ??
+    false;
+  const favouriteMutation = useMutation({
+    mutationFn: ({ isFavourite, targetVehicleId }: { isFavourite: boolean; targetVehicleId: string }) =>
+      isFavourite
+        ? rentersApi.removeFavourite(targetVehicleId)
+        : rentersApi.addFavourite(targetVehicleId),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['renter', 'favourites'] });
+    },
+  });
+
+  useEffect(() => {
+    setFavoriteOverride(null);
+  }, [vehicleId]);
+
+  const toggleFavorite = () => {
+    if (!vehicleId || favouriteMutation.isPending) {
+      return;
+    }
+
+    const previousValue = isFavorite;
+    setFavoriteOverride(!previousValue);
+    favouriteMutation.mutate(
+      { isFavourite: previousValue, targetVehicleId: vehicleId },
+      {
+        onError: () => setFavoriteOverride(previousValue),
+      },
+    );
+  };
 
   const shareVehicle = async () => {
     if (!detailsQuery.data) {
@@ -169,7 +212,8 @@ export function VehicleDetailsScreen() {
             <VehicleDetailsHeader
               isFavorite={isFavorite}
               onBack={goBack}
-              onFavoritePress={() => setIsFavorite((value) => !value)}
+              isFavoritePending={favouriteMutation.isPending}
+              onFavoritePress={toggleFavorite}
               onSharePress={shareVehicle}
             />
             <ScrollView
@@ -261,11 +305,13 @@ export function VehicleDetailsScreen() {
 
 function VehicleDetailsHeader({
   isFavorite,
+  isFavoritePending,
   onBack,
   onFavoritePress,
   onSharePress,
 }: {
   isFavorite: boolean;
+  isFavoritePending: boolean;
   onBack: () => void;
   onFavoritePress: () => void;
   onSharePress: () => void;
@@ -288,14 +334,19 @@ function VehicleDetailsHeader({
         <Pressable
           accessibilityLabel={isFavorite ? 'Remove favorite' : 'Add favorite'}
           accessibilityRole="button"
+          disabled={isFavoritePending}
           onPress={onFavoritePress}
           style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
         >
-          <Heart
-            color={isFavorite ? colors.error : colors.ink}
-            fill={isFavorite ? colors.error : 'transparent'}
-            size={22}
-          />
+          {isFavoritePending ? (
+            <ActivityIndicator color={colors.brand} size="small" />
+          ) : (
+            <Heart
+              color={isFavorite ? colors.error : colors.ink}
+              fill={isFavorite ? colors.error : 'transparent'}
+              size={22}
+            />
+          )}
         </Pressable>
         <Pressable
           accessibilityLabel="Share vehicle"
