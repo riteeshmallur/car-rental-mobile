@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CalendarClock, CarFront, Check, RefreshCw, User, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { formatMoney, getCarImageUrl } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { hostsApi } from '@/services/hosts/hosts-api';
@@ -52,9 +53,9 @@ export function HostBookingsScreen() {
 }
 
 function BookingCard({ booking, disabled, onApprove, onReject, onView }: { booking: HostBooking; disabled: boolean; onApprove: () => void; onReject: () => void; onView: () => void }) {
-  const imageUrl = getCarImageUrl(booking.vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(booking.vehicle.imageUrl, 'thumbnail');
   const canRespond = booking.hostPhase === 'requests' && booking.manualApprovalRequired;
-  return <View style={styles.card}><Pressable accessibilityRole="button" onPress={onView} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.vehicleImage} /> : <View style={styles.imageFallback}><CarFront color="#0F172A" size={28} /></View>}<View style={styles.cardCopy}><View style={styles.titleRow}><Text numberOfLines={1} style={styles.vehicleName}>{booking.vehicle.make} {booking.vehicle.model}</Text><Text style={[styles.status, statusStyle(booking.hostPhase)]}>{label(booking.hostPhase)}</Text></View><View style={styles.customerRow}><User color="#64748B" size={15} /><Text numberOfLines={1} style={styles.customer}>{booking.customer.name}</Text></View><Text style={styles.reference}>Ref {booking.reference.slice(0, 8).toUpperCase()}</Text></View></Pressable><View style={styles.window}><DateLine label="Pickup" value={formatDateTime(booking.pickupAt)} /><DateLine label="Return" value={formatDateTime(booking.returnAt)} /></View><View style={styles.amountRow}><Text style={styles.muted}>Booking total</Text><Text style={styles.amount}>{formatMoney(booking.amount)}</Text></View><View style={styles.actions}>{canRespond ? <><ActionButton disabled={disabled} icon={<Check color="#15803D" size={17} />} label="Accept" onPress={onApprove} variant="success" /><ActionButton disabled={disabled} icon={<X color="#B91C1C" size={17} />} label="Decline" onPress={onReject} variant="danger" /></> : null}<ActionButton label="View details" onPress={onView} /></View></View>;
+  return <View style={styles.card}><Pressable accessibilityRole="button" onPress={onView} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>{imageUrl ? <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} /> : <View style={styles.imageFallback}><CarFront color="#0F172A" size={28} /></View>}<View style={styles.cardCopy}><View style={styles.titleRow}><Text numberOfLines={1} style={styles.vehicleName}>{booking.vehicle.make} {booking.vehicle.model}</Text><Text style={[styles.status, statusStyle(booking.hostPhase)]}>{label(booking.hostPhase)}</Text></View><View style={styles.customerRow}><User color="#64748B" size={15} /><Text numberOfLines={1} style={styles.customer}>{booking.customer.name}</Text></View><Text style={styles.reference}>Ref {booking.reference.slice(0, 8).toUpperCase()}</Text></View></Pressable><View style={styles.window}><DateLine label="Pickup" value={formatDateTime(booking.pickupAt)} /><DateLine label="Return" value={formatDateTime(booking.returnAt)} /></View><View style={styles.amountRow}><Text style={styles.muted}>Booking total</Text><Text style={styles.amount}>{formatMoney(booking.amount)}</Text></View><View style={styles.actions}>{canRespond ? <><ActionButton disabled={disabled} icon={<Check color="#15803D" size={17} />} label="Accept" onPress={onApprove} variant="success" /><ActionButton disabled={disabled} icon={<X color="#B91C1C" size={17} />} label="Decline" onPress={onReject} variant="danger" /></> : null}<ActionButton label="View details" onPress={onView} /></View></View>;
 }
 
 function BookingDetailSheet({ booking, isUpdating, onApprove, onClose, onReject }: { booking: HostBooking | null; isUpdating: boolean; onApprove: () => void; onClose: () => void; onReject: () => void }) {

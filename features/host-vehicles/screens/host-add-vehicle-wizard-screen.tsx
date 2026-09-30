@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   CalendarDays,
@@ -214,6 +215,9 @@ const popularFeatures = [
 
 const maximumPhotoCount = 10;
 const maximumPhotoSizeBytes = 10 * 1024 * 1024;
+const minimumPhotoWidth = 480;
+const minimumPhotoHeight = 360;
+const maximumPhotoDimension = 2560;
 
 export function HostAddVehicleWizardScreen() {
   const params = useLocalSearchParams<{ vehicleId?: string | string[] }>();
@@ -225,6 +229,7 @@ export function HostAddVehicleWizardScreen() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [submissionComplete, setSubmissionComplete] = useState(false);
   const [resumeChecked, setResumeChecked] = useState(false);
@@ -323,16 +328,21 @@ export function HostAddVehicleWizardScreen() {
 
       let listing: HostVehicleListing | null = null;
 
-      for (const imageUri of imageUris) {
-        listing = await vehiclesApi.uploadImage(draftId, imageUri);
+      setUploadProgress(0);
+      for (const [index, imageUri] of imageUris.entries()) {
+        listing = await vehiclesApi.uploadImage(draftId, imageUri, (progress) => {
+          setUploadProgress((index + progress) / imageUris.length);
+        });
       }
 
       if (!listing) {
         throw new Error('No photos were selected for upload.');
       }
 
+      setUploadProgress(1);
       return listing;
     },
+    onSettled: () => setUploadProgress(null),
   });
 
   const step = steps[stepIndex];
@@ -430,7 +440,7 @@ export function HostAddVehicleWizardScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: true,
         mediaTypes: ['images'],
-        quality: 0.8,
+        quality: 1,
         selectionLimit: remainingPhotoCount,
       });
 
@@ -439,22 +449,47 @@ export function HostAddVehicleWizardScreen() {
       }
 
       const invalidType = result.assets.some(
-        (asset) => asset.mimeType && !['image/jpeg', 'image/png'].includes(asset.mimeType),
+        (asset) => asset.mimeType && !['image/jpeg', 'image/png', 'image/webp'].includes(asset.mimeType),
       );
       const invalidSize = result.assets.some(
         (asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes,
       );
+      const invalidDimensions = result.assets.some(
+        (asset) =>
+          !asset.width ||
+          !asset.height ||
+          asset.width < minimumPhotoWidth ||
+          asset.height < minimumPhotoHeight,
+      );
 
-      if (invalidType || invalidSize) {
+      if (invalidType || invalidSize || invalidDimensions) {
         setPhotoError(
           invalidType
-            ? 'Choose JPG or PNG images only.'
-            : 'Each photo must be 10 MB or smaller.',
+            ? 'Choose JPG, PNG, or WebP images only.'
+            : invalidDimensions
+              ? `Each photo must be at least ${minimumPhotoWidth} x ${minimumPhotoHeight} pixels.`
+              : 'Each photo must be 10 MB or smaller.',
         );
         return;
       }
 
-      const nextImages = result.assets.map((asset) => asset.uri);
+      const nextImages = await Promise.all(
+        result.assets.map(async (asset) => {
+          const scale = Math.min(
+            1,
+            maximumPhotoDimension / Math.max(asset.width, asset.height),
+          );
+          const width = Math.round(asset.width * scale);
+          const height = Math.round(asset.height * scale);
+          const compressed = await ImageManipulator.manipulateAsync(
+            asset.uri,
+            [{ resize: { width, height } }],
+            { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG },
+          );
+
+          return compressed.uri;
+        }),
+      );
       setPhotoError(null);
       setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, maximumPhotoCount), {
         shouldDirty: true,
@@ -672,6 +707,7 @@ export function HostAddVehicleWizardScreen() {
                   error={photoError ?? errors.imageUrls?.message}
                   imageUrls={imageUrls}
                   isUploading={uploadPhotosMutation.isPending}
+                  uploadProgress={uploadProgress}
                   onPickPhotos={pickPhotos}
                   onRemovePhoto={removePhoto}
                   onSetCoverPhoto={setCoverPhoto}
@@ -1137,6 +1173,7 @@ function PhotosStep({
   error,
   imageUrls,
   isUploading,
+  uploadProgress,
   onPickPhotos,
   onRemovePhoto,
   onSetCoverPhoto,
@@ -1144,6 +1181,7 @@ function PhotosStep({
   error?: string;
   imageUrls: string[];
   isUploading: boolean;
+  uploadProgress: number | null;
   onPickPhotos: () => void;
   onRemovePhoto: (uri: string) => void;
   onSetCoverPhoto: (uri: string) => void;
@@ -1163,14 +1201,16 @@ function PhotosStep({
           <Camera color="#1769F5" size={30} />
           <Text style={styles.photoPickerText}>Choose photos</Text>
           <Text style={styles.photoPickerSubtext}>Add up to 10 photos</Text>
-          <Text style={styles.photoPickerSubtext}>JPG, PNG • Max 10 MB each</Text>
+          <Text style={styles.photoPickerSubtext}>JPG, PNG, or WebP • Max 10 MB each</Text>
         </Pressable>
       ) : null}
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
       {isUploading ? (
         <View style={styles.photoUploadStatus}>
           <ActivityIndicator color="#1769F5" size="small" />
-          <Text style={styles.photoUploadStatusText}>Uploading photos...</Text>
+          <Text style={styles.photoUploadStatusText}>
+            Uploading photos{uploadProgress === null ? '...' : ` ${Math.round(uploadProgress * 100)}%`}
+          </Text>
         </View>
       ) : null}
       {imageUrls.length ? <Text style={styles.photoCount}>Photos ({imageUrls.length}/10)</Text> : null}

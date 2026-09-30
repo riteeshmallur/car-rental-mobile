@@ -1,10 +1,11 @@
 import { Check, Heart } from 'lucide-react-native';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   formatDailyPrice,
-  getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { type Car } from '@/types/car';
 import { colors, radii, shadows } from '@/utils/theme';
 
@@ -15,7 +16,7 @@ type CarCardProps = {
 };
 
 export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
-  const imageUrl = getCarImageUrl(car.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(car.imageUrl, 'thumbnail');
   const isLarge = size === 'large';
 
   return (
@@ -30,7 +31,7 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
     >
       <View style={styles.imageFrame}>
         {imageUrl ? (
-          <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} />
+          <CachedVehicleImage contentFit="contain" style={styles.image} uri={imageUrl} />
         ) : (
           <View style={styles.imageFallback}>
             <Text style={styles.imageFallbackText}>{car.make.slice(0, 1)}</Text>

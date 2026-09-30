@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
-import { formatMoney, getCarImageUrl } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterBooking, type RenterTripPhase } from '@/types/car';
@@ -179,7 +179,7 @@ export function TripsScreen() {
 
 function BookingCard({ booking }: { booking: RenterBooking }) {
   const vehicleName = `${booking.vehicle.make} ${booking.vehicle.model}`;
-  const imageUrl = getCarImageUrl(booking.vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(booking.vehicle.imageUrl, 'thumbnail');
 
   return (
     <Pressable
@@ -194,7 +194,7 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
     >
       <View style={styles.cardTop}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.vehicleImage} />
+          <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
         ) : (
           <View style={styles.imageFallback}>
             <CarFront color="#0F172A" size={30} />

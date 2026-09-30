@@ -36,7 +36,9 @@ import {
   formatDailyPrice,
   formatMoney,
   getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import {
   readSearchRouteState,
   toSearchRouteParams,
@@ -418,7 +420,9 @@ function VehicleHero({
         }}
       >
         {images.map((image) => {
-          const imageUrl = getCarImageUrl(image.url);
+          const imageUrl = image.detailUrl
+            ? getVehicleImageVariantUrl(image.detailUrl, 'detail')
+            : getVehicleImageVariantUrl(image.url, 'detail');
 
           return (
             <View
@@ -426,7 +430,7 @@ function VehicleHero({
               style={[styles.galleryItem, { width: galleryWidth }]}
             >
               {imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={styles.heroImage} />
+                <CachedVehicleImage style={styles.heroImage} uri={imageUrl} />
               ) : (
                 <View style={styles.heroFallback}>
                   <CarFront color="#0F172A" size={56} />

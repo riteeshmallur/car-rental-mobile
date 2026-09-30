@@ -21,7 +21,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -35,6 +34,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import {
@@ -44,7 +44,7 @@ import {
 import {
   formatDailyPrice,
   formatMoney,
-  getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
 import { formatDate, formatTime } from '@/features/customer/utils/rental-window';
 import {
@@ -798,7 +798,7 @@ function VehicleResultCard({
   onPress: () => void;
   vehicle: VehicleSearchResult;
 }) {
-  const imageUrl = getCarImageUrl(vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(vehicle.imageUrl, 'thumbnail');
   const locationLabel = [vehicle.location.name, vehicle.location.city]
     .filter(Boolean)
     .join(' · ');
@@ -812,7 +812,7 @@ function VehicleResultCard({
       >
         <View style={styles.vehicleImageFrame}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.vehicleImage} />
+            <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
           ) : (
             <View style={styles.vehicleImageFallback}>
               <CarFront color="#0F172A" size={42} />

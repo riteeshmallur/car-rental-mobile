@@ -4,7 +4,6 @@ import { ArrowLeft, CalendarClock, MapPin } from 'lucide-react-native';
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,8 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   formatMoney,
-  getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { quotesApi } from '@/services/quotes/quotes-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import {
@@ -128,9 +128,9 @@ export function BookingSummaryScreen() {
         <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
           <View style={styles.vehicleRow}>
             {currentQuote.vehicle.imageUrl ? (
-              <Image
-                source={{ uri: getCarImageUrl(currentQuote.vehicle.imageUrl) ?? '' }}
+              <CachedVehicleImage
                 style={styles.vehicleImage}
+                uri={getVehicleImageVariantUrl(currentQuote.vehicle.imageUrl, 'thumbnail') ?? ''}
               />
             ) : (
               <View style={styles.vehicleImageFallback}>

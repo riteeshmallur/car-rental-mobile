@@ -16,7 +16,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -27,8 +26,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   formatMoney,
-  getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -287,7 +287,7 @@ function HostCarCard({
   onView: () => void;
   vehicle: HostVehicleListing;
 }) {
-  const imageUrl = getCarImageUrl(vehicle.imageUrls[0]);
+  const imageUrl = getVehicleImageVariantUrl(vehicle.imageUrls[0], 'thumbnail');
   const canPause = vehicle.status === 'PUBLISHED';
   const canResume = vehicle.status === 'PAUSED';
   const canSubmit = vehicle.status === 'DRAFT' || vehicle.status === 'CHANGES_REQUIRED';
@@ -297,7 +297,7 @@ function HostCarCard({
     <View style={styles.card}>
       <View style={styles.cardTop}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.vehicleImage} />
+          <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
         ) : (
           <View style={styles.imageFallback}>
             <CarFront color="#0F172A" size={30} />

@@ -99,6 +99,8 @@ export type VehicleSearchResponse = {
 export type VehicleImage = {
   id: string;
   url: string;
+  thumbnailUrl?: string;
+  detailUrl?: string;
   isPrimary: boolean;
 };
 

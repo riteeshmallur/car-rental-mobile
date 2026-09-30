@@ -13,7 +13,6 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -22,9 +21,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import {
   formatMoney,
-  getCarImageUrl,
+  getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -252,14 +252,14 @@ function SummaryTile({
 }
 
 function EarningCard({ entry }: { entry: HostEarningEntry }) {
-  const imageUrl = getCarImageUrl(entry.vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(entry.vehicle.imageUrl, 'thumbnail');
   const vehicleName = `${entry.vehicle.make} ${entry.vehicle.model}`;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.vehicleImage} />
+          <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
         ) : (
           <View style={styles.imageFallback}>
             <CarFront color="#0F172A" size={28} />

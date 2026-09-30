@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -14,7 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getCarImageUrl } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   rentersApi,
@@ -173,7 +173,7 @@ function FavoriteCard({
   onOpen: () => void;
   onRemove: () => void;
 }) {
-  const imageUrl = getCarImageUrl(favourite.vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(favourite.vehicle.imageUrl, 'thumbnail');
 
   return (
     <View style={styles.card}>
@@ -184,7 +184,7 @@ function FavoriteCard({
       >
         <View style={styles.imageFrame}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.image} />
+            <CachedVehicleImage style={styles.image} uri={imageUrl} />
           ) : (
             <CarFront color={colors.ink} size={36} />
           )}

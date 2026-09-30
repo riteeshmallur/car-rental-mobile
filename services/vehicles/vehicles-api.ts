@@ -47,17 +47,19 @@ export const vehiclesApi = {
       data: payload,
     });
   },
-  async uploadImage(vehicleId: string, imageUri: string) {
-    const extension = imageUri.split('.').pop()?.toLowerCase();
-    const normalizedExtension = extension === 'png' ? 'png' : 'jpg';
-    const filename = `vehicle-${Date.now()}.${normalizedExtension}`;
+  async uploadImage(
+    vehicleId: string,
+    imageUri: string,
+    onProgress?: (progress: number) => void,
+  ) {
+    const filename = `vehicle-${Date.now()}.jpg`;
     const formData = new FormData();
     const image =
       Platform.OS === 'web'
         ? await fetch(imageUri).then((response) => response.blob())
         : ({
             name: filename,
-            type: normalizedExtension === 'png' ? 'image/png' : 'image/jpeg',
+            type: 'image/jpeg',
             uri: imageUri,
           } as unknown as Blob);
 
@@ -67,7 +69,15 @@ export const vehiclesApi = {
       method: 'POST',
       url: `/vehicles/${vehicleId}/images`,
       data: formData,
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Idempotency-Key': `vehicle-image-${vehicleId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
+      onUploadProgress: (event) => {
+        if (event.total) {
+          onProgress?.(Math.min(1, event.loaded / event.total));
+        }
+      },
     });
   },
   submit(vehicleId: string) {

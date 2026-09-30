@@ -21,7 +21,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -35,7 +34,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { formatMoney, getCarImageUrl } from '@/features/customer/utils/car-formatters';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterTrip } from '@/types/car';
@@ -295,10 +295,10 @@ export function TripDetailsScreen() {
 }
 
 function VehicleSummary({ trip }: { trip: RenterTrip }) {
-  const imageUrl = getCarImageUrl(trip.vehicle.imageUrl);
+  const imageUrl = getVehicleImageVariantUrl(trip.vehicle.imageUrl, 'thumbnail');
   return (
     <View style={styles.vehicleCard}>
-      {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.vehicleImage} /> : <View style={styles.imageFallback}><CarFront color="#0F172A" size={34} /></View>}
+      {imageUrl ? <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} /> : <View style={styles.imageFallback}><CarFront color="#0F172A" size={34} /></View>}
       <View style={styles.vehicleCopy}>
         <Text style={styles.vehicleName}>{trip.vehicle.make} {trip.vehicle.model}</Text>
         <Text selectable style={styles.reference}>Ref {trip.reference}</Text>
