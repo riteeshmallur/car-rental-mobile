@@ -28,7 +28,7 @@ export type SafeUser = {
 
 export type AuthTokens = {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
 };
 
 export type AuthResponse = AuthTokens & {

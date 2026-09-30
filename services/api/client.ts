@@ -3,6 +3,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
+import { Platform } from 'react-native';
 
 import {
   clearStoredAuthTokens,
@@ -19,6 +20,7 @@ import { env } from '../config/env';
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
   timeout: 15000,
+  withCredentials: Platform.OS === 'web',
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -36,6 +38,25 @@ type AuthSessionHandlers = {
 
 let authSessionHandlers: AuthSessionHandlers | null = null;
 let refreshRequest: Promise<AuthResponse> | null = null;
+
+function getWebCsrfToken() {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') {
+    return null;
+  }
+
+  const cookieName = process.env.EXPO_PUBLIC_AUTH_CSRF_COOKIE_NAME ?? 'hopin_csrf';
+  const cookie = document.cookie
+    .split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${cookieName}=`));
+
+  return cookie ? decodeURIComponent(cookie.slice(cookieName.length + 1)) : null;
+}
+
+function csrfHeaders() {
+  const csrfToken = getWebCsrfToken();
+  return csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+}
 
 export function registerApiAuthSessionHandlers(handlers: AuthSessionHandlers) {
   authSessionHandlers = handlers;
@@ -59,20 +80,22 @@ function isSessionEndpoint(url?: string) {
 async function rotateSession() {
   const tokens = await getStoredAuthTokens();
 
-  if (!tokens?.refreshToken) {
+  if (Platform.OS !== 'web' && !tokens?.refreshToken) {
     throw new Error('Your session has expired. Please log in again.');
   }
 
   try {
     const response = await axios.post<ApiResponse<AuthResponse>>(
       `${env.apiUrl}/auth/refresh`,
-      { refreshToken: tokens.refreshToken },
+      tokens?.refreshToken ? { refreshToken: tokens.refreshToken } : {},
       {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          ...csrfHeaders(),
         },
         timeout: 15000,
+        withCredentials: Platform.OS === 'web',
       },
     );
     const session = response.data.data;
@@ -107,6 +130,13 @@ apiClient.interceptors.request.use(async (config) => {
 
   if (tokens?.accessToken) {
     config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+  }
+
+  if (isSessionEndpoint(config.url)) {
+    const csrfToken = getWebCsrfToken();
+    if (csrfToken) {
+      config.headers.set('X-CSRF-Token', csrfToken);
+    }
   }
 
   return config;

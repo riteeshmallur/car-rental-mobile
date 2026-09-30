@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 
 import { authApi } from '@/features/auth/services/auth-api';
 import {
@@ -39,7 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const tokens = await getStoredAuthTokens();
 
-      if (!tokens) {
+      if (!tokens && Platform.OS !== 'web') {
         set({
           status: 'unauthenticated',
           user: null,
@@ -51,6 +52,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const user = await authApi.me();
       const activeTokens = (await getStoredAuthTokens()) ?? tokens;
+
+      if (!activeTokens) {
+        throw new Error('Your session has expired. Please log in again.');
+      }
       useErrorStore.getState().clearError();
       set({
         status: 'authenticated',
@@ -129,7 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const refreshToken = get().tokens?.refreshToken;
 
     try {
-      if (refreshToken) {
+      if (Platform.OS === 'web' || refreshToken) {
         try {
           await authApi.logout(refreshToken);
         } catch {

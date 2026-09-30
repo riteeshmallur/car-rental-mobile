@@ -6,83 +6,63 @@ import { type AuthTokens } from '@/types/auth';
 const accessTokenKey = 'hopin.accessToken';
 const refreshTokenKey = 'hopin.refreshToken';
 
-const webStorage = {
-  getItem(key: string) {
-    try {
-      if (!globalThis.localStorage) {
-        return null;
-      }
+// Browser access tokens deliberately live only for the lifetime of this JS context.
+// The long-lived browser session is the backend-issued HttpOnly refresh cookie.
+let webAccessToken: string | null = null;
 
-      return globalThis.localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  },
-  setItem(key: string, value: string) {
-    try {
-      globalThis.localStorage?.setItem(key, value);
-    } catch {
-      // Web storage can be unavailable in private or restricted browser contexts.
-    }
-  },
-  deleteItem(key: string) {
-    try {
-      globalThis.localStorage?.removeItem(key);
-    } catch {
-      // Web storage can be unavailable in private or restricted browser contexts.
-    }
-  },
-};
-
-async function getItem(key: string) {
-  if (Platform.OS === 'web') {
-    return webStorage.getItem(key);
-  }
-
-  return SecureStore.getItemAsync(key);
-}
-
-async function setItem(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    webStorage.setItem(key, value);
-    return;
-  }
-
-  await SecureStore.setItemAsync(key, value);
-}
-
-async function deleteItem(key: string) {
-  if (Platform.OS === 'web') {
-    webStorage.deleteItem(key);
-    return;
-  }
-
-  await SecureStore.deleteItemAsync(key);
+export function isBrowserSession() {
+  return Platform.OS === 'web';
 }
 
 export async function getStoredAuthTokens(): Promise<AuthTokens | null> {
-  const [accessToken, refreshToken] = await Promise.all([
-    getItem(accessTokenKey),
-    getItem(refreshTokenKey),
-  ]);
-
-  if (!accessToken || !refreshToken) {
-    return null;
+  if (isBrowserSession()) {
+    return webAccessToken ? { accessToken: webAccessToken } : null;
   }
 
-  return {
-    accessToken,
-    refreshToken,
-  };
+  const [accessToken, refreshToken] = await Promise.all([
+    SecureStore.getItemAsync(accessTokenKey),
+    SecureStore.getItemAsync(refreshTokenKey),
+  ]);
+
+  if (accessToken && refreshToken) {
+    return { accessToken, refreshToken };
+  }
+
+  // A partial credential set cannot restore a session and should not outlive it.
+  if (accessToken || refreshToken) {
+    await Promise.all([
+      SecureStore.deleteItemAsync(accessTokenKey),
+      SecureStore.deleteItemAsync(refreshTokenKey),
+    ]);
+  }
+
+  return null;
 }
 
 export async function setStoredAuthTokens(tokens: AuthTokens) {
+  if (isBrowserSession()) {
+    webAccessToken = tokens.accessToken;
+    return;
+  }
+
+  if (!tokens.refreshToken) {
+    throw new Error('A refresh token is required for native sessions.');
+  }
+
   await Promise.all([
-    setItem(accessTokenKey, tokens.accessToken),
-    setItem(refreshTokenKey, tokens.refreshToken),
+    SecureStore.setItemAsync(accessTokenKey, tokens.accessToken),
+    SecureStore.setItemAsync(refreshTokenKey, tokens.refreshToken),
   ]);
 }
 
 export async function clearStoredAuthTokens() {
-  await Promise.all([deleteItem(accessTokenKey), deleteItem(refreshTokenKey)]);
+  if (isBrowserSession()) {
+    webAccessToken = null;
+    return;
+  }
+
+  await Promise.all([
+    SecureStore.deleteItemAsync(accessTokenKey),
+    SecureStore.deleteItemAsync(refreshTokenKey),
+  ]);
 }

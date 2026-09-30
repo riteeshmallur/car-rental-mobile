@@ -1,4 +1,5 @@
 import { apiRequest } from '@/services/api/client';
+import { Platform } from 'react-native';
 import {
   type AuthResponse,
   type OtpRequestResponse,
@@ -19,14 +20,17 @@ export const authApi = {
     return apiRequest<AuthResponse>({
       method: 'POST',
       url: '/auth/otp/verify',
-      data: payload,
+      data: {
+        ...payload,
+        clientType: Platform.OS === 'web' ? 'web' : 'mobile',
+      },
     });
   },
-  refresh(refreshToken: string) {
+  refresh(refreshToken?: string) {
     return apiRequest<AuthResponse>({
       method: 'POST',
       url: '/auth/refresh',
-      data: { refreshToken },
+      data: refreshToken ? { refreshToken } : {},
     });
   },
   me() {
@@ -35,11 +39,11 @@ export const authApi = {
       url: '/auth/me',
     });
   },
-  logout(refreshToken: string) {
+  logout(refreshToken?: string) {
     return apiRequest<null>({
       method: 'POST',
       url: '/auth/logout',
-      data: { refreshToken },
+      data: refreshToken ? { refreshToken } : {},
     });
   },
 };
