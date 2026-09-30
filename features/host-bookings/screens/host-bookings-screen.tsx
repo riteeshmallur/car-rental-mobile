@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CalendarClock, CarFront, Check, RefreshCw, User, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -20,7 +21,11 @@ const label = (value: string | null | undefined) => (value ?? 'Pending').replace
 
 export function HostBookingsScreen() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<HostBookingPhase>('requests');
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+  const activeTab = tabs.some((tab) => tab.value === requestedTab)
+    ? (requestedTab as HostBookingPhase)
+    : 'requests';
   const [selectedBooking, setSelectedBooking] = useState<HostBooking | null>(null);
   const goBack = useSafeBack({ fallback: '/(host)/profile' });
   const bookingsQuery = useQuery({ queryKey: ['host', 'bookings'], queryFn: hostsApi.listBookings });
@@ -41,7 +46,7 @@ export function HostBookingsScreen() {
   };
   return <SafeAreaView edges={['top']} style={styles.safeArea}><View style={styles.container}>
     <View style={styles.header}><View style={styles.headerLead}><Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={goBack} style={styles.iconButton}><ArrowLeft color="#0F172A" size={20} /></Pressable><View><Text style={styles.eyebrow}>Host</Text><Text style={styles.title}>Bookings</Text></View></View><Pressable accessibilityLabel="Refresh bookings" accessibilityRole="button" disabled={bookingsQuery.isFetching} onPress={() => void bookingsQuery.refetch()} style={styles.iconButton}>{bookingsQuery.isFetching ? <ActivityIndicator color="#0B4FE8" size="small" /> : <RefreshCw color="#0F172A" size={20} />}</Pressable></View>
-    <ScrollView contentContainerStyle={styles.tabsContent} horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>{tabs.map((tab) => { const active = tab.value === activeTab; return <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} key={tab.value} onPress={() => setActiveTab(tab.value)} style={[styles.tab, active && styles.activeTab]}><Text style={[styles.tabText, active && styles.activeTabText]}>{tab.label}</Text><Text style={[styles.tabCount, active && styles.activeTabText]}>{groups[tab.value].length}</Text></Pressable>; })}</ScrollView>
+    <ScrollView contentContainerStyle={styles.tabsContent} horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>{tabs.map((tab) => { const active = tab.value === activeTab; return <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} key={tab.value} onPress={() => router.setParams({ tab: tab.value })} style={[styles.tab, active && styles.activeTab]}><Text style={[styles.tabText, active && styles.activeTabText]}>{tab.label}</Text><Text style={[styles.tabCount, active && styles.activeTabText]}>{groups[tab.value].length}</Text></Pressable>; })}</ScrollView>
     {bookingsQuery.isLoading ? <LoadingState /> : bookingsQuery.isError ? <StateMessage actionLabel="Try again" body={normalizeApiError(bookingsQuery.error).message} onAction={() => void bookingsQuery.refetch()} title="Bookings could not load" /> : <FlatList contentContainerStyle={styles.listContent} data={groups[activeTab]} keyExtractor={(item) => item.id} ListEmptyComponent={<StateMessage body={`No ${tabs.find((item) => item.value === activeTab)?.label.toLowerCase()} bookings.`} title="Nothing here" />} refreshControl={<RefreshControl refreshing={bookingsQuery.isRefetching && !bookingsQuery.isLoading} onRefresh={() => void bookingsQuery.refetch()} />} renderItem={({ item }) => <BookingCard booking={item} disabled={isUpdating} onApprove={() => confirm(item, 'approve')} onReject={() => confirm(item, 'reject')} onView={() => setSelectedBooking(item)} />} showsVerticalScrollIndicator={false} style={styles.list} />}
   </View><BookingDetailSheet booking={selectedBooking} isUpdating={isUpdating} onApprove={() => selectedBooking && confirm(selectedBooking, 'approve')} onClose={() => setSelectedBooking(null)} onReject={() => selectedBooking && confirm(selectedBooking, 'reject')} /></SafeAreaView>;
 }

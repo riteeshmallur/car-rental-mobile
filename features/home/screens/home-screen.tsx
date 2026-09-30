@@ -103,6 +103,8 @@ export function HomeScreen() {
       pathname: '/(customer)/results',
       params: {
         locationId: location.id,
+        locationName: location.name,
+        locationCity: location.city,
         pickupDateTime: rentalWindow.pickupAt.toISOString(),
         returnDateTime: rentalWindow.returnAt.toISOString(),
       },

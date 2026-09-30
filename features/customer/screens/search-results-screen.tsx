@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   ArrowDownUp,
@@ -17,12 +17,14 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -45,17 +47,23 @@ import {
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
 import { formatDate, formatTime } from '@/features/customer/utils/rental-window';
+import {
+  readSearchRouteState,
+  searchRouteKey,
+  toSearchRouteParams,
+  type SearchFilters,
+} from '@/features/customer/utils/search-route-state';
 import { carsApi } from '@/services/cars/cars-api';
 import { rentersApi } from '@/services/renters/renters-api';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import {
-  type VehicleSearchParams,
   type VehicleSearchResult,
   type VehicleSearchSort,
 } from '@/types/car';
 import { colors, radii, shadows } from '@/utils/theme';
 
 const pageSize = 10;
+const searchScrollOffsets = new Map<string, number>();
 
 const sortOptions: Array<{ label: string; value: VehicleSearchSort }> = [
   { label: 'Recommended', value: 'recommended' },
@@ -101,44 +109,38 @@ const seatOptions = [
   { label: '7+ seats', value: 7 },
 ] satisfies Array<{ label: string; value?: number }>;
 
-type VehicleFilters = Pick<
-  VehicleSearchParams,
-  | 'vehicleType'
-  | 'transmission'
-  | 'fuelType'
-  | 'minSeats'
-  | 'minPrice'
-  | 'maxPrice'
->;
-
-function getParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 export function SearchResultsScreen() {
-  const params = useLocalSearchParams<{
-    locationId?: string;
-    pickupDateTime?: string;
-    returnDateTime?: string;
-  }>();
-  const locationId = getParam(params.locationId);
-  const pickupDateTime = getParam(params.pickupDateTime);
-  const returnDateTime = getParam(params.returnDateTime);
+  const params = useLocalSearchParams();
+  const routeState = useMemo(() => readSearchRouteState(params), [params]);
   const selectedLocation = useCustomerSearchStore((state) => state.selectedLocation);
-  const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
+  const storedRentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
   const setRentalWindow = useCustomerSearchStore((state) => state.setRentalWindow);
-  const activeLocationId = selectedLocation?.id ?? locationId;
-  const activePickupDateTime = selectedLocation
-    ? rentalWindow.pickupAt.toISOString()
-    : pickupDateTime;
-  const activeReturnDateTime = selectedLocation
-    ? rentalWindow.returnAt.toISOString()
-    : returnDateTime;
+  const matchingLocation = selectedLocation?.id === routeState.locationId
+    ? selectedLocation
+    : null;
+  const activeLocationId = routeState.locationId;
+  const activePickupDateTime = routeState.pickupDateTime;
+  const activeReturnDateTime = routeState.returnDateTime;
+  const rentalWindow = useMemo(() => {
+    const pickupAt = activePickupDateTime ? new Date(activePickupDateTime) : null;
+    const returnAt = activeReturnDateTime ? new Date(activeReturnDateTime) : null;
+
+    if (
+      pickupAt &&
+      returnAt &&
+      !Number.isNaN(pickupAt.getTime()) &&
+      !Number.isNaN(returnAt.getTime())
+    ) {
+      return { pickupAt, returnAt };
+    }
+
+    return storedRentalWindow;
+  }, [activePickupDateTime, activeReturnDateTime, storedRentalWindow]);
   const hasSearchCriteria = Boolean(
     activeLocationId && activePickupDateTime && activeReturnDateTime,
   );
-  const [filters, setFilters] = useState<VehicleFilters>({});
-  const [sort, setSort] = useState<VehicleSearchSort>('recommended');
+  const filters = routeState.filters;
+  const sort = routeState.sort;
   const [favoriteOverrides, setFavoriteOverrides] = useState<Map<string, boolean>>(
     () => new Map(),
   );
@@ -147,10 +149,17 @@ export function SearchResultsScreen() {
   );
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setSortSheetOpen] = useState(false);
-  const [draftFilters, setDraftFilters] = useState<VehicleFilters>({});
+  const [draftFilters, setDraftFilters] = useState<SearchFilters>({});
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const queryClient = useQueryClient();
+  const listRef = useRef<FlatList<VehicleSearchResult>>(null);
+  const searchStateKey = useMemo(() => searchRouteKey(routeState), [routeState]);
+  const restoredScrollKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    restoredScrollKey.current = null;
+  }, [searchStateKey]);
 
   const closeOverlayBeforeBack = useCallback(() => {
     if (isSortSheetOpen) {
@@ -204,6 +213,26 @@ export function SearchResultsScreen() {
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (restoredScrollKey.current === searchStateKey) {
+        return;
+      }
+
+      const offset = searchScrollOffsets.get(searchStateKey) ?? 0;
+      if (offset <= 0 || vehiclesQuery.data === undefined) {
+        return;
+      }
+
+      const frame = requestAnimationFrame(() => {
+        listRef.current?.scrollToOffset({ animated: false, offset });
+        restoredScrollKey.current = searchStateKey;
+      });
+
+      return () => cancelAnimationFrame(frame);
+    }, [searchStateKey, vehiclesQuery.data]),
+  );
 
   const fetchedVehicles = useMemo(
     () => vehiclesQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -274,6 +303,17 @@ export function SearchResultsScreen() {
     }
   };
 
+  const updateRentalWindow = useCallback((nextRentalWindow: typeof rentalWindow) => {
+    setRentalWindow(nextRentalWindow);
+    router.setParams(
+      toSearchRouteParams({
+        ...routeState,
+        pickupDateTime: nextRentalWindow.pickupAt.toISOString(),
+        returnDateTime: nextRentalWindow.returnAt.toISOString(),
+      }),
+    );
+  }, [routeState, setRentalWindow]);
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
@@ -302,16 +342,24 @@ export function SearchResultsScreen() {
               <Pressable
                 accessibilityLabel="Change pickup location"
                 accessibilityRole="button"
-                onPress={() => router.push('/(customer)/location')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(customer)/location',
+                    params: {
+                      ...toSearchRouteParams(routeState),
+                      returnTo: 'results',
+                    },
+                  })
+                }
                 style={({ pressed }) => [styles.searchDetailButton, pressed && styles.pressed]}
               >
                 <MapPin color={colors.brand} size={18} />
                 <View style={styles.searchDetailCopy}>
                   <Text numberOfLines={1} style={styles.searchDetailTitle}>
-                    {selectedLocation?.name ?? 'Pickup location'}
+                    {routeState.locationName ?? matchingLocation?.name ?? 'Pickup location'}
                   </Text>
                   <Text numberOfLines={1} style={styles.searchDetailMeta}>
-                    {selectedLocation?.city ?? 'Change location'}
+                    {routeState.locationCity ?? matchingLocation?.city ?? 'Change location'}
                   </Text>
                 </View>
               </Pressable>
@@ -397,10 +445,29 @@ export function SearchResultsScreen() {
             }
             contentContainerStyle={styles.list}
             data={vehicles}
+            key={searchStateKey}
             keyExtractor={(item) => item.id}
+            onContentSizeChange={() => {
+              if (restoredScrollKey.current === searchStateKey) {
+                return;
+              }
+
+              const offset = searchScrollOffsets.get(searchStateKey) ?? 0;
+              if (offset > 0) {
+                requestAnimationFrame(() => {
+                  listRef.current?.scrollToOffset({ animated: false, offset });
+                  restoredScrollKey.current = searchStateKey;
+                });
+              }
+            }}
             style={styles.listView}
+            ref={listRef}
             onEndReached={loadNextPage}
             onEndReachedThreshold={0.55}
+            onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              searchScrollOffsets.set(searchStateKey, event.nativeEvent.contentOffset.y);
+            }}
+            scrollEventThrottle={160}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void vehiclesQuery.refetch()}
@@ -417,10 +484,8 @@ export function SearchResultsScreen() {
                     pathname: '/(customer)/vehicles/[id]',
                     params: {
                       id: item.id,
-                      locationId: activeLocationId ?? '',
                       origin: 'search-results',
-                      pickupDateTime: activePickupDateTime ?? '',
-                      returnDateTime: activeReturnDateTime ?? '',
+                      ...toSearchRouteParams(routeState),
                     },
                   })
                 }
@@ -436,7 +501,7 @@ export function SearchResultsScreen() {
         isVisible={isFilterSheetOpen}
         resultCount={total}
         onApply={(nextFilters) => {
-          setFilters(nextFilters);
+          router.setParams(toSearchRouteParams({ ...routeState, filters: nextFilters }));
           setFilterSheetOpen(false);
         }}
         onClose={() => setFilterSheetOpen(false)}
@@ -448,14 +513,14 @@ export function SearchResultsScreen() {
         selectedSort={sort}
         onClose={() => setSortSheetOpen(false)}
         onSelect={(nextSort) => {
-          setSort(nextSort);
+          router.setParams(toSearchRouteParams({ ...routeState, sort: nextSort }));
           setSortSheetOpen(false);
         }}
       />
       <DateTimePickerSheet
         field={activeDateTimeField}
-        location={selectedLocation}
-        onApplyRentalWindow={setRentalWindow}
+        location={matchingLocation}
+        onApplyRentalWindow={updateRentalWindow}
         onClose={() => setActiveDateTimeField(null)}
         rentalWindow={rentalWindow}
       />
@@ -480,11 +545,11 @@ function FilterSheet({
   onClose,
   onReset,
 }: {
-  draftFilters: VehicleFilters;
+  draftFilters: SearchFilters;
   isVisible: boolean;
   resultCount: number;
-  onApply: (filters: VehicleFilters) => void;
-  onChange: (filters: VehicleFilters) => void;
+  onApply: (filters: SearchFilters) => void;
+  onChange: (filters: SearchFilters) => void;
   onClose: () => void;
   onReset: () => void;
 }) {

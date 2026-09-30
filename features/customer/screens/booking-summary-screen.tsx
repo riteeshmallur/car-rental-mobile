@@ -19,6 +19,10 @@ import {
 } from '@/features/customer/utils/car-formatters';
 import { quotesApi } from '@/services/quotes/quotes-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
+import {
+  readSearchRouteState,
+  toSearchRouteParams,
+} from '@/features/customer/utils/search-route-state';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
 function getParam(value: string | string[] | undefined) {
@@ -33,18 +37,12 @@ function formatDateTime(value: string) {
 }
 
 export function BookingSummaryScreen() {
-  const params = useLocalSearchParams<{
-    vehicleId?: string;
-    locationId?: string;
-    origin?: string;
-    pickupDateTime?: string;
-    returnDateTime?: string;
-  }>();
+  const params = useLocalSearchParams();
   const vehicleId = getParam(params.vehicleId);
-  const locationId = getParam(params.locationId);
+  const searchRouteState = readSearchRouteState(params);
   const origin = getParam(params.origin);
-  const pickupDateTime = getParam(params.pickupDateTime);
-  const returnDateTime = getParam(params.returnDateTime);
+  const pickupDateTime = searchRouteState.pickupDateTime;
+  const returnDateTime = searchRouteState.returnDateTime;
   const setQuote = useBookingFlowStore((state) => state.setQuote);
   const quote = useBookingFlowStore((state) => state.quote);
   const didRequestQuote = useRef(false);
@@ -57,13 +55,15 @@ export function BookingSummaryScreen() {
       pathname: '/(customer)/vehicles/[id]',
       params: {
         id: vehicleId,
-        locationId: locationId ?? '',
         origin: origin ?? 'home',
-        pickupDateTime: pickupDateTime ?? '',
-        returnDateTime: returnDateTime ?? '',
+        ...toSearchRouteParams({
+          ...searchRouteState,
+          pickupDateTime,
+          returnDateTime,
+        }),
       },
     };
-  }, [locationId, origin, pickupDateTime, returnDateTime, vehicleId]);
+  }, [origin, pickupDateTime, returnDateTime, searchRouteState, vehicleId]);
   const currentQuote =
     quote &&
     quote.carId === vehicleId &&
@@ -182,10 +182,12 @@ export function BookingSummaryScreen() {
                 pathname: '/(customer)/booking/breakdown',
                 params: {
                   vehicleId,
-                  locationId: locationId ?? '',
                   origin: origin ?? 'home',
-                  pickupDateTime,
-                  returnDateTime,
+                  ...toSearchRouteParams({
+                    ...searchRouteState,
+                    pickupDateTime,
+                    returnDateTime,
+                  }),
                 },
               })
             }

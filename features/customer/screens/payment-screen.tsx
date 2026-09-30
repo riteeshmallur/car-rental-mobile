@@ -16,6 +16,10 @@ import {
   StateMessage,
 } from '@/features/customer/screens/booking-summary-screen';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
+import {
+  readSearchRouteState,
+  toSearchRouteParams,
+} from '@/features/customer/utils/search-route-state';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
@@ -28,11 +32,8 @@ function getParam(value: string | string[] | undefined) {
 }
 
 export function PaymentScreen() {
-  const params = useLocalSearchParams<{
-    locationId?: string;
-    origin?: string;
-  }>();
-  const locationId = getParam(params.locationId);
+  const params = useLocalSearchParams();
+  const searchRouteState = readSearchRouteState(params);
   const origin = getParam(params.origin);
   const quote = useBookingFlowStore((state) => state.quote);
   const setBooking = useBookingFlowStore((state) => state.setBooking);
@@ -41,8 +42,8 @@ export function PaymentScreen() {
     ? {
         pathname: '/(customer)/booking/breakdown',
         params: {
-          locationId: locationId ?? '',
           origin: origin ?? 'home',
+          ...toSearchRouteParams(searchRouteState),
         },
       }
     : '/(customer)/home';

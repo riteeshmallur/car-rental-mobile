@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Search, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -13,12 +14,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { locationsApi } from '@/services/locations/locations-api';
+import {
+  readSearchRouteState,
+  toSearchRouteParams,
+} from '@/features/customer/utils/search-route-state';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { type LocationSearchResult } from '@/types/location';
 
 export function LocationSelectionScreen() {
   const [query, setQuery] = useState('');
+  const params = useLocalSearchParams();
+  const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
+  const searchRouteState = readSearchRouteState(params);
   const setSelectedLocation = useCustomerSearchStore(
     (state) => state.setSelectedLocation,
   );
@@ -35,6 +43,20 @@ export function LocationSelectionScreen() {
 
   const selectLocation = (location: LocationSearchResult) => {
     setSelectedLocation(location);
+
+    if (returnTo === 'results') {
+      router.replace({
+        pathname: '/(customer)/results',
+        params: toSearchRouteParams({
+          ...searchRouteState,
+          locationId: location.id,
+          locationName: location.name,
+          locationCity: location.city,
+        }),
+      });
+      return;
+    }
+
     goBack();
   };
 

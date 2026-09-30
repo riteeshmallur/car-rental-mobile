@@ -6,6 +6,10 @@ import {
   PriceRows,
   StateMessage,
 } from '@/features/customer/screens/booking-summary-screen';
+import {
+  readSearchRouteState,
+  toSearchRouteParams,
+} from '@/features/customer/utils/search-route-state';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
 function getParam(value: string | string[] | undefined) {
@@ -13,11 +17,8 @@ function getParam(value: string | string[] | undefined) {
 }
 
 export function PriceBreakdownScreen() {
-  const params = useLocalSearchParams<{
-    locationId?: string;
-    origin?: string;
-  }>();
-  const locationId = getParam(params.locationId);
+  const params = useLocalSearchParams();
+  const searchRouteState = readSearchRouteState(params);
   const origin = getParam(params.origin);
   const quote = useBookingFlowStore((state) => state.quote);
   const backFallback: Href = quote
@@ -25,10 +26,12 @@ export function PriceBreakdownScreen() {
         pathname: '/(customer)/booking/summary',
         params: {
           vehicleId: quote.carId,
-          locationId: locationId ?? '',
           origin: origin ?? 'home',
-          pickupDateTime: quote.pickupAt,
-          returnDateTime: quote.returnAt,
+          ...toSearchRouteParams({
+            ...searchRouteState,
+            pickupDateTime: quote.pickupAt,
+            returnDateTime: quote.returnAt,
+          }),
         },
       }
     : '/(customer)/home';
@@ -67,11 +70,11 @@ export function PriceBreakdownScreen() {
           accessibilityRole="button"
           onPress={() =>
             router.push({
-              pathname: '/(customer)/booking/payment',
-              params: {
-                locationId: locationId ?? '',
-                origin: origin ?? 'home',
-              },
+                pathname: '/(customer)/booking/payment',
+                params: {
+                  origin: origin ?? 'home',
+                  ...toSearchRouteParams(searchRouteState),
+                },
             })
           }
           style={styles.primaryButton}

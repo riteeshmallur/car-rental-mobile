@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { CalendarClock, CarFront, RefreshCw } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -55,7 +55,11 @@ function locationLabel(booking: RenterBooking) {
 }
 
 export function TripsScreen() {
-  const [activeTab, setActiveTab] = useState<RenterTripPhase>('upcoming');
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+  const activeTab = tabs.some((tab) => tab.value === requestedTab)
+    ? (requestedTab as RenterTripPhase)
+    : 'upcoming';
   useSafeBack({ fallback: '/(customer)/home' });
 
   const bookingsQuery = useQuery({
@@ -120,7 +124,7 @@ export function TripsScreen() {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 key={tab.value}
-                onPress={() => setActiveTab(tab.value)}
+                onPress={() => router.setParams({ tab: tab.value })}
                 style={[styles.tab, active && styles.activeTab]}
               >
                 <Text style={[styles.tabText, active && styles.activeTabText]}>

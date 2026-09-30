@@ -37,6 +37,10 @@ import {
   formatMoney,
   getCarImageUrl,
 } from '@/features/customer/utils/car-formatters';
+import {
+  readSearchRouteState,
+  toSearchRouteParams,
+} from '@/features/customer/utils/search-route-state';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { rentersApi } from '@/services/renters/renters-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -56,21 +60,16 @@ function formatDateTime(value: string) {
 }
 
 export function VehicleDetailsScreen() {
-  const params = useLocalSearchParams<{
-    id?: string;
-    locationId?: string;
-    origin?: string;
-    pickupDateTime?: string;
-    returnDateTime?: string;
-  }>();
+  const params = useLocalSearchParams();
   const vehicleId = getParam(params.id);
-  const locationId = getParam(params.locationId);
+  const searchRouteState = readSearchRouteState(params);
+  const locationId = searchRouteState.locationId;
   const origin = getParam(params.origin);
   const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
   const pickupDateTime =
-    getParam(params.pickupDateTime) ?? rentalWindow.pickupAt.toISOString();
+    searchRouteState.pickupDateTime ?? rentalWindow.pickupAt.toISOString();
   const returnDateTime =
-    getParam(params.returnDateTime) ?? rentalWindow.returnAt.toISOString();
+    searchRouteState.returnDateTime ?? rentalWindow.returnAt.toISOString();
   const [favoriteOverride, setFavoriteOverride] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
   const backFallback = useMemo<Href>(() => {
@@ -82,7 +81,11 @@ export function VehicleDetailsScreen() {
     ) {
       return {
         pathname: '/(customer)/results',
-        params: { locationId, pickupDateTime, returnDateTime },
+        params: toSearchRouteParams({
+          ...searchRouteState,
+          pickupDateTime,
+          returnDateTime,
+        }),
       };
     }
 
@@ -95,7 +98,7 @@ export function VehicleDetailsScreen() {
     }
 
     return '/(customer)/home';
-  }, [locationId, origin, pickupDateTime, returnDateTime]);
+  }, [locationId, origin, pickupDateTime, returnDateTime, searchRouteState]);
   const goBack = useSafeBack({ fallback: backFallback });
 
   const detailsQuery = useQuery({
@@ -170,10 +173,12 @@ export function VehicleDetailsScreen() {
       pathname: '/(customer)/booking/summary',
       params: {
         vehicleId,
-        locationId: locationId ?? '',
         origin: origin ?? 'home',
-        pickupDateTime,
-        returnDateTime,
+        ...toSearchRouteParams({
+          ...searchRouteState,
+          pickupDateTime,
+          returnDateTime,
+        }),
       },
     });
   };
