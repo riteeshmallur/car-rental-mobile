@@ -273,7 +273,23 @@ export function VehicleDetailsScreen() {
 
               <InfoSection title="Reviews">
                 <View style={styles.reviews}>
-                  {(reviewsQuery.data?.items ?? []).length > 0 ? (
+                  {reviewsQuery.isLoading ? (
+                    <View style={styles.reviewState}>
+                      <ActivityIndicator color={colors.brand} />
+                      <Text style={styles.mutedText}>Loading reviews</Text>
+                    </View>
+                  ) : reviewsQuery.isError ? (
+                    <View style={styles.reviewState}>
+                      <Text style={styles.mutedText}>Reviews could not load.</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void reviewsQuery.refetch()}
+                        style={styles.reviewRetryButton}
+                      >
+                        <Text style={styles.reviewRetryText}>Try again</Text>
+                      </Pressable>
+                    </View>
+                  ) : (reviewsQuery.data?.items ?? []).length > 0 ? (
                     reviewsQuery.data?.items.map((review) => (
                       <View key={review.id} style={styles.reviewItem}>
                         <View style={styles.reviewHeader}>
@@ -1038,6 +1054,25 @@ const styles = StyleSheet.create({
   },
   reviews: {
     gap: 12,
+  },
+  reviewState: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+  },
+  reviewRetryButton: {
+    alignItems: 'center',
+    borderColor: colors.brand,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 14,
+  },
+  reviewRetryText: {
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: '800',
   },
   reviewItem: {
     gap: 6,

@@ -153,7 +153,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         label: 'Payment methods',
         description: 'Manage your cards and wallets',
         icon: <CreditCard color="#111827" size={20} />,
-        onPress: () => showPending('Payment methods are not connected yet.'),
+        onPress: () => router.push('/(customer)/payment-methods' as never),
       },
       {
         label: 'Documents',
@@ -165,19 +165,19 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         label: 'Notifications',
         description: 'Manage your alerts and updates',
         icon: <Bell color="#111827" size={20} />,
-        onPress: () => showPending('Notification preferences are not connected yet.'),
+        onPress: () => router.push('/(customer)/notifications' as never),
       },
       {
         label: 'Help & Support',
         description: 'Get help or contact us',
         icon: <Headphones color="#111827" size={20} />,
-        onPress: () => showPending('Support workflows are not connected yet.'),
+        onPress: () => router.push('/(customer)/help-support' as never),
       },
       {
         label: 'Privacy & Security',
         description: 'Manage your data and security',
         icon: <ShieldCheck color="#111827" size={20} />,
-        onPress: () => showPending('Privacy settings are not connected yet.'),
+        onPress: () => router.push('/(customer)/privacy-security' as never),
       },
       {
         label: 'Logout',
