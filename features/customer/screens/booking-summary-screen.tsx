@@ -191,6 +191,7 @@ export function BookingSummaryScreen() {
                 },
               })
             }
+            testID="quote-continue"
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>Continue</Text>

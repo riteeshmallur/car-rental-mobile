@@ -23,6 +23,7 @@ export function AddVehicleFooter({ busy, busyLabel, isSubmit, onPress }: AddVehi
         accessibilityState={{ busy, disabled: busy }}
         disabled={busy}
         onPress={onPress}
+        testID="host-add-vehicle-continue"
         style={({ pressed }) => [
           styles.button,
           pressed && styles.pressed,

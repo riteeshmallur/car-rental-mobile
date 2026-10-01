@@ -68,6 +68,7 @@ export function OtpInput({
         accessibilityHint={`Enter the ${length}-digit code sent to your phone.`}
         accessibilityLabel="One-time password"
         accessibilityValue={{ text: `${value.length} of ${length} digits entered` }}
+        testID="otp-input"
         style={styles.hiddenInput}
         {...inputProps}
       />

@@ -113,6 +113,7 @@ export function RentalSearchCard({
         accessibilityState={{ busy: Boolean(isSearching), disabled: Boolean(isSearching) }}
         disabled={isSearching}
         onPress={onSearch}
+        testID="home-search-cars"
         style={({ pressed }) => [
           styles.searchButton,
           isSearching && styles.searchButtonDisabled,

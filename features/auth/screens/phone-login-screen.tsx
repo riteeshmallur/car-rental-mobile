@@ -116,6 +116,7 @@ export function PhoneLoginScreen() {
                   errors.phoneNumber && styles.inputError,
                 ]}
                 textContentType="telephoneNumber"
+                testID="mobile-number-input"
                 value={value}
               />
             )}

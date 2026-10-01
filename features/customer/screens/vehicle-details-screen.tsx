@@ -660,6 +660,7 @@ function StickyBookingBar({
         accessibilityRole="button"
         disabled={!vehicle.availability.available}
         onPress={onContinue}
+        testID="vehicle-details-continue"
         style={({ pressed }) => [
           styles.continueButton,
           !vehicle.availability.available && styles.continueButtonDisabled,

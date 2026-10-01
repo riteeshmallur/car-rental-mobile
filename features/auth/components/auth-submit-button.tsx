@@ -17,13 +17,14 @@ export function AuthSubmitButton({
   const isDisabled = disabled || isLoading;
 
   return (
-    <Pressable
+      <Pressable
       accessibilityHint={isLoading ? 'Please wait for the request to finish.' : undefined}
       accessibilityLabel={title}
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(isDisabled), busy: Boolean(isLoading) }}
       disabled={isDisabled}
-      onPress={onPress}
+        onPress={onPress}
+        testID="auth-submit-button"
       style={({ pressed }) => [
         styles.button,
         isDisabled && styles.buttonDisabled,

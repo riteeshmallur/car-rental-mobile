@@ -120,6 +120,7 @@ export function PaymentScreen() {
           accessibilityState={{ busy: bookingMutation.isPending, disabled: bookingMutation.isPending }}
           disabled={bookingMutation.isPending}
           onPress={() => bookingMutation.mutate()}
+          testID="payment-create-booking"
           style={({ pressed }) => [
             styles.primaryButton,
             bookingMutation.isPending && styles.disabledButton,

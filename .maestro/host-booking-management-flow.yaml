@@ -1,0 +1,33 @@
+appId: com.hopin.carrental
+env:
+  E2E_HOST_PHONE_NUMBER: ${E2E_HOST_PHONE_NUMBER}
+  E2E_HOST_OTP: ${E2E_HOST_OTP}
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: mobile-number-input
+- inputText: ${E2E_HOST_PHONE_NUMBER}
+- tapOn:
+    id: auth-submit-button
+- tapOn:
+    id: otp-input
+- inputText: ${E2E_HOST_OTP}
+- tapOn:
+    id: auth-submit-button
+- assertVisible: Search Cars
+- tapOn: Profile
+- tapOn: Switch to Host
+- assertVisible: Dashboard
+- tapOn: My Cars
+- assertVisible: My Cars
+- tapOn: Add Car
+- tapOn:
+    id: host-add-vehicle-continue
+- assertVisible: Vehicle details
+- tapOn: Go back
+- tapOn: Go back
+- tapOn: Bookings
+- assertVisible: Bookings
+- tapOn: View details
+- assertVisible: Booking details

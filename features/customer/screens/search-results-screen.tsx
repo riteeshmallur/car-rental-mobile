@@ -536,7 +536,7 @@ type FilterOption<T extends string | number | undefined = string> = {
   maxPrice?: number;
 };
 
-function FilterSheet({
+export function FilterSheet({
   draftFilters,
   isVisible,
   resultCount,
@@ -724,7 +724,7 @@ function FilterSection<T extends string | number | undefined>({
   );
 }
 
-function SortSheet({
+export function SortSheet({
   isVisible,
   selectedSort,
   onClose,

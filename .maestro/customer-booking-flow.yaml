@@ -1,0 +1,34 @@
+appId: com.hopin.carrental
+env:
+  E2E_PHONE_NUMBER: ${E2E_PHONE_NUMBER}
+  E2E_OTP: ${E2E_OTP}
+  E2E_VEHICLE_NAME: ${E2E_VEHICLE_NAME}
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: mobile-number-input
+- inputText: ${E2E_PHONE_NUMBER}
+- tapOn:
+    id: auth-submit-button
+- tapOn:
+    id: otp-input
+- inputText: ${E2E_OTP}
+- tapOn:
+    id: auth-submit-button
+- assertVisible: Search Cars
+- tapOn:
+    id: home-search-cars
+- assertVisible: Available cars
+- tapOn: ${E2E_VEHICLE_NAME}
+- tapOn:
+    id: vehicle-details-continue
+- assertVisible: Booking summary
+- tapOn:
+    id: quote-continue
+- assertVisible: Payment
+- tapOn:
+    id: payment-create-booking
+- assertVisible: Booking confirmed
+- tapOn: Trips
+- assertVisible: Trips
