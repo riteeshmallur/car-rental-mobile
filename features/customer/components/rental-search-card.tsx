@@ -46,6 +46,8 @@ export function RentalSearchCard({
   return (
     <View style={styles.container}>
       <Pressable
+        accessibilityHint="Opens pickup location search."
+        accessibilityLabel={location?.name ? `Pickup location, ${location.name}` : 'Select pickup location'}
         accessibilityRole="button"
         onPress={onLocationPress}
         style={({ pressed }) => [styles.locationField, pressed && styles.pressed]}
@@ -84,6 +86,8 @@ export function RentalSearchCard({
         </View>
 
         <Pressable
+          accessibilityHint="Opens the pickup and return date picker."
+          accessibilityLabel={`Rental duration, ${rentalDays} ${rentalDays === 1 ? 'day' : 'days'}`}
           accessibilityRole="button"
           onPress={() => onDateTimeFieldPress('returnDate')}
           style={({ pressed }) => [styles.durationRow, pressed && styles.pressed]}
@@ -98,11 +102,15 @@ export function RentalSearchCard({
       </View>
 
       {validationError ? (
-        <Text style={styles.validationError}>{validationError}</Text>
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.validationError}>
+          {validationError}
+        </Text>
       ) : null}
 
       <Pressable
+        accessibilityLabel="Search available cars"
         accessibilityRole="button"
+        accessibilityState={{ busy: Boolean(isSearching), disabled: Boolean(isSearching) }}
         disabled={isSearching}
         onPress={onSearch}
         style={({ pressed }) => [
@@ -112,7 +120,7 @@ export function RentalSearchCard({
         ]}
       >
         {isSearching ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator accessibilityLabel="Searching available cars" color="#FFFFFF" />
         ) : (
           <>
             <Search color={colors.surface} size={20} />
@@ -145,10 +153,18 @@ function RentalDate({
         </View>
         <Text style={styles.dateLabel}>{label}</Text>
       </View>
-      <Pressable accessibilityRole="button" onPress={onDatePress}>
+      <Pressable
+        accessibilityLabel={`${label} date, ${date}`}
+        accessibilityRole="button"
+        onPress={onDatePress}
+      >
         <Text style={styles.dateValue}>{date}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={onTimePress}>
+      <Pressable
+        accessibilityLabel={`${label} time, ${time}`}
+        accessibilityRole="button"
+        onPress={onTimePress}
+      >
         <Text style={styles.timeValue}>{time}</Text>
       </Pressable>
     </View>

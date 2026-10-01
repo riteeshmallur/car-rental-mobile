@@ -568,18 +568,22 @@ function FilterSheet({
       transparent
       visible={isVisible}
     >
-      <View style={styles.sheetOverlay}>
+      <View accessibilityViewIsModal style={styles.sheetOverlay}>
         <Pressable
           accessibilityLabel="Close filters"
           accessibilityRole="button"
           onPress={onClose}
           style={styles.sheetBackdrop}
         />
-        <View style={[styles.filterSheet, { marginHorizontal: Math.max(insets.left, insets.right) }]}>
+        <View
+          accessibilityLabel="Car filters"
+          style={[styles.filterSheet, { marginHorizontal: Math.max(insets.left, insets.right) }]}
+        >
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Filters</Text>
+            <Text accessibilityRole="header" style={styles.sheetTitle}>Filters</Text>
             <Pressable
+              accessibilityLabel="Reset filters"
               accessibilityRole="button"
               onPress={onReset}
               style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
@@ -646,6 +650,7 @@ function FilterSheet({
 
           <View style={[styles.sheetFooter, { paddingBottom: Math.max(16, insets.bottom) }]}>
             <Pressable
+              accessibilityLabel="Clear all filters"
               accessibilityRole="button"
               onPress={onReset}
               style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
@@ -653,6 +658,7 @@ function FilterSheet({
               <Text style={styles.clearButtonText}>Clear all</Text>
             </Pressable>
             <Pressable
+              accessibilityLabel={`Show ${resultCount} cars`}
               accessibilityRole="button"
               onPress={() => onApply(draftFilters)}
               style={({ pressed }) => [styles.showButton, pressed && styles.showButtonPressed]}
@@ -687,7 +693,7 @@ function FilterSection<T extends string | number | undefined>({
         <View style={styles.filterIcon}>
           <Icon color={colors.ink} size={18} />
         </View>
-        <Text style={styles.filterSectionTitle}>{title}</Text>
+        <Text accessibilityRole="header" style={styles.filterSectionTitle}>{title}</Text>
       </View>
       <View style={styles.chipWrap}>
         {options.map((option) => {
@@ -697,7 +703,8 @@ function FilterSection<T extends string | number | undefined>({
           return (
             <Pressable
               accessibilityLabel={`${title}: ${option.label}`}
-              accessibilityRole="button"
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
               key={`${title}-${option.label}`}
               onPress={() => onSelect(option)}
               style={({ pressed }) => [
@@ -736,18 +743,22 @@ function SortSheet({
       transparent
       visible={isVisible}
     >
-      <View style={styles.sheetOverlay}>
+      <View accessibilityViewIsModal style={styles.sheetOverlay}>
         <Pressable
           accessibilityLabel="Close sort options"
           accessibilityRole="button"
           onPress={onClose}
           style={styles.sheetBackdrop}
         />
-        <View style={[styles.sortSheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
+        <View
+          accessibilityLabel="Sort vehicles"
+          style={[styles.sortSheet, { paddingBottom: Math.max(16, insets.bottom) }]}
+        >
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Sort by</Text>
+            <Text accessibilityRole="header" style={styles.sheetTitle}>Sort by</Text>
             <Pressable
+              accessibilityLabel="Done sorting"
               accessibilityRole="button"
               onPress={onClose}
               style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
@@ -761,6 +772,7 @@ function SortSheet({
 
               return (
                 <Pressable
+                  accessibilityLabel={option.label}
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   key={option.value}
@@ -806,6 +818,8 @@ function VehicleResultCard({
   return (
     <View style={styles.vehicleCard}>
       <Pressable
+        accessibilityHint="Opens vehicle details."
+        accessibilityLabel={`${vehicle.make} ${vehicle.model}, ${formatDailyPrice(vehicle.dailyPrice)} per day, ${vehicle.rating > 0 ? `${vehicle.rating.toFixed(1)} stars` : 'new vehicle'}, ${vehicle.rentalDays} day trip`}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [styles.vehicleCardButton, pressed && styles.pressed]}
@@ -874,6 +888,7 @@ function VehicleResultCard({
       <Pressable
         accessibilityLabel={isFavorite ? 'Remove favorite' : 'Add favorite'}
         accessibilityRole="button"
+        accessibilityState={{ busy: isFavoritePending, disabled: isFavoritePending, selected: isFavorite }}
         onPress={onFavoritePress}
         disabled={isFavoritePending}
         style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}

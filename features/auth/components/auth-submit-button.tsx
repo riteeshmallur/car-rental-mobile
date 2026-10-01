@@ -18,7 +18,10 @@ export function AuthSubmitButton({
 
   return (
     <Pressable
+      accessibilityHint={isLoading ? 'Please wait for the request to finish.' : undefined}
+      accessibilityLabel={title}
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(isDisabled), busy: Boolean(isLoading) }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -28,7 +31,7 @@ export function AuthSubmitButton({
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.surface} />
+        <ActivityIndicator accessibilityLabel={`${title} in progress`} color={colors.surface} />
       ) : (
         <Text style={styles.buttonText}>{title}</Text>
       )}

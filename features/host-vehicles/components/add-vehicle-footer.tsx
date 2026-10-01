@@ -12,7 +12,15 @@ export function AddVehicleFooter({ busy, busyLabel, isSubmit, onPress }: AddVehi
   return (
     <View style={styles.container}>
       <Pressable
+        accessibilityLabel={
+          busy
+            ? busyLabel ?? (isSubmit ? 'Submitting vehicle for approval' : 'Saving vehicle draft')
+            : isSubmit
+              ? 'Submit vehicle for approval'
+              : 'Save and continue'
+        }
         accessibilityRole="button"
+        accessibilityState={{ busy, disabled: busy }}
         disabled={busy}
         onPress={onPress}
         style={({ pressed }) => [
@@ -21,7 +29,7 @@ export function AddVehicleFooter({ busy, busyLabel, isSubmit, onPress }: AddVehi
           busy && styles.disabled,
         ]}
       >
-        {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : null}
+        {busy ? <ActivityIndicator accessibilityLabel="In progress" color="#FFFFFF" size="small" /> : null}
         <Text numberOfLines={1} style={styles.buttonText}>
           {busy
             ? busyLabel ?? (isSubmit ? 'Submitting...' : 'Saving...')

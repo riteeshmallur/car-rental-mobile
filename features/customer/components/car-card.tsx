@@ -21,6 +21,8 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
 
   return (
     <Pressable
+      accessibilityHint="Opens vehicle details."
+      accessibilityLabel={`${car.make} ${car.model}, ${formatDailyPrice(car.pricePerDay)} per day, available`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -44,7 +46,7 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
           <Text numberOfLines={1} style={styles.name}>
             {car.make} {car.model}
           </Text>
-          <View accessibilityLabel="Add to favorites">
+          <View accessible={false}>
             <Heart color={colors.muted} size={21} />
           </View>
         </View>

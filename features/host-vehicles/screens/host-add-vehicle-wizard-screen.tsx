@@ -631,6 +631,7 @@ export function HostAddVehicleWizardScreen() {
             We'll let you know once your listing is approved.
           </Text>
           <Pressable
+            accessibilityLabel="View my cars"
             accessibilityRole="button"
             onPress={() => router.replace('/(host)/cars')}
             style={styles.submissionButton}
@@ -1015,6 +1016,8 @@ function LocationSearchInput({
       <View style={[styles.locationSearchBox, error && styles.inputError]}>
         <MapPin color="#52627C" size={18} />
         <TextInput
+          accessibilityHint="Search for a city or pickup area, then choose a result."
+          accessibilityLabel="Pickup address"
           autoCapitalize="words"
           autoCorrect={false}
           onBlur={onBlur}
@@ -1027,7 +1030,7 @@ function LocationSearchInput({
         />
         <Search color="#52627C" size={18} />
       </View>
-      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+      {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {focused && query.length >= 2 ? (
         <View style={styles.locationResults}>
           {isDebouncing || locationsQuery.isLoading ? (
@@ -1039,6 +1042,8 @@ function LocationSearchInput({
           ) : (
             locations.map((location) => (
               <Pressable
+                accessibilityHint="Select this pickup address."
+                accessibilityLabel={`${location.name}, ${[location.city, location.state, location.country].filter(Boolean).join(', ')}`}
                 accessibilityRole="button"
                 key={location.id}
                 onPress={() => onSelect(location)}
@@ -1100,6 +1105,7 @@ function FeaturesStep({
           <View style={styles.featureSearchInput}>
             <Search color="#52627C" size={18} />
             <TextInput
+              accessibilityLabel="Search and add a feature"
               onChangeText={onChangeFeatureInput}
               onSubmitEditing={onAddFeature}
               placeholder="Search and add a feature"
@@ -1118,7 +1124,7 @@ function FeaturesStep({
             <Plus color="#FFFFFF" size={18} />
           </Pressable>
         </View>
-        {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+        {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       </View>
       <View style={styles.featureSection}>
         <Text style={styles.featureSectionTitle}>Added features</Text>
@@ -1151,6 +1157,7 @@ function FeaturesStep({
 
             return (
               <Pressable
+                accessibilityLabel={`${isSelected ? 'Remove' : 'Add'} ${feature}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
                 key={feature}
@@ -1190,7 +1197,10 @@ function PhotosStep({
     <View style={styles.form}>
       {imageUrls.length === 0 ? (
         <Pressable
+          accessibilityHint="Opens your photo library to choose up to 10 vehicle photos."
+          accessibilityLabel="Choose vehicle photos"
           accessibilityRole="button"
+          accessibilityState={{ busy: isUploading, disabled: isUploading }}
           disabled={isUploading}
           onPress={onPickPhotos}
           style={({ pressed }) => [
@@ -1204,7 +1214,7 @@ function PhotosStep({
           <Text style={styles.photoPickerSubtext}>JPG, PNG, or WebP • Max 10 MB each</Text>
         </Pressable>
       ) : null}
-      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+      {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {isUploading ? (
         <View style={styles.photoUploadStatus}>
           <ActivityIndicator color="#1769F5" size="small" />
@@ -1416,6 +1426,8 @@ function AvailabilityStep({
         name="available"
         render={({ field: { onChange, value } }) => (
           <Pressable
+            accessibilityHint="Enables or disables manual approval for new booking requests."
+            accessibilityLabel="Accept booking requests after approval"
             accessibilityRole="switch"
             accessibilityState={{ checked: value }}
             onPress={() => onChange(!value)}
@@ -1476,6 +1488,7 @@ function DateField({
             <Text style={styles.label}>{optional ? `${label} - Optional` : label}</Text>
             <View style={styles.dateFieldRow}>
               <Pressable
+                accessibilityLabel={`${label}, ${dateValue ? formatListingDate(dateValue) : 'Select date'}`}
                 accessibilityRole="button"
                 onPress={onPress}
                 style={[styles.dateField, error && styles.inputError]}
@@ -1497,7 +1510,7 @@ function DateField({
                 </Pressable>
               ) : null}
             </View>
-            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+            {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
           </View>
         );
       }}
@@ -1521,13 +1534,14 @@ function AdvanceNoticeField({
       render={({ field: { onChange, value } }) => (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Advance notice</Text>
-          <View style={styles.advanceNoticeOptions}>
+          <View accessibilityLabel="Advance notice" accessibilityRole="radiogroup" style={styles.advanceNoticeOptions}>
             {options.map((option) => {
               const selected = value === option;
 
               return (
                 <Pressable
-                  accessibilityRole="button"
+                  accessibilityLabel={`${option} hours`}
+                  accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   key={option}
                   onPress={() => onChange(option)}
@@ -1540,7 +1554,7 @@ function AdvanceNoticeField({
               );
             })}
           </View>
-          {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+          {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
         </View>
       )}
     />
@@ -1582,12 +1596,12 @@ function NativeDatePicker({
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible>
       <View style={styles.datePickerOverlay}>
-        <Pressable accessibilityRole="button" onPress={onClose} style={StyleSheet.absoluteFill} />
-        <SafeAreaView edges={['bottom']} style={styles.datePickerSheet}>
+        <Pressable accessible={false} onPress={onClose} style={StyleSheet.absoluteFill} />
+        <SafeAreaView accessibilityLabel="Select date" accessibilityViewIsModal edges={['bottom']} style={styles.datePickerSheet}>
           <View style={styles.datePickerHandle} />
           <View style={styles.datePickerHeader}>
-            <Text style={styles.datePickerTitle}>Select date</Text>
-            <Pressable accessibilityRole="button" onPress={() => onSelect(selectedDate)}>
+            <Text accessibilityRole="header" style={styles.datePickerTitle}>Select date</Text>
+            <Pressable accessibilityLabel="Confirm selected date" accessibilityRole="button" onPress={() => onSelect(selectedDate)}>
               <Text style={styles.datePickerDone}>Done</Text>
             </Pressable>
           </View>
@@ -1730,6 +1744,8 @@ function TextField({
             >
               <TextInput
                 {...inputProps}
+                accessibilityHint={inputProps.placeholder}
+                accessibilityLabel={label}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholderTextColor="#9CA3AF"
@@ -1741,6 +1757,8 @@ function TextField({
           ) : (
             <TextInput
               {...inputProps}
+              accessibilityHint={inputProps.placeholder}
+              accessibilityLabel={label}
               onBlur={onBlur}
               onChangeText={onChange}
               placeholderTextColor="#9CA3AF"
@@ -1753,7 +1771,7 @@ function TextField({
               value={typeof value === 'string' ? value : String(value ?? '')}
             />
           )}
-          {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+          {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
         </View>
       )}
     />
@@ -1789,6 +1807,8 @@ function CurrencyField({
             <View style={[styles.input, styles.inputWithSuffix, error && styles.inputError]}>
               <Text style={styles.currencyPrefix}>₹</Text>
               <TextInput
+                accessibilityHint={placeholder}
+                accessibilityLabel={label}
                 keyboardType="decimal-pad"
                 onBlur={() => {
                   onBlur();
@@ -1802,7 +1822,7 @@ function CurrencyField({
                 value={displayValue}
               />
             </View>
-            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+            {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
           </View>
         );
       }}
@@ -1840,6 +1860,7 @@ function SelectField({
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{label}</Text>
             <Pressable
+              accessibilityLabel={`${label}, ${displayValue || placeholder}`}
               accessibilityRole="button"
               accessibilityState={{ disabled }}
               disabled={disabled}
@@ -1852,7 +1873,7 @@ function SelectField({
               </Text>
               <ChevronRight color="#52627C" size={18} />
             </Pressable>
-            {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+            {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
           </View>
         );
       }}
@@ -1878,10 +1899,12 @@ function SegmentField({
       render={({ field: { onChange, value } }) => (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{label}</Text>
-          <View style={styles.segmentWrap}>
+          <View accessibilityLabel={label} accessibilityRole="radiogroup" style={styles.segmentWrap}>
             {options.map(([optionValue, optionLabel]) => (
               <Pressable
-                accessibilityRole="button"
+                accessibilityLabel={optionLabel}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: value === optionValue }}
                 key={optionValue}
                 onPress={() => onChange(optionValue)}
                 style={[

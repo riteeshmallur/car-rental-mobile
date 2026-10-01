@@ -122,7 +122,11 @@ export function OtpVerificationScreen() {
           )}
         />
 
-        {screenError ? <Text style={styles.errorText}>{screenError}</Text> : null}
+        {screenError ? (
+          <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>
+            {screenError}
+          </Text>
+        ) : null}
 
         <AuthSubmitButton
           disabled={!isValid}
@@ -133,7 +137,16 @@ export function OtpVerificationScreen() {
 
         <View style={styles.actions}>
           <Pressable
+            accessibilityLabel={
+              resendSeconds > 0
+                ? `Resend code available in ${resendSeconds} seconds`
+                : 'Resend verification code'
+            }
             accessibilityRole="button"
+            accessibilityState={{
+              busy: resendOtpMutation.isPending,
+              disabled: resendSeconds > 0 || resendOtpMutation.isPending,
+            }}
             disabled={resendSeconds > 0 || resendOtpMutation.isPending}
             onPress={() => resendOtpMutation.mutate({ phoneNumber })}
             style={({ pressed }) => [
@@ -153,6 +166,7 @@ export function OtpVerificationScreen() {
           </Pressable>
 
           <Pressable
+            accessibilityLabel="Change phone number"
             accessibilityRole="button"
             onPress={goBack}
             style={({ pressed }) => [

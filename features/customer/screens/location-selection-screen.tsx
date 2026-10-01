@@ -65,7 +65,7 @@ export function LocationSelectionScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Select location</Text>
+            <Text accessibilityRole="header" style={styles.title}>Select location</Text>
             <Text style={styles.subtitle}>Search by city or pickup area</Text>
           </View>
           <Pressable
@@ -81,6 +81,8 @@ export function LocationSelectionScreen() {
         <View style={styles.searchBox}>
           <Search color="#6B7280" size={20} />
           <TextInput
+            accessibilityHint="Enter at least two characters to search cities and pickup areas."
+            accessibilityLabel="Search pickup locations"
             autoCapitalize="words"
             autoCorrect={false}
             autoFocus
@@ -121,6 +123,8 @@ export function LocationSelectionScreen() {
             style={styles.resultListView}
             renderItem={({ item }) => (
               <Pressable
+                accessibilityHint="Selects this pickup location."
+                accessibilityLabel={`${item.name}, ${item.city}${item.state ? `, ${item.state}` : ''}, ${item.country}`}
                 accessibilityRole="button"
                 onPress={() => selectLocation(item)}
                 style={({ pressed }) => [

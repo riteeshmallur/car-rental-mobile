@@ -178,6 +178,8 @@ function FavoriteCard({
   return (
     <View style={styles.card}>
       <Pressable
+        accessibilityHint="Opens vehicle details."
+        accessibilityLabel={`${favourite.vehicle.make} ${favourite.vehicle.model}, ₹${Number(favourite.vehicle.pricePerDay).toLocaleString('en-IN')} per day${favourite.vehicle.averageRating > 0 ? `, rated ${favourite.vehicle.averageRating.toFixed(1)} from ${favourite.vehicle.reviewCount} reviews` : ', new listing'}`}
         accessibilityRole="button"
         onPress={onOpen}
         style={({ pressed }) => [styles.cardButton, pressed && styles.pressed]}
@@ -213,14 +215,15 @@ function FavoriteCard({
         </View>
       </Pressable>
       <Pressable
-        accessibilityLabel="Remove favorite"
+        accessibilityLabel={`Remove ${favourite.vehicle.make} ${favourite.vehicle.model} from favorites`}
         accessibilityRole="button"
         disabled={isRemoving}
+        accessibilityState={{ busy: isRemoving, disabled: isRemoving }}
         onPress={onRemove}
         style={({ pressed }) => [styles.heartButton, pressed && styles.pressed]}
       >
         {isRemoving ? (
-          <ActivityIndicator color={colors.brand} size="small" />
+          <ActivityIndicator accessibilityLabel="Removing favorite" color={colors.brand} size="small" />
         ) : (
           <Heart color={colors.error} fill={colors.error} size={19} />
         )}
@@ -259,10 +262,10 @@ function StateMessage({
 }) {
   return (
     <View style={styles.stateMessage}>
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateBody}>{body}</Text>
+      <Text accessibilityRole="header" style={styles.stateTitle}>{title}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.stateBody}>{body}</Text>
       {actionLabel && onAction ? (
-        <Pressable accessibilityRole="button" onPress={onAction} style={styles.retryButton}>
+        <Pressable accessibilityLabel={actionLabel} accessibilityRole="button" onPress={onAction} style={styles.retryButton}>
           <Text style={styles.retryText}>{actionLabel}</Text>
         </Pressable>
       ) : null}

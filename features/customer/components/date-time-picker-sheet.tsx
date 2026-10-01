@@ -229,15 +229,16 @@ export function DateTimePickerSheet({
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} visible={isOpen}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView accessibilityViewIsModal style={styles.safeArea}>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
           <View style={styles.topBar}>
-            <Pressable
-              accessibilityLabel="Back"
+              <Pressable
+                accessibilityHint="Dismisses date and time selection without applying changes."
+                accessibilityLabel="Back"
               accessibilityRole="button"
               hitSlop={10}
               onPress={onClose}
@@ -248,7 +249,7 @@ export function DateTimePickerSheet({
           </View>
 
           <View style={styles.locationRow}>
-            <Text style={styles.locationLabel}>Where</Text>
+            <Text accessibilityRole="header" style={styles.locationLabel}>Where</Text>
             <Text numberOfLines={1} style={styles.locationValue}>
               {location?.name || location?.city || 'Select pickup location'}
             </Text>
@@ -256,8 +257,13 @@ export function DateTimePickerSheet({
 
           <View style={styles.dateCard}>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>Select start &amp; end date</Text>
-              <Pressable accessibilityRole="button" onPress={() => { setPickupAt(null); setReturnAt(null); setStage('pickup'); }}>
+              <Text accessibilityRole="header" style={styles.title}>Select start &amp; end date</Text>
+              <Pressable
+                accessibilityHint="Clears the pickup and return selections."
+                accessibilityLabel="Clear selected dates"
+                accessibilityRole="button"
+                onPress={() => { setPickupAt(null); setReturnAt(null); setStage('pickup'); }}
+              >
                 <Text style={styles.clearText}>CLEAR</Text>
               </Pressable>
             </View>
@@ -275,6 +281,7 @@ export function DateTimePickerSheet({
 
             <View style={styles.calendarHeader}>
               <Pressable
+                accessibilityHint="Shows the previous month."
                 accessibilityLabel="Previous month"
                 accessibilityRole="button"
                 onPress={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))}
@@ -282,10 +289,11 @@ export function DateTimePickerSheet({
               >
                 <ChevronLeft color={colors.text} size={20} />
               </Pressable>
-              <Text style={styles.monthTitle}>
+              <Text accessibilityRole="header" style={styles.monthTitle}>
                 {new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(visibleMonth)}
               </Text>
               <Pressable
+                accessibilityHint="Shows the next month."
                 accessibilityLabel="Next month"
                 accessibilityRole="button"
                 onPress={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))}
@@ -310,8 +318,13 @@ export function DateTimePickerSheet({
 
                 return (
                   <Pressable
-                    accessibilityLabel={`${stage === 'pickup' ? 'Pickup' : 'Return'} ${date.getDate()}`}
+                    accessibilityHint={`Selects ${stage === 'pickup' ? 'pickup' : 'return'} date.`}
+                    accessibilityLabel={`${stage === 'pickup' ? 'Pickup' : 'Return'} ${new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)}`}
                     accessibilityRole="button"
+                    accessibilityState={{
+                      disabled,
+                      selected: isPickup || isReturn,
+                    }}
                     disabled={disabled}
                     key={date.toISOString()}
                     onPress={() => selectDate(date)}
@@ -341,10 +354,12 @@ export function DateTimePickerSheet({
               </Text>
             </View>
 
-            <View style={styles.stageSwitcher}>
+            <View accessibilityRole="tablist" style={styles.stageSwitcher}>
               {(['pickup', 'return'] as const).map((selection) => (
                 <Pressable
-                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${selection} date`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: stage === selection }}
                   key={selection}
                   onPress={() => setStage(selection)}
                   style={[
@@ -379,10 +394,16 @@ export function DateTimePickerSheet({
               />
             </View>
 
-            {validationError ? <Text style={styles.validationError}>{validationError}</Text> : null}
+            {validationError ? (
+              <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.validationError}>
+                {validationError}
+              </Text>
+            ) : null}
 
             <Pressable
+              accessibilityLabel="Apply selected pickup and return dates"
               accessibilityRole="button"
+              accessibilityState={{ disabled: !canContinue }}
               disabled={!canContinue}
               onPress={continueWithSelection}
               style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
@@ -457,7 +478,7 @@ function TimePickerColumn({
 
   return (
     <View style={styles.timeColumn}>
-      <Text style={styles.timeTitle}>{label}</Text>
+      <Text accessibilityRole="header" style={styles.timeTitle}>{label}</Text>
       <View style={styles.timeViewport}>
         <ScrollView
           ref={scrollRef}
@@ -491,7 +512,12 @@ function TimePickerColumn({
 
               return (
                 <Pressable
-                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, ${formatPickerTime(choice)}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{
+                    disabled: !selectable,
+                    selected: sameTime(value, choice),
+                  }}
                   disabled={!selectable}
                   key={`${label}-${choice.toISOString()}`}
                   onPress={() => onChange(choice)}

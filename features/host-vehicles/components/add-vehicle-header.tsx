@@ -34,13 +34,19 @@ export function AddVehicleHeader({
           <ArrowLeft color="#111827" size={22} />
         </Pressable>
         <View style={styles.titleGroup}>
-          <Text style={styles.title}>Add vehicle</Text>
+          <Text accessibilityRole="header" style={styles.title}>Add vehicle</Text>
           <Text style={styles.subtitle}>Step {stepNumber} of {totalSteps}</Text>
         </View>
         <View style={styles.headerSpacer} />
       </View>
 
-      <View accessibilityLabel={`Step ${stepNumber} of ${totalSteps}`} style={styles.progressRow}>
+      <View
+        accessible
+        accessibilityLabel={`Step ${stepNumber} of ${totalSteps}`}
+        accessibilityRole="progressbar"
+        accessibilityValue={{ max: totalSteps, min: 1, now: stepNumber }}
+        style={styles.progressRow}
+      >
         <View style={styles.progressLine} />
         {Array.from({ length: totalSteps }, (_, index) => {
           const currentStep = index + 1;
@@ -62,7 +68,11 @@ export function AddVehicleHeader({
         })}
       </View>
 
-      <View style={[styles.statusRow, saveStatus === 'failed' && styles.statusRowFailed]}>
+      <View
+        accessibilityLiveRegion={saveStatus === 'saving' ? 'polite' : 'assertive'}
+        accessibilityRole={saveStatus === 'failed' ? 'alert' : 'text'}
+        style={[styles.statusRow, saveStatus === 'failed' && styles.statusRowFailed]}
+      >
         {saveStatus === 'saving' ? (
           <ActivityIndicator color="#0F766E" size="small" />
         ) : (

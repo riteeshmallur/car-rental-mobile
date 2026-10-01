@@ -24,15 +24,19 @@ export function FeaturedCarList({
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <Pressable accessibilityRole="button" onPress={onViewAll}>
+        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+        <Pressable
+          accessibilityLabel={`View all ${title}`}
+          accessibilityRole="button"
+          onPress={onViewAll}
+        >
           <Text style={styles.viewAll}>View all</Text>
         </Pressable>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingRow}>
-          <ActivityIndicator color="#111827" />
+          <ActivityIndicator accessibilityLabel="Loading cars" color="#111827" />
           <Text style={styles.loadingText}>Loading cars</Text>
         </View>
       ) : cars.length === 0 ? (

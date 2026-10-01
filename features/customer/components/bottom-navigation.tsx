@@ -34,7 +34,9 @@ export function BottomNavigation() {
 
         return (
           <Pressable
-            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
             key={item.path}
             onPress={() => router.replace(item.href)}
             style={({ pressed }) => [

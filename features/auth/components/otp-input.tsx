@@ -41,7 +41,7 @@ export function OtpInput({
   return (
     <View style={styles.container}>
       <Pressable
-        accessibilityLabel="One-time password"
+        accessible={false}
         accessibilityRole="button"
         onPress={() => inputRef.current?.focus()}
         style={styles.digitRow}
@@ -63,8 +63,19 @@ export function OtpInput({
           );
         })}
       </Pressable>
-      <TextInput ref={inputRef} style={styles.hiddenInput} {...inputProps} />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <TextInput
+        ref={inputRef}
+        accessibilityHint={`Enter the ${length}-digit code sent to your phone.`}
+        accessibilityLabel="One-time password"
+        accessibilityValue={{ text: `${value.length} of ${length} digits entered` }}
+        style={styles.hiddenInput}
+        {...inputProps}
+      />
+      {error ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -79,7 +90,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   digitBox: {
-    height: 54,
+    minHeight: 54,
     flex: 1,
     minWidth: 0,
     alignItems: 'center',

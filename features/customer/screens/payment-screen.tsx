@@ -89,7 +89,7 @@ export function PaymentScreen() {
           <View style={styles.iconFrame}>
             <CreditCard color="#111827" size={28} />
           </View>
-          <Text style={styles.title}>Payment setup</Text>
+          <Text accessibilityRole="header" style={styles.title}>Payment setup</Text>
           <Text style={styles.body}>
             No payment provider API is present in this backend yet. HopIn will
             create the booking with a server-side pending payment status.
@@ -107,15 +107,17 @@ export function PaymentScreen() {
 
         {bookingMutation.isError ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Payment could not continue</Text>
-            <Text style={styles.errorText}>
+            <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorTitle}>Payment could not continue</Text>
+            <Text accessibilityLiveRegion="assertive" style={styles.errorText}>
               The quote may have expired or the vehicle may no longer be available.
             </Text>
           </View>
         ) : null}
 
         <Pressable
+          accessibilityLabel={bookingMutation.isPending ? 'Creating booking' : 'Create booking'}
           accessibilityRole="button"
+          accessibilityState={{ busy: bookingMutation.isPending, disabled: bookingMutation.isPending }}
           disabled={bookingMutation.isPending}
           onPress={() => bookingMutation.mutate()}
           style={({ pressed }) => [
@@ -125,7 +127,7 @@ export function PaymentScreen() {
           ]}
         >
           {bookingMutation.isPending ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator accessibilityLabel="Creating booking" color="#FFFFFF" />
           ) : (
             <Text style={styles.primaryButtonText}>Create booking</Text>
           )}

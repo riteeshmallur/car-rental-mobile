@@ -430,7 +430,11 @@ function VehicleHero({
               style={[styles.galleryItem, { width: galleryWidth }]}
             >
               {imageUrl ? (
-                <CachedVehicleImage style={styles.heroImage} uri={imageUrl} />
+                <CachedVehicleImage
+                  accessibilityLabel={`${vehicle.make} ${vehicle.model}`}
+                  style={styles.heroImage}
+                  uri={imageUrl}
+                />
               ) : (
                 <View style={styles.heroFallback}>
                   <CarFront color="#0F172A" size={56} />

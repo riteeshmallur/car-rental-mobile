@@ -26,7 +26,10 @@ export function CountryCodeSelector({
   return (
     <>
       <Pressable
+        accessibilityHint="Opens the country calling code selector."
+        accessibilityLabel={`Country code, ${selectedCountry?.name ?? value}, ${value}`}
         accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
         onPress={onOpen}
         style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
       >
@@ -37,12 +40,18 @@ export function CountryCodeSelector({
       </Pressable>
 
       <Modal animationType="fade" onRequestClose={onClose} transparent visible={isOpen}>
-        <Pressable onPress={onClose} style={styles.backdrop}>
-          <Pressable onPress={(event) => event.stopPropagation()} style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Country code</Text>
+        <Pressable accessible={false} onPress={onClose} style={styles.backdrop}>
+          <Pressable
+            accessibilityViewIsModal
+            onPress={(event) => event.stopPropagation()}
+            style={styles.sheet}
+          >
+            <Text accessibilityRole="header" style={styles.sheetTitle}>Country code</Text>
             {countryCodes.map((country) => (
               <Pressable
+                accessibilityLabel={`${country.name}, ${country.dialCode}`}
                 accessibilityRole="button"
+                accessibilityState={{ selected: value === country.dialCode }}
                 key={country.isoCode}
                 onPress={() => {
                   onChange(country.dialCode);

@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 type CachedVehicleImageProps = {
+  accessibilityLabel?: string;
   contentFit?: ImageContentFit;
   style: StyleProp<ViewStyle>;
   uri: string;
 };
 
 export function CachedVehicleImage({
+  accessibilityLabel,
   contentFit = 'cover',
   style,
   uri,
@@ -20,10 +22,16 @@ export function CachedVehicleImage({
   }, [uri]);
 
   return (
-    <View style={[styles.frame, style]}>
+    <View
+      accessible={Boolean(accessibilityLabel)}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityLabel ? 'image' : undefined}
+      style={[styles.frame, style]}
+    >
       {isLoading ? <View style={styles.placeholder} /> : null}
       <ExpoImage
         cachePolicy="memory-disk"
+        accessible={false}
         contentFit={contentFit}
         onError={() => setLoading(false)}
         onLoadEnd={() => setLoading(false)}

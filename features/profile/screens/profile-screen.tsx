@@ -230,7 +230,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                   </Pressable>
                 ) : null}
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.title}>Profile</Text>
+                  <Text accessibilityRole="header" style={styles.title}>Profile</Text>
                   <Text style={styles.subtitle}>Manage your account and preferences</Text>
                 </View>
               </View>
@@ -331,6 +331,8 @@ function hasHostCapability(profile: SafeUser | undefined) {
 function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {
   return (
     <Pressable
+      accessibilityHint="Opens personal information."
+      accessibilityLabel={`${getDisplayName(user)}, profile information`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
@@ -383,6 +385,7 @@ function HostBanner({ hasHostCapability, mode, onPress }: { hasHostCapability: b
 
   return (
     <Pressable
+      accessibilityLabel={title}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.hostBanner, pressed && styles.pressed]}
@@ -404,12 +407,14 @@ function HostBanner({ hasHostCapability, mode, onPress }: { hasHostCapability: b
 }
 
 function SectionHeading({ title }: { title: string }) {
-  return <Text style={styles.sectionHeading}>{title}</Text>;
+  return <Text accessibilityRole="header" style={styles.sectionHeading}>{title}</Text>;
 }
 
 function SectionRow({ item }: { item: SectionItem }) {
   return (
     <Pressable
+      accessibilityHint={item.description || undefined}
+      accessibilityLabel={item.label}
       accessibilityRole="button"
       onPress={item.onPress}
       style={({ pressed }) => [styles.sectionRow, pressed && styles.pressed]}
@@ -442,22 +447,24 @@ function LogoutConfirmationSheet({
       transparent
       visible={isVisible}
     >
-      <View style={styles.sheetOverlay}>
+      <View accessibilityViewIsModal style={styles.sheetOverlay}>
         <Pressable
           accessibilityLabel="Close logout confirmation"
           accessibilityRole="button"
           onPress={onClose}
           style={styles.sheetBackdrop}
         />
-        <View style={styles.logoutSheet}>
+        <View accessibilityRole="alert" style={styles.logoutSheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Log out?</Text>
+          <Text accessibilityRole="header" style={styles.sheetTitle}>Log out?</Text>
           <Text style={styles.sheetBody}>
             Are you sure you want to log out of your HopIn account?
           </Text>
           <View style={styles.sheetActions}>
             <Pressable
+              accessibilityLabel="Cancel logout"
               accessibilityRole="button"
+              accessibilityState={{ disabled: isLoggingOut }}
               disabled={isLoggingOut}
               onPress={onClose}
               style={({ pressed }) => [
@@ -469,7 +476,9 @@ function LogoutConfirmationSheet({
               <Text style={styles.sheetNoText}>No</Text>
             </Pressable>
             <Pressable
+              accessibilityLabel="Confirm logout"
               accessibilityRole="button"
+              accessibilityState={{ busy: isLoggingOut, disabled: isLoggingOut }}
               disabled={isLoggingOut}
               onPress={onConfirm}
               style={({ pressed }) => [

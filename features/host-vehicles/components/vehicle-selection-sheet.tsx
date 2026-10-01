@@ -64,11 +64,16 @@ export function VehicleSelectionSheet({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
-        <Pressable accessibilityRole="button" onPress={onClose} style={styles.backdrop} />
-        <SafeAreaView edges={['bottom']} style={styles.sheet}>
+        <Pressable accessible={false} onPress={onClose} style={styles.backdrop} />
+        <SafeAreaView
+          accessibilityLabel={`${title} selection`}
+          accessibilityViewIsModal
+          edges={['bottom']}
+          style={styles.sheet}
+        >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
             <Pressable
               accessibilityLabel="Close selection"
               accessibilityRole="button"
@@ -81,6 +86,8 @@ export function VehicleSelectionSheet({
           <View style={styles.searchBox}>
             <Search color="#72809A" size={18} />
             <TextInput
+              accessibilityHint={`Filter ${title.toLowerCase()} options.`}
+              accessibilityLabel={`Search ${title}`}
               autoFocus
               onChangeText={setSearch}
               placeholder="Search"
@@ -99,7 +106,8 @@ export function VehicleSelectionSheet({
 
               return (
                 <Pressable
-                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   onPress={() => {
                     onSelect(item.value);

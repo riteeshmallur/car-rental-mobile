@@ -35,12 +35,18 @@ export class AppErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>HopIn hit an unexpected error.</Text>
-          <Text style={styles.body}>
+          <Text accessibilityRole="header" style={styles.title}>HopIn hit an unexpected error.</Text>
+          <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.body}>
             Restart this view and try again. The error was also sent to the
             global error state for logging hooks.
           </Text>
-          <Pressable accessibilityRole="button" onPress={this.reset} style={styles.button}>
+          <Pressable
+            accessibilityHint="Restarts this screen."
+            accessibilityLabel="Try again"
+            accessibilityRole="button"
+            onPress={this.reset}
+            style={styles.button}
+          >
             <Text style={styles.buttonText}>Try again</Text>
           </Pressable>
         </View>

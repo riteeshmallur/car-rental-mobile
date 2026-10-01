@@ -121,9 +121,10 @@ export function PersonalInformationScreen({ mode }: PersonalInformationScreenPro
             </View>
           ) : profileQuery.isError ? (
             <View style={styles.state}>
-              <Text style={styles.stateTitle}>Details could not load</Text>
-              <Text style={styles.stateText}>{normalizeApiError(profileQuery.error).message}</Text>
+              <Text accessibilityRole="header" style={styles.stateTitle}>Details could not load</Text>
+              <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.stateText}>{normalizeApiError(profileQuery.error).message}</Text>
               <Pressable
+                accessibilityLabel="Retry loading personal information"
                 accessibilityRole="button"
                 onPress={() => void profileQuery.refetch()}
                 style={styles.primaryButton}
@@ -177,12 +178,18 @@ export function PersonalInformationScreen({ mode }: PersonalInformationScreenPro
                 placeholder="https://..."
               />
 
-              {errors.root?.message ? <Text style={styles.errorText}>{errors.root.message}</Text> : null}
+              {errors.root?.message ? (
+                <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>
+                  {errors.root.message}
+                </Text>
+              ) : null}
 
               <View style={styles.formActions}>
                 <Pressable
+                  accessibilityLabel="Cancel profile changes"
                   accessibilityRole="button"
                   disabled={updateMutation.isPending}
+                  accessibilityState={{ disabled: updateMutation.isPending }}
                   onPress={goBack}
                   style={({ pressed }) => [
                     styles.secondaryButton,
@@ -193,8 +200,13 @@ export function PersonalInformationScreen({ mode }: PersonalInformationScreenPro
                   <Text style={styles.secondaryButtonText}>Cancel</Text>
                 </Pressable>
                 <Pressable
+                  accessibilityLabel={updateMutation.isPending ? 'Saving profile' : 'Save profile'}
                   accessibilityRole="button"
                   disabled={!isDirty || !isValid || updateMutation.isPending}
+                  accessibilityState={{
+                    busy: updateMutation.isPending,
+                    disabled: !isDirty || !isValid || updateMutation.isPending,
+                  }}
                   onPress={submitProfile}
                   style={({ pressed }) => [
                     styles.primaryButton,
@@ -245,6 +257,8 @@ function ProfileInput({
         render={({ field: { onBlur, onChange, value } }) => (
           <TextInput
             autoCapitalize={autoCapitalize}
+            accessibilityHint={`Enter your ${label.toLowerCase()}.`}
+            accessibilityLabel={label}
             inputMode={inputMode}
             keyboardType={keyboardType}
             onBlur={onBlur}
@@ -256,7 +270,11 @@ function ProfileInput({
           />
         )}
       />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

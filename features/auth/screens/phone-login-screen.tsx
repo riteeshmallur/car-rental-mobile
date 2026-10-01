@@ -101,6 +101,8 @@ export function PhoneLoginScreen() {
             name="phoneNumber"
             render={({ field: { onBlur, onChange, value } }) => (
               <TextInput
+                accessibilityHint="Enter your mobile number without the country calling code."
+                accessibilityLabel="Mobile number"
                 autoComplete="tel"
                 inputMode="numeric"
                 keyboardType="phone-pad"
@@ -120,7 +122,9 @@ export function PhoneLoginScreen() {
           />
         </View>
         {errors.phoneNumber?.message ? (
-          <Text style={styles.errorText}>{errors.phoneNumber.message}</Text>
+          <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>
+            {errors.phoneNumber.message}
+          </Text>
         ) : null}
 
         <AuthSubmitButton
