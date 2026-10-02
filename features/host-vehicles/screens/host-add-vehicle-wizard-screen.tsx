@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,6 +9,7 @@ import {
   Camera,
   CarFront,
   Check,
+  ChevronLeft,
   ChevronRight,
   FileText,
   MapPin,
@@ -51,6 +51,8 @@ import {
 } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 import { AddVehicleFooter } from '@/features/host-vehicles/components/add-vehicle-footer';
+import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import {
   AddVehicleHeader,
   type DraftSaveStatus,
@@ -1226,14 +1228,15 @@ function PhotosStep({
       {imageUrls.length ? <Text style={styles.photoCount}>Photos ({imageUrls.length}/10)</Text> : null}
       {imageUrls.length ? (
         <View style={styles.photoGrid}>
-          {imageUrls.map((uri) => (
+          {imageUrls.map((uri) => {
+            const imageUrl = getVehicleImageVariantUrl(uri, 'detail') ?? uri;
+
+            return (
             <View key={uri} style={styles.photoTile}>
-            <ExpoImage
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              source={{ uri }}
+            <CachedVehicleImage
+              accessibilityLabel="Vehicle photo"
               style={styles.photo}
-              transition={100}
+              uri={imageUrl}
             />
             {imageUrls[0] === uri ? (
               <View style={styles.coverBadge}>
@@ -1258,7 +1261,8 @@ function PhotosStep({
               <Trash2 color="#FFFFFF" size={15} />
             </Pressable>
             </View>
-          ))}
+            );
+          })}
           {imageUrls.length < maximumPhotoCount ? (
             <Pressable
             accessibilityLabel="Add more photos"
@@ -1605,16 +1609,126 @@ function NativeDatePicker({
               <Text style={styles.datePickerDone}>Done</Text>
             </Pressable>
           </View>
-          <DateTimePicker
-            display="spinner"
-            minimumDate={minimumDate}
-            mode="date"
-            onChange={(_event, date) => date && setSelectedDate(date)}
-            value={selectedDate}
-          />
+          {Platform.OS === 'web' ? (
+            <WebDateCalendar
+              minimumDate={minimumDate}
+              onChange={setSelectedDate}
+              value={selectedDate}
+            />
+          ) : (
+            <DateTimePicker
+              display="spinner"
+              minimumDate={minimumDate}
+              mode="date"
+              onChange={(_event, date) => date && setSelectedDate(date)}
+              value={selectedDate}
+            />
+          )}
         </SafeAreaView>
       </View>
     </Modal>
+  );
+}
+
+function WebDateCalendar({
+  minimumDate,
+  onChange,
+  value,
+}: {
+  minimumDate?: Date;
+  onChange: (value: Date) => void;
+  value: Date;
+}) {
+  const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(value));
+  const minimumDay = minimumDate ? getStartOfDay(minimumDate) : undefined;
+
+  useEffect(() => {
+    setVisibleMonth(getMonthStart(value));
+  }, [value]);
+
+  const calendarDays = getCalendarDays(visibleMonth);
+  const previousMonth = addMonths(visibleMonth, -1);
+  const previousMonthIsBeforeMinimum =
+    minimumDay !== undefined && getMonthEnd(previousMonth).getTime() < minimumDay.getTime();
+
+  return (
+    <View style={styles.webDateCalendar}>
+      <View style={styles.webDateCalendarNavigation}>
+        <Pressable
+          accessibilityLabel="Previous month"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: previousMonthIsBeforeMinimum }}
+          disabled={previousMonthIsBeforeMinimum}
+          onPress={() => setVisibleMonth(previousMonth)}
+          style={({ pressed }) => [
+            styles.webDateCalendarNavigationButton,
+            previousMonthIsBeforeMinimum && styles.webDateCalendarNavigationButtonDisabled,
+            pressed && !previousMonthIsBeforeMinimum && styles.webDateCalendarNavigationButtonPressed,
+          ]}
+        >
+          <ChevronLeft color="#17213B" size={20} />
+        </Pressable>
+        <Text accessibilityRole="header" style={styles.webDateCalendarMonth}>
+          {formatCalendarMonth(visibleMonth)}
+        </Text>
+        <Pressable
+          accessibilityLabel="Next month"
+          accessibilityRole="button"
+          onPress={() => setVisibleMonth((currentMonth) => addMonths(currentMonth, 1))}
+          style={({ pressed }) => [
+            styles.webDateCalendarNavigationButton,
+            pressed && styles.webDateCalendarNavigationButtonPressed,
+          ]}
+        >
+          <ChevronRight color="#17213B" size={20} />
+        </Pressable>
+      </View>
+      <View style={styles.webDateCalendarGrid}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
+          <View key={weekday} style={styles.webDateCalendarCell}>
+            <Text style={styles.webDateCalendarWeekday}>{weekday}</Text>
+          </View>
+        ))}
+        {calendarDays.map((date, index) => {
+          if (!date) {
+            return <View key={`empty-${index}`} style={styles.webDateCalendarCell} />;
+          }
+
+          const dateAtStartOfDay = getStartOfDay(date);
+          const disabled = minimumDay !== undefined && dateAtStartOfDay.getTime() < minimumDay.getTime();
+          const selected = isSameCalendarDay(dateAtStartOfDay, value);
+
+          return (
+            <View key={toDateInputValue(dateAtStartOfDay)} style={styles.webDateCalendarCell}>
+              <Pressable
+                accessibilityHint={disabled ? 'This date is unavailable' : 'Select this date'}
+                accessibilityLabel={formatCalendarDate(dateAtStartOfDay)}
+                accessibilityRole="button"
+                accessibilityState={{ disabled, selected }}
+                disabled={disabled}
+                onPress={() => onChange(dateAtStartOfDay)}
+                style={({ pressed }) => [
+                  styles.webDateCalendarDay,
+                  selected && styles.webDateCalendarDaySelected,
+                  disabled && styles.webDateCalendarDayDisabled,
+                  pressed && !disabled && styles.webDateCalendarDayPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.webDateCalendarDayText,
+                    selected && styles.webDateCalendarDayTextSelected,
+                    disabled && styles.webDateCalendarDayTextDisabled,
+                  ]}
+                >
+                  {dateAtStartOfDay.getDate()}
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -1625,6 +1739,7 @@ function ReviewStep({
   onEdit: (stepIndex: number) => void;
   values: HostVehicleFormValues;
 }) {
+  const coverImageUrl = getVehicleImageVariantUrl(values.imageUrls[0], 'thumbnail');
   const rows = [
     {
       icon: <MapPin color="#1769F5" size={19} />,
@@ -1669,12 +1784,11 @@ function ReviewStep({
   return (
     <View style={styles.reviewList}>
       <View style={styles.reviewVehicleCard}>
-        {values.imageUrls[0] ? (
-          <ExpoImage
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            source={{ uri: values.imageUrls[0] }}
+        {coverImageUrl ? (
+          <CachedVehicleImage
+            accessibilityLabel="Vehicle cover photo"
             style={styles.reviewVehicleImage}
+            uri={coverImageUrl}
           />
         ) : (
           <View style={styles.reviewVehicleImageFallback}>
@@ -2120,6 +2234,58 @@ function toDateInputValue(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const day = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getStartOfDay(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function getMonthStart(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function getMonthEnd(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth() + 1, 0);
+}
+
+function addMonths(value: Date, months: number) {
+  return new Date(value.getFullYear(), value.getMonth() + months, 1);
+}
+
+function isSameCalendarDay(first: Date, second: Date) {
+  return (
+    first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate()
+  );
+}
+
+function getCalendarDays(month: Date): Array<Date | null> {
+  const daysInMonth = getMonthEnd(month).getDate();
+  const cellsBeforeMonth = getMonthStart(month).getDay();
+  const cellCount = Math.ceil((cellsBeforeMonth + daysInMonth) / 7) * 7;
+
+  return Array.from({ length: cellCount }, (_, index) => {
+    const day = index - cellsBeforeMonth + 1;
+    return day > 0 && day <= daysInMonth
+      ? new Date(month.getFullYear(), month.getMonth(), day)
+      : null;
+  });
+}
+
+function formatCalendarMonth(value: Date) {
+  return new Intl.DateTimeFormat('en-IN', {
+    month: 'long',
+    year: 'numeric',
+  }).format(value);
+}
+
+function formatCalendarDate(value: Date) {
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(value);
 }
 
 function formatListingDate(value: string) {
@@ -2716,6 +2882,78 @@ const styles = StyleSheet.create({
     color: '#1769F5',
     fontSize: 15,
     fontWeight: '900',
+  },
+  webDateCalendar: {
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  webDateCalendarNavigation: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  webDateCalendarNavigationButton: {
+    height: 44,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: '#F0F6FF',
+  },
+  webDateCalendarNavigationButtonDisabled: {
+    opacity: 0.36,
+  },
+  webDateCalendarNavigationButtonPressed: {
+    backgroundColor: '#DFEAFA',
+  },
+  webDateCalendarMonth: {
+    color: '#17213B',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  webDateCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  webDateCalendarCell: {
+    width: '14.285714%',
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webDateCalendarWeekday: {
+    color: '#738099',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  webDateCalendarDay: {
+    height: 40,
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  webDateCalendarDaySelected: {
+    backgroundColor: '#1769F5',
+  },
+  webDateCalendarDayDisabled: {
+    opacity: 0.36,
+  },
+  webDateCalendarDayPressed: {
+    backgroundColor: '#DCEBFF',
+  },
+  webDateCalendarDayText: {
+    color: '#17213B',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  webDateCalendarDayTextSelected: {
+    color: '#FFFFFF',
+  },
+  webDateCalendarDayTextDisabled: {
+    color: '#738099',
   },
   toggleRow: {
     minHeight: 76,

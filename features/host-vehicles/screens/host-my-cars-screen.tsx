@@ -29,6 +29,7 @@ import {
   getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -262,6 +263,7 @@ export function HostMyCarsScreen() {
           <Text style={styles.fabText}>Add Car</Text>
         </Pressable>
       </View>
+      <HostBottomNavigation />
     </SafeAreaView>
   );
 }

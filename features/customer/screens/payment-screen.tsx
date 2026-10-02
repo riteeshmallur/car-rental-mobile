@@ -1,8 +1,10 @@
-import { useMutation } from '@tanstack/react-query';
-import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { CreditCard, ShieldCheck } from 'lucide-react-native';
-import { useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type Href, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { CircleAlert, CreditCard, LoaderCircle, RefreshCw, ShieldCheck } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
+  type AppStateStatus,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -11,20 +13,24 @@ import {
   View,
 } from 'react-native';
 
+import { DevelopmentPaymentSelector } from '@/features/customer/payment/development-payment-selector';
 import {
-  BookingShell,
-  StateMessage,
-} from '@/features/customer/screens/booking-summary-screen';
+  getPaymentScreenState,
+  isConfirmedPaidBooking,
+  isDevelopmentTestPaymentEnabled,
+  shouldPollPayment,
+  type TestPaymentScenario,
+} from '@/features/customer/payment/payment-flow';
+import { BookingShell, StateMessage } from '@/features/customer/screens/booking-summary-screen';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
-import {
-  readSearchRouteState,
-  toSearchRouteParams,
-} from '@/features/customer/utils/search-route-state';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
+import { normalizeApiError } from '@/utils/errors';
 
-function createIdempotencyKey() {
-  return `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const paymentPollingInterval = 3_000;
+
+function createIdempotencyKey(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function getParam(value: string | string[] | undefined) {
@@ -32,52 +38,208 @@ function getParam(value: string | string[] | undefined) {
 }
 
 export function PaymentScreen() {
-  const params = useLocalSearchParams();
-  const searchRouteState = readSearchRouteState(params);
-  const origin = getParam(params.origin);
-  const quote = useBookingFlowStore((state) => state.quote);
+  const params = useLocalSearchParams<{ bookingId?: string | string[]; origin?: string | string[] }>();
+  const bookingId = getParam(params.bookingId);
+  const queryClient = useQueryClient();
   const setBooking = useBookingFlowStore((state) => state.setBooking);
-  const idempotencyKeyRef = useRef(createIdempotencyKey());
-  const backFallback: Href = quote
-    ? {
-        pathname: '/(customer)/booking/breakdown',
-        params: {
-          origin: origin ?? 'home',
-          ...toSearchRouteParams(searchRouteState),
-        },
-      }
+  const [testScenario, setTestScenario] = useState<TestPaymentScenario>('SUCCESS');
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
+  const [isScreenFocused, setIsScreenFocused] = useState(true);
+  const [hasPaymentAttempt, setHasPaymentAttempt] = useState(false);
+  const paymentSubmissionStarted = useRef(false);
+  const paymentAttemptKeyRef = useRef(createIdempotencyKey('payment'));
+  const paymentRetryKeyRef = useRef(createIdempotencyKey('payment-retry'));
+  const isScreenActive = useRef(true);
+  const didNavigateToConfirmation = useRef(false);
+  const testPaymentEnabled = isDevelopmentTestPaymentEnabled();
+  const backFallback: Href = bookingId
+    ? { pathname: '/(customer)/booking/breakdown', params: { origin: getParam(params.origin) ?? 'home' } }
     : '/(customer)/home';
 
-  const bookingMutation = useMutation({
+  const bookingQuery = useQuery({
+    enabled: Boolean(bookingId),
+    queryKey: ['bookings', bookingId],
+    queryFn: () => bookingsApi.findById(bookingId ?? ''),
+    retry: false,
+  });
+  const paymentQuery = useQuery({
+    // A freshly created booking has no payment record yet. Do not issue an
+    // expected-to-fail lookup before the customer submits their first attempt.
+    enabled: Boolean(bookingQuery.data?.id && hasPaymentAttempt),
+    queryKey: ['bookings', 'payment', bookingId],
+    queryFn: () => bookingsApi.findPayment(bookingId ?? ''),
+    refetchInterval: (query) =>
+      isAppActive && isScreenFocused && shouldPollPayment(bookingQuery.data, query.state.data)
+        ? paymentPollingInterval
+        : false,
+    retry: false,
+  });
+
+  const refreshPaymentState = useCallback(async (includePayment = hasPaymentAttempt) => {
+    if (!bookingId) {
+      return;
+    }
+
+    const refreshes: Array<Promise<unknown>> = [
+      bookingQuery.refetch(),
+      queryClient.invalidateQueries({ queryKey: ['renter', 'bookings'] }),
+    ];
+
+    if (includePayment) {
+      refreshes.push(paymentQuery.refetch());
+    }
+
+    await Promise.all(refreshes);
+  }, [bookingId, bookingQuery, hasPaymentAttempt, paymentQuery, queryClient]);
+
+  const createPaymentMutation = useMutation({
     mutationFn: () => {
-      if (!quote) {
-        throw new Error('Quote unavailable');
+      if (!bookingId) {
+        throw new Error('Booking reference is missing.');
       }
 
-      return bookingsApi.create({
-        carId: quote.carId,
-        quoteId: quote.id,
-        pickupAt: quote.pickupAt,
-        returnAt: quote.returnAt,
-        idempotencyKey: idempotencyKeyRef.current,
+      return bookingsApi.createPayment(bookingId, {
+        idempotencyKey: paymentAttemptKeyRef.current,
+        ...(testPaymentEnabled ? { testScenario } : {}),
       });
     },
-    onSuccess: (booking) => {
-      setBooking(booking);
-      router.replace({
-        pathname: '/(customer)/booking/confirmation',
-        params: { bookingId: booking.id },
-      });
+    onSuccess: async () => {
+      setHasPaymentAttempt(true);
+      await refreshPaymentState(true);
+    },
+    onSettled: () => {
+      paymentSubmissionStarted.current = false;
+    },
+  });
+  const retryPaymentMutation = useMutation({
+    mutationFn: (paymentId: string) =>
+      bookingsApi.retryPayment(paymentId, {
+        idempotencyKey: paymentRetryKeyRef.current,
+        ...(testPaymentEnabled ? { testScenario } : {}),
+      }),
+    onSuccess: async () => {
+      // Retain a key on a transient network error, but rotate it after a completed attempt.
+      paymentRetryKeyRef.current = createIdempotencyKey('payment-retry');
+      setHasPaymentAttempt(true);
+      await refreshPaymentState(true);
+    },
+    onSettled: () => {
+      paymentSubmissionStarted.current = false;
     },
   });
 
-  if (!quote) {
+  const isSubmitting = createPaymentMutation.isPending || retryPaymentMutation.isPending;
+  const booking = bookingQuery.data;
+  const payment = paymentQuery.data;
+  const paymentState = getPaymentScreenState(booking, payment);
+  const amount = booking ? formatMoney(payment?.amount ?? booking.totalPrice) : '';
+
+  const submitPayment = useCallback(() => {
+    if (paymentSubmissionStarted.current || createPaymentMutation.isPending) {
+      return;
+    }
+
+    paymentSubmissionStarted.current = true;
+    createPaymentMutation.mutate();
+  }, [createPaymentMutation]);
+
+  const retryPayment = useCallback(() => {
+    if (!payment || paymentSubmissionStarted.current || retryPaymentMutation.isPending) {
+      return;
+    }
+
+    paymentSubmissionStarted.current = true;
+    retryPaymentMutation.mutate(payment.id);
+  }, [payment, retryPaymentMutation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      isScreenActive.current = true;
+      setIsScreenFocused(true);
+      return () => {
+        isScreenActive.current = false;
+        setIsScreenFocused(false);
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      const active = nextState === 'active';
+      setIsAppActive(active);
+      if (active) {
+        void refreshPaymentState();
+      }
+    };
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => subscription.remove();
+  }, [refreshPaymentState]);
+
+  useEffect(() => {
+    if (
+      !bookingId ||
+      didNavigateToConfirmation.current ||
+      !isScreenActive.current ||
+      !booking ||
+      !isConfirmedPaidBooking(booking, payment)
+    ) {
+      return;
+    }
+
+    didNavigateToConfirmation.current = true;
+    setBooking(booking);
+    router.replace({
+      pathname: '/(customer)/booking/confirmation',
+      params: { bookingId },
+    });
+  }, [booking, bookingId, payment, setBooking]);
+
+  if (!bookingId) {
+    return (
+      <BookingShell fallback={backFallback} title="Payment">
+        <StateMessage body="Return to the booking summary and create a booking first." title="Booking not found" />
+      </BookingShell>
+    );
+  }
+
+  if (bookingQuery.isPending || (hasPaymentAttempt && bookingQuery.isSuccess && paymentQuery.isPending)) {
+    return (
+      <BookingShell fallback={backFallback} title="Payment">
+        <LoadingPaymentState />
+      </BookingShell>
+    );
+  }
+
+  if (bookingQuery.isError || !booking) {
     return (
       <BookingShell fallback={backFallback} title="Payment">
         <StateMessage
-          body="Create a fresh quote before continuing to payment."
-          title="Quote unavailable"
+          actionLabel="Retry"
+          body={bookingQuery.isError ? normalizeApiError(bookingQuery.error).message : 'The booking could not be loaded.'}
+          onAction={() => void bookingQuery.refetch()}
+          title="Payment could not load"
         />
+      </BookingShell>
+    );
+  }
+
+  if (hasPaymentAttempt && paymentQuery.isError) {
+    return (
+      <BookingShell fallback={backFallback} title="Payment">
+        <StateMessage
+          actionLabel="Retry"
+          body={normalizeApiError(paymentQuery.error).message}
+          onAction={() => void refreshPaymentState()}
+          title="Payment status could not load"
+        />
+      </BookingShell>
+    );
+  }
+
+  if (paymentState === 'confirmed') {
+    return (
+      <BookingShell fallback={backFallback} title="Payment">
+        <LoadingPaymentState label="Payment received. Opening your booking confirmation." />
       </BookingShell>
     );
   }
@@ -85,160 +247,197 @@ export function PaymentScreen() {
   return (
     <BookingShell fallback={backFallback} title="Payment">
       <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
-        <View style={styles.paymentCard}>
-          <View style={styles.iconFrame}>
-            <CreditCard color="#111827" size={28} />
-          </View>
-          <Text accessibilityRole="header" style={styles.title}>Payment setup</Text>
-          <Text style={styles.body}>
-            No payment provider API is present in this backend yet. HopIn will
-            create the booking with a server-side pending payment status.
-          </Text>
-        </View>
-
         <View style={styles.summary}>
           <Text style={styles.summaryLabel}>Amount due</Text>
-          <Text style={styles.amount}>{formatMoney(quote.totalAmount)}</Text>
+          <Text style={styles.amount}>{amount}</Text>
           <View style={styles.secureRow}>
             <ShieldCheck color="#047857" size={17} />
-            <Text style={styles.secureText}>Quote expires at {new Date(quote.expiresAt).toLocaleTimeString()}</Text>
+            <Text style={styles.secureText}>Amount supplied by your booking</Text>
           </View>
         </View>
 
-        {bookingMutation.isError ? (
-          <View style={styles.errorBox}>
-            <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorTitle}>Payment could not continue</Text>
-            <Text accessibilityLiveRegion="assertive" style={styles.errorText}>
-              The quote may have expired or the vehicle may no longer be available.
-            </Text>
-          </View>
+        {paymentState === 'initiate' ? (
+          <PaymentAction
+            actionLabel="Pay now"
+            description="Your booking is held while payment is completed."
+            disabled={isSubmitting}
+            error={createPaymentMutation.isError ? normalizeApiError(createPaymentMutation.error).message : null}
+            onPress={submitPayment}
+            scenario={testScenario}
+            setScenario={setTestScenario}
+            testPaymentEnabled={testPaymentEnabled}
+            title="Complete payment"
+          />
         ) : null}
 
-        <Pressable
-          accessibilityLabel={bookingMutation.isPending ? 'Creating booking' : 'Create booking'}
-          accessibilityRole="button"
-          accessibilityState={{ busy: bookingMutation.isPending, disabled: bookingMutation.isPending }}
-          disabled={bookingMutation.isPending}
-          onPress={() => bookingMutation.mutate()}
-          testID="payment-create-booking"
-          style={({ pressed }) => [
-            styles.primaryButton,
-            bookingMutation.isPending && styles.disabledButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          {bookingMutation.isPending ? (
-            <ActivityIndicator accessibilityLabel="Creating booking" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Create booking</Text>
-          )}
-        </Pressable>
+        {paymentState === 'failed' ? (
+          <PaymentAction
+            actionLabel="Retry Payment"
+            description={payment?.failureMessage ?? 'The payment was not completed. You can safely try again.'}
+            disabled={isSubmitting}
+            error={retryPaymentMutation.isError ? normalizeApiError(retryPaymentMutation.error).message : null}
+            onPress={retryPayment}
+            scenario={testScenario}
+            setScenario={setTestScenario}
+            testPaymentEnabled={testPaymentEnabled}
+            title="Payment failed"
+            tone="error"
+          />
+        ) : null}
+
+        {paymentState === 'cancelled' ? (
+          <PaymentAction
+            actionLabel="Try Again"
+            description="The payment was cancelled before it completed."
+            disabled={isSubmitting}
+            error={retryPaymentMutation.isError ? normalizeApiError(retryPaymentMutation.error).message : null}
+            onPress={retryPayment}
+            scenario={testScenario}
+            setScenario={setTestScenario}
+            testPaymentEnabled={testPaymentEnabled}
+            title="Payment cancelled"
+            tone="error"
+          />
+        ) : null}
+
+        {paymentState === 'processing' ? (
+          <PaymentProcessingState
+            amount={amount}
+            isRefreshing={paymentQuery.isFetching || bookingQuery.isFetching}
+            onRefresh={() => void refreshPaymentState()}
+          />
+        ) : null}
+
+        {paymentState === 'unexpected_booking_status' ? (
+          <StateMessage
+            actionLabel="Check status"
+            body="This booking is not currently available for payment. Refresh its status before trying again."
+            onAction={() => void refreshPaymentState()}
+            title="Booking payment unavailable"
+          />
+        ) : null}
       </ScrollView>
     </BookingShell>
   );
 }
 
+function PaymentAction({
+  actionLabel,
+  description,
+  disabled,
+  error,
+  onPress,
+  scenario,
+  setScenario,
+  testPaymentEnabled,
+  title,
+  tone = 'default',
+}: {
+  actionLabel: string;
+  description: string;
+  disabled: boolean;
+  error: string | null;
+  onPress: () => void;
+  scenario: TestPaymentScenario;
+  setScenario: (scenario: TestPaymentScenario) => void;
+  testPaymentEnabled: boolean;
+  title: string;
+  tone?: 'default' | 'error';
+}) {
+  return (
+    <View style={[styles.paymentCard, tone === 'error' && styles.paymentCardError]}>
+      <View style={[styles.iconFrame, tone === 'error' && styles.iconFrameError]}>
+        {tone === 'error' ? <CircleAlert color="#B91C1C" size={28} /> : <CreditCard color="#111827" size={28} />}
+      </View>
+      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+      <Text style={styles.body}>{description}</Text>
+      {testPaymentEnabled ? (
+        <DevelopmentPaymentSelector
+          disabled={disabled}
+          onChange={setScenario}
+          selectedScenario={scenario}
+        />
+      ) : null}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+      <Pressable
+        accessibilityLabel={disabled ? 'Submitting payment' : actionLabel}
+        accessibilityRole="button"
+        accessibilityState={{ busy: disabled, disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        style={[styles.primaryButton, disabled && styles.disabledButton]}
+        testID="payment-submit"
+      >
+        {disabled ? <ActivityIndicator accessibilityLabel="Submitting payment" color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>{actionLabel}</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
+function PaymentProcessingState({
+  amount,
+  isRefreshing,
+  onRefresh,
+}: {
+  amount: string;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <View style={styles.paymentCard}>
+      <View style={styles.iconFrame}>
+        <LoaderCircle color="#0B4FE8" size={28} />
+      </View>
+      <Text accessibilityLiveRegion="polite" accessibilityRole="header" style={styles.title}>Payment Processing</Text>
+      <Text style={styles.body}>We are waiting for confirmation of {amount} from the payment provider.</Text>
+      <Pressable
+        accessibilityLabel="Check payment status"
+        accessibilityRole="button"
+        accessibilityState={{ busy: isRefreshing, disabled: isRefreshing }}
+        disabled={isRefreshing}
+        onPress={onRefresh}
+        style={[styles.secondaryButton, isRefreshing && styles.disabledSecondaryButton]}
+      >
+        {isRefreshing ? <ActivityIndicator accessibilityLabel="Checking payment status" color="#0B4FE8" /> : <><RefreshCw color="#0B4FE8" size={18} /><Text style={styles.secondaryButtonText}>Check status</Text></>}
+      </Pressable>
+    </View>
+  );
+}
+
+function LoadingPaymentState({ label = 'Checking booking and payment status.' }: { label?: string }) {
+  return (
+    <View style={styles.loadingState}>
+      <ActivityIndicator color="#0B4FE8" />
+      <Text style={styles.body}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    minHeight: 0,
-  },
-  content: {
-    gap: 16,
-    padding: 18,
-  },
-  paymentCard: {
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 18,
-  },
-  iconFrame: {
-    height: 58,
-    width: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#EAF2FF',
-  },
-  title: {
-    color: '#111827',
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  body: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  summary: {
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-  },
-  summaryLabel: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  amount: {
-    color: '#111827',
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  secureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  secureText: {
-    color: '#047857',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  errorBox: {
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-    padding: 14,
-  },
-  errorTitle: {
-    color: '#991B1B',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  primaryButton: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#0B4FE8',
-  },
-  disabledButton: {
-    backgroundColor: '#6B7280',
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
+  amount: { color: '#111827', fontSize: 28, fontWeight: '900' },
+  body: { color: '#6B7280', fontSize: 14, fontWeight: '700', lineHeight: 21, textAlign: 'center' },
+  content: { gap: 16, padding: 18 },
+  disabledButton: { backgroundColor: '#6B7280' },
+  disabledSecondaryButton: { opacity: 0.6 },
+  errorBox: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderRadius: 8, borderWidth: 1, padding: 12, width: '100%' },
+  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', lineHeight: 19 },
+  iconFrame: { alignItems: 'center', backgroundColor: '#EAF2FF', borderRadius: 8, height: 58, justifyContent: 'center', width: 58 },
+  iconFrameError: { backgroundColor: '#FEE2E2' },
+  loadingState: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
+  paymentCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
+  paymentCardError: { borderColor: '#FECACA' },
+  primaryButton: { alignItems: 'center', backgroundColor: '#0B4FE8', borderRadius: 8, justifyContent: 'center', minHeight: 52, width: '100%' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  scroll: { flex: 1, minHeight: 0 },
+  secondaryButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
+  secondaryButtonText: { color: '#0B4FE8', fontSize: 14, fontWeight: '900' },
+  secureRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  secureText: { color: '#047857', fontSize: 13, fontWeight: '800' },
+  summary: { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: 12, borderWidth: 1, gap: 6, padding: 14 },
+  summaryLabel: { color: '#6B7280', fontSize: 13, fontWeight: '800' },
+  title: { color: '#111827', fontSize: 20, fontWeight: '900', textAlign: 'center' },
 });

@@ -29,6 +29,12 @@ export const apiClient = axios.create({
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  suppressGlobalError?: boolean;
+};
+
+export type ApiRequestConfig = AxiosRequestConfig & {
+  /** Use for authentication restoration where an unauthenticated result is normal. */
+  suppressGlobalError?: boolean;
 };
 
 type AuthSessionHandlers = {
@@ -145,6 +151,10 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
+    const errorRequestConfig = isAxiosError(error) && error.config
+      ? (error.config as RetryableRequestConfig)
+      : undefined;
+
     if (isAxiosError(error) && error.response?.status === 401 && error.config) {
       const requestConfig = error.config as RetryableRequestConfig;
 
@@ -156,18 +166,22 @@ apiClient.interceptors.response.use(
           requestConfig.headers.Authorization = `Bearer ${session.accessToken}`;
           return await apiClient.request(requestConfig);
         } catch (refreshError) {
-          useErrorStore.getState().setError(normalizeApiError(refreshError));
+          if (!requestConfig.suppressGlobalError) {
+            useErrorStore.getState().setError(normalizeApiError(refreshError));
+          }
           return Promise.reject(refreshError);
         }
       }
     }
 
-    useErrorStore.getState().setError(normalizeApiError(error));
+    if (!errorRequestConfig?.suppressGlobalError) {
+      useErrorStore.getState().setError(normalizeApiError(error));
+    }
     return Promise.reject(error);
   },
 );
 
-export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
+export async function apiRequest<T>(config: ApiRequestConfig): Promise<T> {
   const response = await apiClient.request<ApiResponse<T>>(config);
   return response.data.data;
 }

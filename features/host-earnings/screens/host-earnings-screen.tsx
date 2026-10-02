@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
 import {
   formatMoney,
   getVehicleImageVariantUrl,
@@ -227,6 +228,7 @@ export function HostEarningsScreen() {
           />
         ) : null}
       </View>
+      <HostBottomNavigation />
     </SafeAreaView>
   );
 }

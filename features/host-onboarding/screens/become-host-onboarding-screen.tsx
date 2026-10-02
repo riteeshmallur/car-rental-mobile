@@ -124,7 +124,7 @@ export function BecomeHostOnboardingScreen() {
     return true;
   }, [activeStepIndex, introVisible, isComplete]);
   const goBack = useSafeBack({
-    fallback: isComplete ? '/(host)/profile' : '/(customer)/profile',
+    fallback: isComplete ? '/(host)/dashboard' : '/(customer)/profile',
     onBeforeBack: handleInternalBack,
     preferFallback: isComplete,
   });
@@ -233,7 +233,7 @@ export function BecomeHostOnboardingScreen() {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace('/(host)/profile')}
+            onPress={() => router.replace('/(host)/dashboard')}
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>Switch to Host</Text>

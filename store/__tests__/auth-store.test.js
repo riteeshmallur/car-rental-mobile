@@ -2,6 +2,7 @@ const mockGetStoredAuthTokens = jest.fn();
 const mockClearStoredAuthTokens = jest.fn();
 const mockSetStoredAuthTokens = jest.fn();
 const mockAuthMe = jest.fn();
+const mockAuthRefresh = jest.fn();
 const mockQueryClientClear = jest.fn();
 const mockClearError = jest.fn();
 const mockStartLoading = jest.fn();
@@ -16,7 +17,7 @@ jest.mock('@/services/storage/secure-token-storage', () => ({
   setStoredAuthTokens: mockSetStoredAuthTokens,
 }));
 jest.mock('@/features/auth/services/auth-api', () => ({
-  authApi: { me: mockAuthMe },
+  authApi: { me: mockAuthMe, refresh: mockAuthRefresh },
 }));
 jest.mock('@/utils/query-client', () => ({
   queryClient: { clear: mockQueryClientClear },
@@ -94,11 +95,16 @@ describe('auth session restoration', () => {
     mockGetStoredAuthTokens
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ accessToken: 'cookie-restored-access' });
-    mockAuthMe.mockResolvedValue(user);
+    mockAuthRefresh.mockResolvedValue({
+      accessToken: 'cookie-restored-access',
+      refreshToken: undefined,
+      user,
+    });
 
     await useAuthStore.getState().bootstrap();
 
-    expect(mockAuthMe).toHaveBeenCalledTimes(1);
+    expect(mockAuthMe).not.toHaveBeenCalled();
+    expect(mockAuthRefresh).toHaveBeenCalledWith(undefined, { suppressGlobalError: true });
     expect(useAuthStore.getState()).toMatchObject({
       isAuthenticated: true,
       status: 'authenticated',

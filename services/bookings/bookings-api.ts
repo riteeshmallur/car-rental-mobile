@@ -7,6 +7,12 @@ import {
   type RenterBooking,
   type RenterTrip,
 } from '@/types/car';
+import { type TestPaymentScenario } from '@/types/payment';
+
+type PaymentAttemptPayload = {
+  idempotencyKey: string;
+  testScenario?: TestPaymentScenario;
+};
 
 export const bookingsApi = {
   listRenterBookings() {
@@ -19,7 +25,8 @@ export const bookingsApi = {
     return apiRequest<Booking>({
       method: 'POST',
       url: '/bookings',
-      data: payload,
+      data: { quoteId: payload.quoteId },
+      headers: { 'Idempotency-Key': payload.idempotencyKey },
     });
   },
   findById(bookingId: string) {
@@ -38,6 +45,22 @@ export const bookingsApi = {
     return apiRequest<BookingPayment>({
       method: 'GET',
       url: `/bookings/${bookingId}/payment`,
+    });
+  },
+  createPayment(bookingId: string, payload: PaymentAttemptPayload) {
+    return apiRequest<BookingPayment>({
+      method: 'POST',
+      url: `/bookings/${bookingId}/payment`,
+      data: payload,
+      headers: { 'Idempotency-Key': payload.idempotencyKey },
+    });
+  },
+  retryPayment(paymentId: string, payload: PaymentAttemptPayload) {
+    return apiRequest<BookingPayment>({
+      method: 'POST',
+      url: `/payments/${paymentId}/retry`,
+      data: payload,
+      headers: { 'Idempotency-Key': payload.idempotencyKey },
     });
   },
   findReceipt(bookingId: string) {

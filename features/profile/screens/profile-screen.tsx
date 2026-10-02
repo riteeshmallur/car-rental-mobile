@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
-  ArrowLeft,
   ArrowRight,
   Bell,
   Banknote,
@@ -33,11 +32,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
+import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
+import {
+  canAccessHostMode,
+  customerModeRoute,
+  hostModeRoute,
+} from '@/features/host/utils/host-mode';
 import { usersApi } from '@/services/users/users-api';
-import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import { useAuthStore } from '@/store/auth-store';
-import { type SafeUser, UserRole } from '@/types/auth';
+import { type SafeUser } from '@/types/auth';
 import { normalizeApiError } from '@/utils/errors';
 import { colors, radii, shadows } from '@/utils/theme';
 
@@ -90,10 +94,6 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
     }
     return false;
   }, [isLogoutSheetOpen]);
-  const goBack = useSafeBack({
-    fallback: '/(customer)/home',
-    onBeforeBack: closeOverlayBeforeBack,
-  });
   useWebBackGuard({
     active: isLogoutSheetOpen,
     onBack: closeOverlayBeforeBack,
@@ -219,16 +219,6 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         >
             <View style={styles.header}>
               <View style={styles.headerLead}>
-                {mode === 'host' ? (
-                  <Pressable
-                    accessibilityLabel="Go back"
-                    accessibilityRole="button"
-                    onPress={goBack}
-                    style={styles.iconButton}
-                  >
-                    <ArrowLeft color="#111827" size={20} />
-                  </Pressable>
-                ) : null}
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text accessibilityRole="header" style={styles.title}>Profile</Text>
                   <Text style={styles.subtitle}>Manage your account and preferences</Text>
@@ -266,10 +256,10 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                     mode={mode}
                     onPress={() =>
                       mode === 'host'
-                        ? router.replace('/(customer)/home')
+                        ? router.replace(customerModeRoute)
                         : hasHostCapability(profile)
-                        ? router.push('/(host)/profile')
-                        : router.push('/(customer)/become-host')
+                          ? router.replace(hostModeRoute)
+                          : router.push('/(customer)/become-host')
                     }
                   />
                 ) : null}
@@ -308,7 +298,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
               </>
             ) : null}
         </ScrollView>
-        {mode === 'customer' ? <BottomNavigation /> : null}
+        {mode === 'customer' ? <BottomNavigation /> : <HostBottomNavigation />}
       </View>
       <LogoutConfirmationSheet
         isLoggingOut={isLoggingOut}
@@ -321,11 +311,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 }
 
 function hasHostCapability(profile: SafeUser | undefined) {
-  return Boolean(
-    profile?.capabilities.canHost ||
-      profile?.hostEnabled ||
-      profile?.role === UserRole.Host,
-  );
+  return canAccessHostMode(profile);
 }
 
 function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {

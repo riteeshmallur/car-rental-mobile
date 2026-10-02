@@ -25,7 +25,7 @@ export function getCarImageUrl(imageUrl?: string | null) {
     return null;
   }
 
-  if (/^https?:\/\//i.test(imageUrl)) {
+  if (/^(https?:|file:|blob:|data:)/i.test(imageUrl)) {
     return imageUrl;
   }
 

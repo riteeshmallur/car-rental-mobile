@@ -10,6 +10,9 @@ const mockRouter = {
 
 const mockUseLocalSearchParams = jest.fn(() => ({}));
 const mockUsePathname = jest.fn(() => '/home');
+const mockNavigation = {
+  addListener: jest.fn(() => jest.fn()),
+};
 const mockUseFocusEffect = jest.fn((effect) => {
   require('react').useEffect(effect, [effect]);
 });
@@ -23,6 +26,7 @@ jest.mock('expo-router', () => ({
   router: mockRouter,
   useFocusEffect: mockUseFocusEffect,
   useLocalSearchParams: mockUseLocalSearchParams,
+  useNavigation: () => mockNavigation,
   usePathname: mockUsePathname,
 }));
 
@@ -45,6 +49,7 @@ jest.mock('@react-native-community/datetimepicker', () => () => null);
 global.__testRouter = mockRouter;
 global.__testRouteParams = mockUseLocalSearchParams;
 global.__testPathname = mockUsePathname;
+global.__testNavigation = mockNavigation;
 
 beforeEach(() => {
   Object.values(mockRouter).forEach((value) => {
@@ -54,4 +59,6 @@ beforeEach(() => {
   mockRouter.canGoBack.mockReturnValue(false);
   mockUseLocalSearchParams.mockReturnValue({});
   mockUsePathname.mockReturnValue('/home');
+  mockNavigation.addListener.mockClear();
+  mockNavigation.addListener.mockImplementation(() => jest.fn());
 });

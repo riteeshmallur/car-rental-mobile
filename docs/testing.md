@@ -37,4 +37,4 @@ export E2E_VEHICLE_NAME='Hyundai Creta'
 npm run test:e2e
 ```
 
-The `e2e-test` profile in `eas.json` creates an Android APK and an iOS simulator build using the stable app identifier `com.hopin.carrental`. The EAS workflow at `.eas/workflows/e2e-tests.yml` executes both Maestro flows on demand. Configure its build environment with a private E2E API base URL before triggering it.
+The `e2e-test` profile in `eas.json` creates an Android APK and an iOS simulator build using the stable app identifier `com.hopin.carrental`. It explicitly marks the build as a test environment so the mock-payment selector is available only to Maestro. The EAS workflow at `.eas/workflows/e2e-tests.yml` executes both Maestro flows on demand. Configure its build environment with a private E2E API base URL before triggering it.

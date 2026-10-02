@@ -586,9 +586,6 @@ export type CreateQuotePayload = {
 };
 
 export type CreateBookingPayload = {
-  carId: string;
   quoteId: string;
-  pickupAt: string;
-  returnAt: string;
   idempotencyKey: string;
 };

@@ -9,6 +9,30 @@ type WebBackGuardOptions = {
 };
 
 const historyMarkerKey = '__hopinBackGuard';
+const historyGuardStackKey = '__hopinBackGuardStack';
+const suppressNextPopKey = '__hopinSuppressNextBackGuardPop';
+
+type GuardWindow = Window & {
+  [historyGuardStackKey]?: string[];
+  [suppressNextPopKey]?: boolean;
+};
+
+function getGuardStack() {
+  const guardWindow = window as GuardWindow;
+  guardWindow[historyGuardStackKey] ??= [];
+  return guardWindow[historyGuardStackKey];
+}
+
+function consumeSuppressedPop() {
+  const guardWindow = window as GuardWindow;
+
+  if (!guardWindow[suppressNextPopKey]) {
+    return false;
+  }
+
+  guardWindow[suppressNextPopKey] = false;
+  return true;
+}
 
 export function useWebBackGuard({
   active,
@@ -27,6 +51,8 @@ export function useWebBackGuard({
 
     const marker = `overlay-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     markerRef.current = marker;
+    const guardStack = getGuardStack();
+    guardStack.push(marker);
 
     const pushGuardEntry = () => {
       const currentState = window.history.state;
@@ -43,6 +69,10 @@ export function useWebBackGuard({
     }
 
     const handlePopState = () => {
+      if (consumeSuppressedPop() || getGuardStack().at(-1) !== marker) {
+        return;
+      }
+
       onBackRef.current();
 
       if (block) {
@@ -55,10 +85,18 @@ export function useWebBackGuard({
     return () => {
       window.removeEventListener('popstate', handlePopState);
 
+      const markerIndex = guardStack.lastIndexOf(marker);
+      if (markerIndex !== -1) {
+        guardStack.splice(markerIndex, 1);
+      }
+
       if (
         pushEntry &&
         window.history.state?.[historyMarkerKey] === markerRef.current
       ) {
+        // Closing an overlay removes its own history entry. Suppress the resulting
+        // popstate so an underlying wizard/page guard does not interpret it as Back.
+        (window as GuardWindow)[suppressNextPopKey] = true;
         window.history.back();
       }
 

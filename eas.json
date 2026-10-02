@@ -1,6 +1,10 @@
 {
   "build": {
     "e2e-test": {
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "test",
+        "EXPO_PUBLIC_ENABLE_TEST_PAYMENT": "true"
+      },
       "withoutCredentials": true,
       "android": {
         "buildType": "apk"

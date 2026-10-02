@@ -28,7 +28,11 @@ env:
     id: quote-continue
 - assertVisible: Payment
 - tapOn:
-    id: payment-create-booking
-- assertVisible: Booking confirmed
+    id: payment-scenario-success
+- tapOn:
+    id: payment-submit
+- extendedWaitUntil:
+    visible: Booking confirmation
+    timeout: 10000
 - tapOn: Trips
 - assertVisible: Trips

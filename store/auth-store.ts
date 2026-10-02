@@ -50,7 +50,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      const user = await authApi.me();
+      if (Platform.OS === 'web') {
+        // The browser keeps the long-lived session in an HttpOnly cookie. A
+        // missing cookie is a normal signed-out state, not an application error.
+        const session = await authApi.refresh(undefined, { suppressGlobalError: true });
+        await setStoredAuthTokens({
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
+        const activeTokens = await getStoredAuthTokens();
+
+        if (!activeTokens) {
+          throw new Error('Your session could not be restored.');
+        }
+
+        useErrorStore.getState().clearError();
+        set({
+          status: 'authenticated',
+          user: session.user,
+          tokens: activeTokens,
+          isAuthenticated: true,
+        });
+        return;
+      }
+
+      const user = await authApi.me({ suppressGlobalError: true });
       const activeTokens = (await getStoredAuthTokens()) ?? tokens;
 
       if (!activeTokens) {

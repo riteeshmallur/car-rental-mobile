@@ -1,5 +1,7 @@
+import { useMutation } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
 
 import {
   BookingShell,
@@ -10,10 +12,16 @@ import {
   readSearchRouteState,
   toSearchRouteParams,
 } from '@/features/customer/utils/search-route-state';
+import { isPendingPaymentBooking } from '@/features/customer/payment/payment-flow';
+import { bookingsApi } from '@/services/bookings/bookings-api';
 import { useBookingFlowStore } from '@/store/booking-flow-store';
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function createIdempotencyKey() {
+  return `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function PriceBreakdownScreen() {
@@ -21,6 +29,10 @@ export function PriceBreakdownScreen() {
   const searchRouteState = readSearchRouteState(params);
   const origin = getParam(params.origin);
   const quote = useBookingFlowStore((state) => state.quote);
+  const setBooking = useBookingFlowStore((state) => state.setBooking);
+  const bookingCreationStarted = useRef(false);
+  const bookingIdempotencyKey = useRef(createIdempotencyKey());
+  const [unexpectedBookingStatus, setUnexpectedBookingStatus] = useState(false);
   const backFallback: Href = quote
     ? {
         pathname: '/(customer)/booking/summary',
@@ -36,6 +48,33 @@ export function PriceBreakdownScreen() {
       }
     : '/(customer)/home';
 
+  const bookingMutation = useMutation({
+    mutationFn: () => {
+      if (!quote) {
+        throw new Error('Quote unavailable');
+      }
+
+      return bookingsApi.create({
+        idempotencyKey: bookingIdempotencyKey.current,
+        quoteId: quote.id,
+      });
+    },
+    onSuccess: (booking) => {
+      setBooking(booking);
+      if (!isPendingPaymentBooking(booking)) {
+        setUnexpectedBookingStatus(true);
+        return;
+      }
+      router.replace({
+        pathname: '/(customer)/booking/payment',
+        params: { bookingId: booking.id, origin: origin ?? 'home' },
+      });
+    },
+    onSettled: () => {
+      bookingCreationStarted.current = false;
+    },
+  });
+
   if (!quote) {
     return (
       <BookingShell fallback={backFallback} title="Price breakdown">
@@ -46,6 +85,15 @@ export function PriceBreakdownScreen() {
       </BookingShell>
     );
   }
+
+  const beginPayment = () => {
+    if (bookingCreationStarted.current || bookingMutation.isPending) {
+      return;
+    }
+    bookingCreationStarted.current = true;
+    setUnexpectedBookingStatus(false);
+    bookingMutation.mutate();
+  };
 
   return (
     <BookingShell fallback={backFallback} title="Price breakdown">
@@ -66,20 +114,28 @@ export function PriceBreakdownScreen() {
           ]}
           total={quote.totalAmount}
         />
+        {bookingMutation.isError || unexpectedBookingStatus ? (
+          <View style={styles.errorBox}>
+            <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorTitle}>
+              {unexpectedBookingStatus ? 'Booking is not ready for payment' : 'Booking could not be created'}
+            </Text>
+            <Text accessibilityLiveRegion="assertive" style={styles.errorText}>
+              {unexpectedBookingStatus
+                ? 'Refresh your quote and try again.'
+                : 'Check your connection and retry. Your quote total remains server calculated.'}
+            </Text>
+          </View>
+        ) : null}
         <Pressable
+          accessibilityLabel={bookingMutation.isPending ? 'Creating booking' : 'Continue to payment'}
           accessibilityRole="button"
-          onPress={() =>
-            router.push({
-                pathname: '/(customer)/booking/payment',
-                params: {
-                  origin: origin ?? 'home',
-                  ...toSearchRouteParams(searchRouteState),
-                },
-            })
-          }
-          style={styles.primaryButton}
+          accessibilityState={{ busy: bookingMutation.isPending, disabled: bookingMutation.isPending }}
+          disabled={bookingMutation.isPending}
+          onPress={beginPayment}
+          style={[styles.primaryButton, bookingMutation.isPending && styles.disabledButton]}
+          testID="quote-continue"
         >
-          <Text style={styles.primaryButtonText}>Continue to payment</Text>
+          {bookingMutation.isPending ? <ActivityIndicator accessibilityLabel="Creating booking" color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Continue to payment</Text>}
         </Pressable>
       </ScrollView>
     </BookingShell>
@@ -123,5 +179,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '900',
+  },
+  disabledButton: {
+    backgroundColor: '#6B7280',
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+    padding: 14,
+  },
+  errorTitle: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
   },
 });

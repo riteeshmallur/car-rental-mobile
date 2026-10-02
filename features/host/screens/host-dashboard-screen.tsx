@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMoney } from '@/features/customer/utils/car-formatters';
+import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { normalizeApiError } from '@/utils/errors';
@@ -148,6 +149,7 @@ export function HostDashboardScreen() {
           </ScrollView>
         ) : null}
       </View>
+      <HostBottomNavigation />
     </SafeAreaView>
   );
 }

@@ -1,4 +1,4 @@
-import { apiRequest } from '@/services/api/client';
+import { apiRequest, type ApiRequestConfig } from '@/services/api/client';
 import { Platform } from 'react-native';
 import {
   type AuthResponse,
@@ -26,17 +26,19 @@ export const authApi = {
       },
     });
   },
-  refresh(refreshToken?: string) {
+  refresh(refreshToken?: string, options: Pick<ApiRequestConfig, 'suppressGlobalError'> = {}) {
     return apiRequest<AuthResponse>({
       method: 'POST',
       url: '/auth/refresh',
       data: refreshToken ? { refreshToken } : {},
+      ...options,
     });
   },
-  me() {
+  me(options: Pick<ApiRequestConfig, 'suppressGlobalError'> = {}) {
     return apiRequest<SafeUser>({
       method: 'GET',
       url: '/auth/me',
+      ...options,
     });
   },
   logout(refreshToken?: string) {

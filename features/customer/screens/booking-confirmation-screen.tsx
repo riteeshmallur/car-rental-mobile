@@ -8,6 +8,7 @@ import {
   BookingShell,
   StateMessage,
 } from '@/features/customer/screens/booking-summary-screen';
+import { isConfirmedPaidBooking } from '@/features/customer/payment/payment-flow';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
@@ -27,7 +28,6 @@ function formatDateTime(value: string) {
 export function BookingConfirmationScreen() {
   const params = useLocalSearchParams<{ bookingId?: string }>();
   const bookingId = getParam(params.bookingId);
-  const storedBooking = useBookingFlowStore((state) => state.booking);
   const clearBookingFlow = useBookingFlowStore((state) => state.clear);
   const exitConfirmation = useCallback(() => {
     clearBookingFlow();
@@ -40,12 +40,19 @@ export function BookingConfirmationScreen() {
   });
 
   const bookingQuery = useQuery({
-    enabled: Boolean(bookingId && !storedBooking),
+    enabled: Boolean(bookingId),
     queryKey: ['bookings', bookingId],
     queryFn: () => bookingsApi.findById(bookingId ?? ''),
+    retry: false,
+  });
+  const paymentQuery = useQuery({
+    enabled: Boolean(bookingQuery.data?.id),
+    queryKey: ['bookings', 'payment', bookingId],
+    queryFn: () => bookingsApi.findPayment(bookingId ?? ''),
+    retry: false,
   });
 
-  const booking = storedBooking ?? bookingQuery.data;
+  const booking = bookingQuery.data;
 
   return (
     <BookingShell
@@ -59,24 +66,25 @@ export function BookingConfirmationScreen() {
           body="The booking reference is missing."
           title="Booking not found"
         />
-      ) : bookingQuery.isError ? (
+      ) : bookingQuery.isError || paymentQuery.isError ? (
         <StateMessage
           actionLabel="Retry"
-          body="The backend could not load this booking."
-          onAction={() => void bookingQuery.refetch()}
+          body="The backend could not verify this booking and payment."
+          onAction={() => {
+            void bookingQuery.refetch();
+            void paymentQuery.refetch();
+          }}
           title="Booking not found"
         />
-      ) : booking ? (
+      ) : booking && paymentQuery.data && isConfirmedPaidBooking(booking, paymentQuery.data) ? (
         <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
           <View style={styles.successCard}>
             <CheckCircle2 color="#047857" size={46} />
-            <Text style={styles.title}>Booking created</Text>
+            <Text style={styles.title}>Booking confirmed</Text>
             <Text style={styles.body}>
               Status: {booking.status.replace('_', ' ')}
             </Text>
-            <Text style={styles.body}>
-              Payment: {booking.paymentStatus.replace('_', ' ')}
-            </Text>
+            <Text style={styles.body}>Payment: {paymentQuery.data.status.replace('_', ' ')}</Text>
           </View>
 
           <View style={styles.section}>
@@ -97,6 +105,13 @@ export function BookingConfirmationScreen() {
             <Text style={styles.primaryButtonText}>View trips</Text>
           </Pressable>
         </ScrollView>
+      ) : booking ? (
+        <StateMessage
+          actionLabel="Return to payment"
+          body="Booking confirmation is available after the backend confirms a paid payment."
+          onAction={() => router.replace({ pathname: '/(customer)/booking/payment', params: { bookingId } })}
+          title="Payment pending"
+        />
       ) : (
         <StateMessage body="Loading booking details." title="Please wait" />
       )}
