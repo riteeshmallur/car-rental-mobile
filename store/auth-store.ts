@@ -36,6 +36,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async bootstrap() {
     useLoadingStore.getState().startLoading();
     set({ status: 'bootstrapping' });
+    // Never render data cached for a prior session while the current session is
+    // being restored. The authenticated routes mount only after validation below.
+    queryClient.clear();
 
     try {
       const tokens = await getStoredAuthTokens();
@@ -64,10 +67,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           throw new Error('Your session could not be restored.');
         }
 
+        const user = await authApi.me({ suppressGlobalError: true });
+
         useErrorStore.getState().clearError();
         set({
           status: 'authenticated',
-          user: session.user,
+          user,
           tokens: activeTokens,
           isAuthenticated: true,
         });
@@ -89,7 +94,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch {
       await clearStoredAuthTokens();
-      queryClient.clear();
       set({
         status: 'unauthenticated',
         user: null,
@@ -106,6 +110,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken: session.refreshToken,
     };
 
+    // A new OTP login can belong to a different account than the one that was
+    // previously active in this app process.
+    queryClient.clear();
     await setStoredAuthTokens(tokens);
 
     try {

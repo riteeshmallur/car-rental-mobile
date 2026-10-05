@@ -92,6 +92,7 @@ describe('auth session restoration', () => {
 
   it('restores a browser cookie session without a persisted refresh token', async () => {
     Platform.OS = 'web';
+    const refreshedUser = { ...user, firstName: 'Current account' };
     mockGetStoredAuthTokens
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ accessToken: 'cookie-restored-access' });
@@ -100,15 +101,32 @@ describe('auth session restoration', () => {
       refreshToken: undefined,
       user,
     });
+    mockAuthMe.mockResolvedValue(refreshedUser);
 
     await useAuthStore.getState().bootstrap();
 
-    expect(mockAuthMe).not.toHaveBeenCalled();
+    expect(mockAuthMe).toHaveBeenCalledWith({ suppressGlobalError: true });
     expect(mockAuthRefresh).toHaveBeenCalledWith(undefined, { suppressGlobalError: true });
     expect(useAuthStore.getState()).toMatchObject({
       isAuthenticated: true,
       status: 'authenticated',
       tokens: { accessToken: 'cookie-restored-access' },
+      user: refreshedUser,
+    });
+  });
+
+  it('clears prior account queries before establishing a new OTP session', async () => {
+    const tokens = { accessToken: 'new-access', refreshToken: 'new-refresh' };
+    mockGetStoredAuthTokens.mockResolvedValue(tokens);
+    mockAuthMe.mockResolvedValue(user);
+
+    await useAuthStore.getState().setSession({ ...tokens, user });
+
+    expect(mockQueryClientClear).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState()).toMatchObject({
+      isAuthenticated: true,
+      status: 'authenticated',
+      tokens,
       user,
     });
   });

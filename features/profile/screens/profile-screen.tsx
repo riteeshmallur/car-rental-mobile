@@ -81,8 +81,12 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
   const profileQuery = useQuery({
     initialData: authUser ?? undefined,
+    // The auth store is a fast initial render only. Revalidate the account
+    // whenever this screen opens so profile changes made elsewhere are shown.
+    initialDataUpdatedAt: 0,
     queryKey: ['users', 'me'],
     queryFn: usersApi.me,
+    refetchOnMount: 'always',
   });
 
   const profile = profileQuery.data;
