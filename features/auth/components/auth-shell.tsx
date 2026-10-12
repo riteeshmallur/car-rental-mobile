@@ -4,6 +4,7 @@ import {
   ImageBackground,
   Keyboard,
   KeyboardAvoidingView,
+  type ImageStyle,
   Platform,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,10 @@ type AuthShellProps = PropsWithChildren<{
 
 const journeyHero = require('@/assets/images/login-journey-hero-v2.jpg');
 const journeyHeroAspectRatio = 1111 / 1416;
+const journeyHeroImageStyle: ImageStyle = { resizeMode: 'cover' };
+const journeyHeroImageCompactStyle: ImageStyle = {
+  transform: [{ translateY: -46 }],
+};
 
 function getWebVisualViewportHeight() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
@@ -106,7 +111,10 @@ export function AuthShell({
         >
           <View style={styles.journeyViewport}>
             <ImageBackground
-              imageStyle={[styles.journeyHeroImage, isCompact && styles.journeyHeroImageCompact]}
+              imageStyle={[
+                journeyHeroImageStyle,
+                isCompact ? journeyHeroImageCompactStyle : null,
+              ]}
               source={journeyHero}
               style={[styles.journeyHero, { height: heroHeight }]}
             >
@@ -278,11 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   journeyWebFixed: {
-    position: 'fixed',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
+    width: '100%',
     overflow: 'hidden',
   },
   journeyViewport: {
@@ -298,12 +302,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 26,
     paddingTop: 22,
-  },
-  journeyHeroImage: {
-    resizeMode: 'cover',
-  },
-  journeyHeroImageCompact: {
-    transform: [{ translateY: -46 }],
   },
   journeyScrim: {
     ...StyleSheet.absoluteFill,
