@@ -1,11 +1,6 @@
-const React = require('react');
-const { fireEvent, render } = require('@testing-library/react-native');
-
-const { DevelopmentPaymentSelector } = require('@/features/customer/payment/development-payment-selector');
 const {
   getPaymentScreenState,
   isConfirmedPaidBooking,
-  isDevelopmentTestPaymentEnabled,
   isPendingPaymentBooking,
   shouldPollPayment,
 } = require('@/features/customer/payment/payment-flow');
@@ -21,7 +16,7 @@ const payment = {
   status: 'pending',
 };
 
-describe('development payment flow', () => {
+describe('payment flow', () => {
   it('keeps confirmation gated behind confirmed booking and paid payment states', () => {
     expect(isPendingPaymentBooking(booking)).toBe(true);
     expect(isConfirmedPaidBooking(booking, { ...payment, status: 'paid' })).toBe(false);
@@ -42,43 +37,4 @@ describe('development payment flow', () => {
     expect(shouldPollPayment({ ...booking, status: 'confirmed' }, { ...payment, status: 'paid' })).toBe(false);
   });
 
-  it('lets a development build select a backend payment scenario', () => {
-    const onChange = jest.fn();
-    const screen = render(
-      React.createElement(DevelopmentPaymentSelector, {
-        disabled: false,
-        onChange,
-        selectedScenario: 'SUCCESS',
-      }),
-    );
-
-    fireEvent.press(screen.getByLabelText('Failed Payment'));
-
-    expect(onChange).toHaveBeenCalledWith('FAILURE');
-    expect(screen.getByLabelText('Successful Payment').props.accessibilityState).toEqual({
-      disabled: false,
-      selected: true,
-    });
-  });
-
-  it('does not enable test payment controls for production builds', () => {
-    expect(isDevelopmentTestPaymentEnabled({ isDevelopment: false, nodeEnvironment: 'production' })).toBe(false);
-    expect(
-      isDevelopmentTestPaymentEnabled({
-        appEnvironment: 'test',
-        enableTestPayment: 'true',
-        isDevelopment: false,
-        nodeEnvironment: 'production',
-      }),
-    ).toBe(true);
-  });
-
-  it('does not show mock payment controls when Razorpay is selected', () => {
-    expect(
-      isDevelopmentTestPaymentEnabled({
-        isDevelopment: true,
-        paymentProvider: 'razorpay',
-      }),
-    ).toBe(false);
-  });
 });

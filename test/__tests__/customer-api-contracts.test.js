@@ -38,17 +38,17 @@ describe('customer live API contracts', () => {
     });
   });
 
-  it('creates quote, booking, payment, and trip requests with the selected window', () => {
+  it('creates quote, booking, payment, and trip requests with backend-authoritative payment data', () => {
     quotesApi.create({ carId: 'vehicle-1', pickupAt: '2026-10-20T10:00:00.000Z', returnAt: '2026-10-22T18:00:00.000Z' });
     bookingsApi.create({ idempotencyKey: 'booking-1', quoteId: 'quote-1' });
-    bookingsApi.createPayment('booking-1', { idempotencyKey: 'payment-booking-1', testScenario: 'SUCCESS' });
+    bookingsApi.createPayment('booking-1', { idempotencyKey: 'payment-booking-1' });
     bookingsApi.findPayment('booking-1');
     bookingsApi.findTrip('booking-1');
     bookingsApi.cancel('booking-1', { reason: 'plans_changed' });
     bookingsApi.extend('booking-1', { returnAt: '2026-10-23T18:00:00.000Z' });
     bookingsApi.returnVehicle('booking-1', { fuelLevel: 'full', odometerReading: 200 });
     bookingsApi.createReview('booking-1', { comment: 'Great vehicle', rating: 5 });
-    bookingsApi.retryPayment('payment-1', { idempotencyKey: 'retry-payment-1', testScenario: 'FAILURE' });
+    bookingsApi.retryPayment('payment-1', { idempotencyKey: 'retry-payment-1' });
     bookingsApi.confirmRazorpayPayment('payment-1', {
       razorpayOrderId: 'order_1',
       razorpayPaymentId: 'pay_1',
@@ -63,7 +63,7 @@ describe('customer live API contracts', () => {
       url: '/bookings',
     });
     expect(mockApiRequest).toHaveBeenNthCalledWith(3, {
-      data: { idempotencyKey: 'payment-booking-1', testScenario: 'SUCCESS' },
+      data: { idempotencyKey: 'payment-booking-1' },
       headers: { 'Idempotency-Key': 'payment-booking-1' },
       method: 'POST',
       url: '/bookings/booking-1/payment',
@@ -73,7 +73,7 @@ describe('customer live API contracts', () => {
     expect(mockApiRequest).toHaveBeenNthCalledWith(6, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/cancel' }));
     expect(mockApiRequest).toHaveBeenNthCalledWith(9, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/reviews' }));
     expect(mockApiRequest).toHaveBeenNthCalledWith(10, {
-      data: { idempotencyKey: 'retry-payment-1', testScenario: 'FAILURE' },
+      data: { idempotencyKey: 'retry-payment-1' },
       headers: { 'Idempotency-Key': 'retry-payment-1' },
       method: 'POST',
       url: '/payments/payment-1/retry',

@@ -1,9 +1,15 @@
 {
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_PAYMENT_PROVIDER": "razorpay"
+      }
+    },
     "e2e-test": {
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "test",
-        "EXPO_PUBLIC_ENABLE_TEST_PAYMENT": "true"
+        "EXPO_PUBLIC_APP_ENV": "test"
       },
       "withoutCredentials": true,
       "android": {

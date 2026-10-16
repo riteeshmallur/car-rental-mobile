@@ -7,11 +7,8 @@ import {
   type RenterBooking,
   type RenterTrip,
 } from '@/types/car';
-import { type TestPaymentScenario } from '@/types/payment';
-
 type PaymentAttemptPayload = {
   idempotencyKey: string;
-  testScenario?: TestPaymentScenario;
 };
 
 type ConfirmRazorpayPaymentPayload = {

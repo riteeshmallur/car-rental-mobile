@@ -13,13 +13,10 @@ import {
   View,
 } from 'react-native';
 
-import { DevelopmentPaymentSelector } from '@/features/customer/payment/development-payment-selector';
 import {
   getPaymentScreenState,
   isConfirmedPaidBooking,
-  isDevelopmentTestPaymentEnabled,
   shouldPollPayment,
-  type TestPaymentScenario,
 } from '@/features/customer/payment/payment-flow';
 import {
   openRazorpayCheckout,
@@ -46,7 +43,6 @@ export function PaymentScreen() {
   const bookingId = getParam(params.bookingId);
   const queryClient = useQueryClient();
   const setBooking = useBookingFlowStore((state) => state.setBooking);
-  const [testScenario, setTestScenario] = useState<TestPaymentScenario>('SUCCESS');
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [isScreenFocused, setIsScreenFocused] = useState(true);
   const [hasPaymentAttempt, setHasPaymentAttempt] = useState(false);
@@ -55,7 +51,6 @@ export function PaymentScreen() {
   const paymentRetryKeyRef = useRef(createIdempotencyKey('payment-retry'));
   const isScreenActive = useRef(true);
   const didNavigateToConfirmation = useRef(false);
-  const testPaymentEnabled = isDevelopmentTestPaymentEnabled();
   const backFallback: Href = bookingId
     ? { pathname: '/(customer)/booking/breakdown', params: { origin: getParam(params.origin) ?? 'home' } }
     : '/(customer)/home';
@@ -104,7 +99,6 @@ export function PaymentScreen() {
 
       const payment = await bookingsApi.createPayment(bookingId, {
         idempotencyKey: paymentAttemptKeyRef.current,
-        ...(testPaymentEnabled ? { testScenario } : {}),
       });
       return confirmRazorpayCheckout(payment, bookingId);
     },
@@ -127,7 +121,6 @@ export function PaymentScreen() {
       }
       const payment = await bookingsApi.retryPayment(paymentId, {
         idempotencyKey: paymentRetryKeyRef.current,
-        ...(testPaymentEnabled ? { testScenario } : {}),
       });
       return confirmRazorpayCheckout(payment, bookingId);
     },
@@ -297,9 +290,6 @@ export function PaymentScreen() {
             disabled={isSubmitting}
             error={createPaymentMutation.isError ? normalizeApiError(createPaymentMutation.error).message : null}
             onPress={submitPayment}
-            scenario={testScenario}
-            setScenario={setTestScenario}
-            testPaymentEnabled={testPaymentEnabled}
             title="Complete payment"
           />
         ) : null}
@@ -311,9 +301,6 @@ export function PaymentScreen() {
             disabled={isSubmitting}
             error={retryPaymentMutation.isError ? normalizeApiError(retryPaymentMutation.error).message : null}
             onPress={retryPayment}
-            scenario={testScenario}
-            setScenario={setTestScenario}
-            testPaymentEnabled={testPaymentEnabled}
             title="Payment failed"
             tone="error"
           />
@@ -326,9 +313,6 @@ export function PaymentScreen() {
             disabled={isSubmitting}
             error={retryPaymentMutation.isError ? normalizeApiError(retryPaymentMutation.error).message : null}
             onPress={retryPayment}
-            scenario={testScenario}
-            setScenario={setTestScenario}
-            testPaymentEnabled={testPaymentEnabled}
             title="Payment cancelled"
             tone="error"
           />
@@ -342,9 +326,6 @@ export function PaymentScreen() {
               disabled={isSubmitting}
               error={checkoutMutation.isError ? normalizeApiError(checkoutMutation.error).message : null}
               onPress={() => checkoutMutation.mutate(payment)}
-              scenario={testScenario}
-              setScenario={setTestScenario}
-              testPaymentEnabled={false}
               title="Complete payment"
             />
           ) : (
@@ -393,9 +374,6 @@ function PaymentAction({
   disabled,
   error,
   onPress,
-  scenario,
-  setScenario,
-  testPaymentEnabled,
   title,
   tone = 'default',
 }: {
@@ -404,9 +382,6 @@ function PaymentAction({
   disabled: boolean;
   error: string | null;
   onPress: () => void;
-  scenario: TestPaymentScenario;
-  setScenario: (scenario: TestPaymentScenario) => void;
-  testPaymentEnabled: boolean;
   title: string;
   tone?: 'default' | 'error';
 }) {
@@ -417,13 +392,6 @@ function PaymentAction({
       </View>
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       <Text style={styles.body}>{description}</Text>
-      {testPaymentEnabled ? (
-        <DevelopmentPaymentSelector
-          disabled={disabled}
-          onChange={setScenario}
-          selectedScenario={scenario}
-        />
-      ) : null}
       {error ? (
         <View style={styles.errorBox}>
           <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorText}>{error}</Text>

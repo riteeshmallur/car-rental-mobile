@@ -1,17 +1,4 @@
 import { type Booking, type BookingPayment } from '@/types/car';
-import { type TestPaymentScenario } from '@/types/payment';
-
-export type { TestPaymentScenario } from '@/types/payment';
-
-export const testPaymentScenarios: Array<{
-  label: string;
-  value: TestPaymentScenario;
-}> = [
-  { label: 'Successful Payment', value: 'SUCCESS' },
-  { label: 'Failed Payment', value: 'FAILURE' },
-  { label: 'Processing Payment', value: 'PROCESSING' },
-  { label: 'Cancel Payment', value: 'CANCELLED' },
-];
 
 export type PaymentScreenState =
   | 'initiate'
@@ -68,29 +55,5 @@ export function shouldPollPayment(
 
   return ['PENDING', 'PROCESSING', 'REQUIRES_ACTION', 'AUTHORIZED', 'PAID'].includes(
     normalizedStatus(payment?.status),
-  );
-}
-
-type PaymentBuildEnvironment = {
-  appEnvironment?: string;
-  enableTestPayment?: string;
-  isDevelopment: boolean;
-  nodeEnvironment?: string;
-  paymentProvider?: string;
-};
-
-export function isDevelopmentTestPaymentEnabled(
-  environment: PaymentBuildEnvironment = {
-    appEnvironment: process.env.EXPO_PUBLIC_APP_ENV,
-    enableTestPayment: process.env.EXPO_PUBLIC_ENABLE_TEST_PAYMENT,
-    isDevelopment: __DEV__,
-    nodeEnvironment: process.env.NODE_ENV,
-    paymentProvider: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
-  },
-) {
-  return environment.paymentProvider !== 'razorpay' && (
-    environment.isDevelopment ||
-    environment.nodeEnvironment === 'test' ||
-    (environment.appEnvironment === 'test' && environment.enableTestPayment === 'true')
   );
 }
