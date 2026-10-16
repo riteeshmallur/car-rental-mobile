@@ -21,6 +21,10 @@ import {
   shouldPollPayment,
   type TestPaymentScenario,
 } from '@/features/customer/payment/payment-flow';
+import {
+  openRazorpayCheckout,
+  type RazorpayCheckoutResult,
+} from '@/features/customer/payment/razorpay-checkout';
 import { BookingShell, StateMessage } from '@/features/customer/screens/booking-summary-screen';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
 import { bookingsApi } from '@/services/bookings/bookings-api';
@@ -93,42 +97,72 @@ export function PaymentScreen() {
   }, [bookingId, bookingQuery, hasPaymentAttempt, paymentQuery, queryClient]);
 
   const createPaymentMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!bookingId) {
         throw new Error('Booking reference is missing.');
       }
 
-      return bookingsApi.createPayment(bookingId, {
+      const payment = await bookingsApi.createPayment(bookingId, {
         idempotencyKey: paymentAttemptKeyRef.current,
         ...(testPaymentEnabled ? { testScenario } : {}),
       });
+      return confirmRazorpayCheckout(payment, bookingId);
     },
     onSuccess: async () => {
       setHasPaymentAttempt(true);
       await refreshPaymentState(true);
+    },
+    onError: () => {
+      setHasPaymentAttempt(true);
+      void refreshPaymentState(true);
     },
     onSettled: () => {
       paymentSubmissionStarted.current = false;
     },
   });
   const retryPaymentMutation = useMutation({
-    mutationFn: (paymentId: string) =>
-      bookingsApi.retryPayment(paymentId, {
+    mutationFn: async (paymentId: string) => {
+      if (!bookingId) {
+        throw new Error('Booking reference is missing.');
+      }
+      const payment = await bookingsApi.retryPayment(paymentId, {
         idempotencyKey: paymentRetryKeyRef.current,
         ...(testPaymentEnabled ? { testScenario } : {}),
-      }),
+      });
+      return confirmRazorpayCheckout(payment, bookingId);
+    },
     onSuccess: async () => {
       // Retain a key on a transient network error, but rotate it after a completed attempt.
       paymentRetryKeyRef.current = createIdempotencyKey('payment-retry');
       setHasPaymentAttempt(true);
       await refreshPaymentState(true);
     },
+    onError: () => {
+      setHasPaymentAttempt(true);
+      void refreshPaymentState(true);
+    },
     onSettled: () => {
       paymentSubmissionStarted.current = false;
     },
   });
 
-  const isSubmitting = createPaymentMutation.isPending || retryPaymentMutation.isPending;
+  const checkoutMutation = useMutation({
+    mutationFn: (payment: Awaited<ReturnType<typeof bookingsApi.findPayment>>) => {
+      if (!bookingId) {
+        throw new Error('Booking reference is missing.');
+      }
+      return confirmRazorpayCheckout(payment, bookingId);
+    },
+    onSuccess: async () => {
+      setHasPaymentAttempt(true);
+      await refreshPaymentState(true);
+    },
+  });
+
+  const isSubmitting =
+    createPaymentMutation.isPending ||
+    retryPaymentMutation.isPending ||
+    checkoutMutation.isPending;
   const booking = bookingQuery.data;
   const payment = paymentQuery.data;
   const paymentState = getPaymentScreenState(booking, payment);
@@ -301,11 +335,25 @@ export function PaymentScreen() {
         ) : null}
 
         {paymentState === 'processing' ? (
-          <PaymentProcessingState
-            amount={amount}
-            isRefreshing={paymentQuery.isFetching || bookingQuery.isFetching}
-            onRefresh={() => void refreshPaymentState()}
-          />
+          payment?.provider === 'razorpay' && payment.checkout ? (
+            <PaymentAction
+              actionLabel="Open Razorpay Checkout"
+              description="Complete payment in Razorpay Checkout. Your booking remains pending until the backend verifies it."
+              disabled={isSubmitting}
+              error={checkoutMutation.isError ? normalizeApiError(checkoutMutation.error).message : null}
+              onPress={() => checkoutMutation.mutate(payment)}
+              scenario={testScenario}
+              setScenario={setTestScenario}
+              testPaymentEnabled={false}
+              title="Complete payment"
+            />
+          ) : (
+            <PaymentProcessingState
+              amount={amount}
+              isRefreshing={paymentQuery.isFetching || bookingQuery.isFetching}
+              onRefresh={() => void refreshPaymentState()}
+            />
+          )
         ) : null}
 
         {paymentState === 'unexpected_booking_status' ? (
@@ -319,6 +367,24 @@ export function PaymentScreen() {
       </ScrollView>
     </BookingShell>
   );
+}
+
+async function confirmRazorpayCheckout(
+  payment: Awaited<ReturnType<typeof bookingsApi.createPayment>>,
+  bookingId: string,
+) {
+  if (payment.provider !== 'razorpay' || !payment.checkout) {
+    return payment;
+  }
+  const result: RazorpayCheckoutResult = await openRazorpayCheckout({
+    ...payment.checkout,
+    bookingId,
+  });
+  return bookingsApi.confirmRazorpayPayment(payment.id, {
+    razorpayOrderId: result.razorpay_order_id,
+    razorpayPaymentId: result.razorpay_payment_id,
+    razorpaySignature: result.razorpay_signature,
+  });
 }
 
 function PaymentAction({

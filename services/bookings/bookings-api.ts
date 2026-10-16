@@ -14,6 +14,12 @@ type PaymentAttemptPayload = {
   testScenario?: TestPaymentScenario;
 };
 
+type ConfirmRazorpayPaymentPayload = {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+};
+
 export const bookingsApi = {
   listRenterBookings() {
     return apiRequest<RenterBooking[]>({
@@ -61,6 +67,16 @@ export const bookingsApi = {
       url: `/payments/${paymentId}/retry`,
       data: payload,
       headers: { 'Idempotency-Key': payload.idempotencyKey },
+    });
+  },
+  confirmRazorpayPayment(
+    paymentId: string,
+    payload: ConfirmRazorpayPaymentPayload,
+  ) {
+    return apiRequest<BookingPayment>({
+      method: 'POST',
+      url: `/payments/${paymentId}/confirm`,
+      data: payload,
     });
   },
   findReceipt(bookingId: string) {

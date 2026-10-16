@@ -46,6 +46,11 @@ jest.mock('lucide-react-native', () =>
 
 jest.mock('@react-native-community/datetimepicker', () => () => null);
 
+jest.mock('react-native-razorpay', () => ({
+  __esModule: true,
+  default: { open: jest.fn() },
+}));
+
 global.__testRouter = mockRouter;
 global.__testRouteParams = mockUseLocalSearchParams;
 global.__testPathname = mockUsePathname;
