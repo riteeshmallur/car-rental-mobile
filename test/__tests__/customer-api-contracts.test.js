@@ -49,6 +49,11 @@ describe('customer live API contracts', () => {
     bookingsApi.returnVehicle('booking-1', { fuelLevel: 'full', odometerReading: 200 });
     bookingsApi.createReview('booking-1', { comment: 'Great vehicle', rating: 5 });
     bookingsApi.retryPayment('payment-1', { idempotencyKey: 'retry-payment-1', testScenario: 'FAILURE' });
+    bookingsApi.confirmRazorpayPayment('payment-1', {
+      razorpayOrderId: 'order_1',
+      razorpayPaymentId: 'pay_1',
+      razorpaySignature: 'signature',
+    });
 
     expect(mockApiRequest).toHaveBeenNthCalledWith(1, expect.objectContaining({ method: 'POST', url: '/quotes' }));
     expect(mockApiRequest).toHaveBeenNthCalledWith(2, {
@@ -72,6 +77,15 @@ describe('customer live API contracts', () => {
       headers: { 'Idempotency-Key': 'retry-payment-1' },
       method: 'POST',
       url: '/payments/payment-1/retry',
+    });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(11, {
+      data: {
+        razorpayOrderId: 'order_1',
+        razorpayPaymentId: 'pay_1',
+        razorpaySignature: 'signature',
+      },
+      method: 'POST',
+      url: '/payments/payment-1/confirm',
     });
   });
 

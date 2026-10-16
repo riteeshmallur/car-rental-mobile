@@ -72,4 +72,13 @@ describe('development payment flow', () => {
       }),
     ).toBe(true);
   });
+
+  it('does not show mock payment controls when Razorpay is selected', () => {
+    expect(
+      isDevelopmentTestPaymentEnabled({
+        isDevelopment: true,
+        paymentProvider: 'razorpay',
+      }),
+    ).toBe(false);
+  });
 });

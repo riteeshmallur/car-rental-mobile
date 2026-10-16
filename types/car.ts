@@ -428,7 +428,10 @@ export type BookingPayment = {
   bookingId: string;
   provider: string;
   providerPaymentId: string | null;
+  providerOrderId: string | null;
   providerTransactionId: string | null;
+  providerSignatureVerifiedAt: string | null;
+  providerStatus: string | null;
   status: string;
   amount: string;
   currency: string;
@@ -436,6 +439,13 @@ export type BookingPayment = {
   failureMessage: string | null;
   createdAt: string;
   updatedAt: string;
+  checkout?: {
+    provider: 'razorpay';
+    providerOrderId: string;
+    keyId: string;
+    amount: number;
+    currency: string;
+  };
   refunds: Array<{
     id: string;
     amount: string;

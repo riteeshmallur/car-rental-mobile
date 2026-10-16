@@ -76,6 +76,7 @@ type PaymentBuildEnvironment = {
   enableTestPayment?: string;
   isDevelopment: boolean;
   nodeEnvironment?: string;
+  paymentProvider?: string;
 };
 
 export function isDevelopmentTestPaymentEnabled(
@@ -84,9 +85,10 @@ export function isDevelopmentTestPaymentEnabled(
     enableTestPayment: process.env.EXPO_PUBLIC_ENABLE_TEST_PAYMENT,
     isDevelopment: __DEV__,
     nodeEnvironment: process.env.NODE_ENV,
+    paymentProvider: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
   },
 ) {
-  return (
+  return environment.paymentProvider !== 'razorpay' && (
     environment.isDevelopment ||
     environment.nodeEnvironment === 'test' ||
     (environment.appEnvironment === 'test' && environment.enableTestPayment === 'true')
