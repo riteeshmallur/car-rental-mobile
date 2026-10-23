@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Pencil,
   Phone,
   Settings,
   ShieldCheck,
@@ -20,7 +21,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   Pressable,
@@ -61,7 +61,7 @@ type SectionItem = {
 
 function getDisplayName(user: SafeUser | null | undefined) {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
-  return fullName || 'HopIn user';
+  return fullName || 'HopIn member';
 }
 
 function getInitials(user: SafeUser | null | undefined) {
@@ -139,31 +139,31 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
             {
               label: 'Dashboard',
               description: 'View listing, booking, and payout activity',
-              icon: <LayoutDashboard color="#111827" size={20} />,
+              icon: <LayoutDashboard color={colors.ink} size={20} />,
               onPress: () => router.push('/(host)/dashboard' as never),
             },
             {
               label: 'My Cars',
               description: 'Manage your vehicle listings',
-              icon: <CarFront color="#111827" size={20} />,
+              icon: <CarFront color={colors.ink} size={20} />,
               onPress: () => router.push('/(host)/cars'),
             },
             {
               label: 'Bookings',
               description: 'Review customer reservations',
-              icon: <CalendarClock color="#111827" size={20} />,
+              icon: <CalendarClock color={colors.ink} size={20} />,
               onPress: () => router.push('/(host)/bookings'),
             },
             {
               label: 'Earnings',
               description: 'Track your host payouts',
-              icon: <Banknote color="#111827" size={20} />,
+              icon: <Banknote color={colors.ink} size={20} />,
               onPress: () => router.push('/(host)/earnings'),
             },
             {
               label: 'Payouts',
               description: 'View processed and pending payouts',
-              icon: <Banknote color="#111827" size={20} />,
+              icon: <Banknote color={colors.ink} size={20} />,
               onPress: () => router.push('/(host)/payouts' as never),
             },
           ]
@@ -171,37 +171,37 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
       {
         label: 'Payment methods',
         description: 'Manage your cards and wallets',
-        icon: <CreditCard color="#111827" size={20} />,
+        icon: <CreditCard color={colors.ink} size={20} />,
         onPress: () => router.push('/(customer)/payment-methods' as never),
       },
       {
-        label: 'Documents',
-        description: 'Manage your documents',
-        icon: <FileText color="#111827" size={20} />,
-        onPress: () => showPending('Document upload will be added in a later phase.'),
+        label: 'My Documents',
+        description: 'Licence, verification and vehicle records',
+        icon: <FileText color={colors.ink} size={20} />,
+        onPress: () => router.push(mode === 'host' ? '/(host)/documents' : '/(customer)/documents'),
       },
       {
         label: 'Notifications',
         description: 'Manage your alerts and updates',
-        icon: <Bell color="#111827" size={20} />,
+        icon: <Bell color={colors.ink} size={20} />,
         onPress: () => router.push('/(customer)/notifications' as never),
       },
       {
         label: 'Help & Support',
         description: 'Get help or contact us',
-        icon: <Headphones color="#111827" size={20} />,
+        icon: <Headphones color={colors.ink} size={20} />,
         onPress: () => router.push('/(customer)/help-support' as never),
       },
       {
         label: 'Privacy & Security',
         description: 'Manage your data and security',
-        icon: <ShieldCheck color="#111827" size={20} />,
+        icon: <ShieldCheck color={colors.ink} size={20} />,
         onPress: () => router.push('/(customer)/privacy-security' as never),
       },
       {
         label: 'Logout',
         description: '',
-        icon: <LogOut color="#B91C1C" size={20} />,
+        icon: <LogOut color={colors.error} size={20} />,
         destructive: true,
         onPress: () => setLogoutSheetOpen(true),
       },
@@ -255,7 +255,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
             {profileQuery.isLoading ? (
               <View style={styles.loadingState}>
-                <ActivityIndicator color="#111827" />
+                <ActivityIndicator color={colors.brand} />
                 <Text style={styles.mutedText}>Loading profile</Text>
               </View>
             ) : profileQuery.isError ? (
@@ -340,13 +340,7 @@ function openHostRoute(action: HostEntryAction) {
 
 function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {
   return (
-    <Pressable
-      accessibilityHint="Opens personal information."
-      accessibilityLabel={`${getDisplayName(user)}, profile information`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
-    >
+    <View style={styles.summary}>
       {user.profileImageUrl ? (
         <Image source={{ uri: user.profileImageUrl }} style={styles.avatar} />
       ) : (
@@ -357,18 +351,47 @@ function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser
       <View style={styles.summaryCopy}>
         <Text style={styles.name}>{getDisplayName(user)}</Text>
         <InfoLine
-          icon={<Phone color="#6B7280" size={16} />}
+          icon={<Phone color={colors.muted} size={16} />}
           text={user.phoneNumber ?? 'Mobile number not added'}
+          trailing={user.phoneVerified ? <PhoneVerifiedBadge /> : undefined}
         />
-        <View style={styles.emailRow}>
-          <Mail color={colors.text} size={18} />
-          <Text style={[styles.emailAction, user.email && styles.emailValue]}>
-            {user.email ?? 'Add email address'}
-          </Text>
-        </View>
+        {user.email ? (
+          <InfoLine icon={<Mail color={colors.muted} size={16} />} text={user.email} />
+        ) : (
+          <Pressable
+            accessibilityHint="Opens personal information to add an email address."
+            accessibilityLabel="Add email address"
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={onPress}
+            style={({ pressed }) => [styles.addEmailAction, pressed && styles.pressed]}
+          >
+            <Mail color={colors.brand} size={16} />
+            <Text style={styles.addEmailText}>Add Email Address</Text>
+          </Pressable>
+        )}
       </View>
-      <ChevronRight color={colors.text} size={22} />
-    </Pressable>
+      <Pressable
+        accessibilityHint="Opens personal information."
+        accessibilityLabel="Edit profile"
+        accessibilityRole="button"
+        hitSlop={6}
+        onPress={onPress}
+        style={({ pressed }) => [styles.editProfileButton, pressed && styles.pressed]}
+      >
+        <Pencil color={colors.brand} size={16} />
+        <Text style={styles.editProfileText}>Edit</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function PhoneVerifiedBadge() {
+  return (
+    <View accessibilityLabel="Phone verified" accessibilityRole="text" style={styles.verifiedBadge}>
+      <ShieldCheck color={colors.success} size={13} />
+      <Text style={styles.verifiedText}>Verified</Text>
+    </View>
   );
 }
 
@@ -401,7 +424,7 @@ function HostBanner({
     : entry?.title ?? 'Host setup';
   const body = mode === 'host'
     ? 'Return to your customer trips'
-    : entry?.body ?? 'Checking your host account status.';
+    : 'List your car, manage bookings and start earning.';
   const cta = mode === 'host'
     ? 'Open customer mode'
     : entry?.cta ?? 'Loading';
@@ -570,10 +593,6 @@ function StateMessage({
   );
 }
 
-function showPending(message: string) {
-  Alert.alert('Coming soon', message);
-}
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -609,8 +628,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '800',
   },
   subtitle: {
     color: colors.muted,
@@ -630,27 +649,28 @@ const styles = StyleSheet.create({
   },
   summary: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 14,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
-    padding: 14,
+    padding: 16,
     ...shadows.card,
   },
   hostBanner: {
-    minHeight: 142,
+    minHeight: 124,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     overflow: 'hidden',
     borderRadius: radii.lg,
     backgroundColor: colors.brandSoft,
-    padding: 16,
+    padding: 14,
   },
   hostIcon: {
-    height: 58,
-    width: 58,
+    height: 52,
+    width: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.md,
@@ -662,23 +682,24 @@ const styles = StyleSheet.create({
   },
   hostTitle: {
     color: colors.ink,
-    fontSize: 21,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '800',
   },
   hostBody: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
   hostCta: {
-    minHeight: 38,
+    minHeight: 40,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     borderRadius: radii.sm,
     backgroundColor: colors.brand,
-    marginTop: 9,
+    marginTop: 6,
     paddingHorizontal: 14,
   },
   hostCtaText: {
@@ -693,7 +714,7 @@ const styles = StyleSheet.create({
     height: 125,
     width: 125,
     borderRadius: 63,
-    backgroundColor: 'rgba(183,210,255,0.56)',
+    backgroundColor: 'rgba(184, 146, 75, 0.16)',
   },
   avatar: {
     height: 82,
@@ -707,22 +728,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 41,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: colors.brandSoft,
   },
   avatarText: {
     color: colors.brand,
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 26,
+    fontWeight: '800',
   },
   summaryCopy: {
     flex: 1,
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
   },
   name: {
     color: colors.ink,
     fontSize: 21,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   infoLine: {
     flexDirection: 'row',
@@ -733,21 +754,46 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '500',
   },
-  emailRow: {
+  addEmailAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    alignSelf: 'flex-start',
+    gap: 6,
+    minHeight: 24,
   },
-  emailAction: {
-    flex: 1,
+  addEmailText: {
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: radii.pill,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  verifiedText: {
+    color: colors.success,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  editProfileButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  editProfileText: {
     color: colors.brand,
     fontSize: 14,
-    fontWeight: '800',
-  },
-  emailValue: {
-    color: colors.text,
+    fontWeight: '700',
   },
   primaryButton: {
     minHeight: 48,
@@ -794,8 +840,8 @@ const styles = StyleSheet.create({
   sectionLabel: {
     flex: 1,
     color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '700',
   },
   sectionCopy: {
     flex: 1,
@@ -804,12 +850,12 @@ const styles = StyleSheet.create({
   sectionDescription: {
     color: colors.muted,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   sectionHeading: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: 12,
+    fontWeight: '700',
     letterSpacing: 0.2,
     marginTop: 4,
     textTransform: 'uppercase',

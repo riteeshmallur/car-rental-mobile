@@ -80,8 +80,7 @@ export function HomeScreen() {
   });
 
   const availableCars = carsQuery.data ?? [];
-  const featuredCars = useMemo(() => availableCars.slice(0, 3), [availableCars]);
-  const popularCars = useMemo(() => availableCars.slice(1, 4), [availableCars]);
+  const popularCars = useMemo(() => availableCars.slice(0, 3), [availableCars]);
   const isRefreshing = defaultLocationQuery.isFetching || carsQuery.isFetching;
 
   const refreshHome = () => {
@@ -181,16 +180,8 @@ export function HomeScreen() {
         ) : null}
 
         <FeaturedCarList
-          cars={featuredCars}
-          isLoading={carsQuery.isLoading || defaultLocationQuery.isLoading}
-          onCarPress={openVehicle}
-          onViewAll={searchCars}
-          title="Featured cars"
-          variant="featured"
-        />
-
-        <FeaturedCarList
           cars={popularCars}
+          isLoading={carsQuery.isLoading || defaultLocationQuery.isLoading}
           onCarPress={openVehicle}
           onViewAll={searchCars}
           title="Popular cars"
