@@ -12,8 +12,8 @@ import {
   HandCoins,
   UserRound,
 } from 'lucide-react-native';
-import { Controller, useForm } from 'react-hook-form';
-import { useCallback, useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,6 +31,7 @@ import {
   hostOnboardingSchema,
   type HostOnboardingFormValues,
 } from '@/features/host-onboarding/schemas/host-onboarding-schema';
+import { hostStatusQueryKey, useHostStatus } from '@/features/host/hooks/use-host-status';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { usersApi } from '@/services/users/users-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -104,12 +105,31 @@ function getDefaultValues(): HostOnboardingFormValues {
   };
 }
 
+type PartialHostOnboardingValues = {
+  [Key in keyof HostOnboardingFormValues]?: Partial<HostOnboardingFormValues[Key]>;
+};
+
+function getDraftValues(values: Record<string, unknown>): HostOnboardingFormValues {
+  const defaults = getDefaultValues();
+  const draft = values as PartialHostOnboardingValues;
+
+  return {
+    personalInfo: { ...defaults.personalInfo, ...draft.personalInfo },
+    identity: { ...defaults.identity, ...draft.identity },
+    payout: { ...defaults.payout, ...draft.payout },
+    terms: { ...defaults.terms, ...draft.terms },
+    hostProfile: { ...defaults.hostProfile, ...draft.hostProfile },
+  };
+}
+
 export function BecomeHostOnboardingScreen() {
   const queryClient = useQueryClient();
   const setUser = useAuthStore((state) => state.setUser);
+  const hostStatusQuery = useHostStatus();
   const [introVisible, setIntroVisible] = useState(true);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const hasHydratedDraft = useRef(false);
   const handleInternalBack = useCallback(() => {
     if (isComplete || introVisible) {
       return false;
@@ -134,6 +154,8 @@ export function BecomeHostOnboardingScreen() {
     control,
     formState: { errors },
     handleSubmit,
+    getValues,
+    reset,
     setError,
     trigger,
     watch,
@@ -143,7 +165,44 @@ export function BecomeHostOnboardingScreen() {
     resolver: zodResolver(hostOnboardingSchema),
   });
 
+  const watchedValues = useWatch({ control });
   const payoutMethod = watch('payout.payoutMethod');
+
+  const draftMutation = useMutation({
+    mutationFn: hostsApi.saveOnboardingDraft,
+    onSuccess: (status) => {
+      queryClient.setQueryData(hostStatusQueryKey, status);
+    },
+  });
+
+  const saveDraft = useCallback(
+    (
+      stepIndex: number,
+      values: Record<string, unknown> = getValues() as unknown as Record<string, unknown>,
+    ) => {
+      draftMutation.mutate({
+        activeStepIndex: stepIndex,
+        values,
+      });
+    },
+    [draftMutation, getValues],
+  );
+
+  useEffect(() => {
+    if (hostStatusQuery.isLoading || hasHydratedDraft.current) {
+      return;
+    }
+
+    const draft = hostStatusQuery.data?.draft;
+
+    if (hostStatusQuery.data?.status === 'in_progress' && draft) {
+      reset(getDraftValues(draft.values));
+      setActiveStepIndex(draft.activeStepIndex);
+      setIntroVisible(false);
+    }
+
+    hasHydratedDraft.current = true;
+  }, [hostStatusQuery.data, hostStatusQuery.isLoading, reset]);
 
   const completeMutation = useMutation({
     mutationFn: async (values: HostOnboardingFormValues) => {
@@ -156,9 +215,37 @@ export function BecomeHostOnboardingScreen() {
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       queryClient.setQueryData(['users', 'me'], updatedUser);
+      void queryClient.invalidateQueries({ queryKey: hostStatusQueryKey });
       setIsComplete(true);
     },
   });
+
+  useEffect(() => {
+    if (
+      !hasHydratedDraft.current ||
+      introVisible ||
+      isComplete ||
+      completeMutation.isPending
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      saveDraft(activeStepIndex, watchedValues as unknown as Record<string, unknown>);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [activeStepIndex, completeMutation.isPending, introVisible, isComplete, saveDraft, watchedValues]);
+
+  const hasCompletedHostProfile =
+    hostStatusQuery.data?.status === 'profile_created' ||
+    hostStatusQuery.data?.status === 'active';
+
+  useEffect(() => {
+    if (hasCompletedHostProfile) {
+      router.replace('/(host)/dashboard');
+    }
+  }, [hasCompletedHostProfile]);
 
   const activeStep = steps[activeStepIndex];
   const progress = ((activeStepIndex + 1) / steps.length) * 100;
@@ -171,12 +258,25 @@ export function BecomeHostOnboardingScreen() {
     }
 
     if (activeStepIndex < steps.length - 1) {
-      setActiveStepIndex((current) => current + 1);
+      const nextStepIndex = activeStepIndex + 1;
+      setActiveStepIndex(nextStepIndex);
+      saveDraft(nextStepIndex);
       return;
     }
 
     handleSubmit((values) => completeMutation.mutate(values))();
   };
+
+  if (hasCompletedHostProfile) {
+    return (
+      <OnboardingShell onBack={goBack} title="Host setup complete">
+        <View style={styles.completeState}>
+          <ActivityIndicator color="#0B4FE8" />
+          <Text style={styles.completeBody}>Opening your host dashboard.</Text>
+        </View>
+      </OnboardingShell>
+    );
+  }
 
   if (introVisible) {
     return (
@@ -184,7 +284,11 @@ export function BecomeHostOnboardingScreen() {
         footer={
           <Pressable
             accessibilityRole="button"
-            onPress={() => setIntroVisible(false)}
+            disabled={draftMutation.isPending || hostStatusQuery.isLoading}
+            onPress={() => {
+              setIntroVisible(false);
+              saveDraft(0);
+            }}
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>Start onboarding</Text>

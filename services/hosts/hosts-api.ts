@@ -20,6 +20,25 @@ export type HostProfile = {
   updatedAt: string;
 };
 
+export type HostLifecycleStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'profile_created'
+  | 'active';
+
+export type HostOnboardingDraft = {
+  activeStepIndex: number;
+  values: Record<string, unknown>;
+  updatedAt: string;
+};
+
+export type HostStatus = {
+  status: HostLifecycleStatus;
+  onboardingStatus: string | null;
+  verificationStatus: string | null;
+  draft: HostOnboardingDraft | null;
+};
+
 export type CompleteHostOnboardingPayload = {
   personalInfo: {
     firstName: string;
@@ -60,6 +79,19 @@ export const hostsApi = {
     return apiRequest<HostProfile>({
       method: 'GET',
       url: '/hosts/me',
+    });
+  },
+  status() {
+    return apiRequest<HostStatus>({
+      method: 'GET',
+      url: '/hosts/me/status',
+    });
+  },
+  saveOnboardingDraft(payload: Pick<HostOnboardingDraft, 'activeStepIndex' | 'values'>) {
+    return apiRequest<HostStatus>({
+      method: 'PATCH',
+      url: '/hosts/me/onboarding-draft',
+      data: payload,
     });
   },
   updateMe(payload: Pick<HostProfile, 'displayName' | 'bio'>) {

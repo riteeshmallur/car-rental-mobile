@@ -15,6 +15,9 @@ import {
 import { FeaturedCarList } from '@/features/customer/components/featured-car-list';
 import { PromotionalSection } from '@/features/customer/components/promotional-section';
 import { RentalSearchCard } from '@/features/customer/components/rental-search-card';
+import { HostEntryCard } from '@/features/host/components/host-entry-card';
+import { useHostStatus } from '@/features/host/hooks/use-host-status';
+import { getHostEntryCopy, type HostEntryAction } from '@/features/host/utils/host-entry';
 import { useAuthStore } from '@/store/auth-store';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -34,6 +37,7 @@ export function HomeScreen() {
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const hostStatusQuery = useHostStatus();
   const closePickerBeforeBack = useCallback(() => {
     if (!activeDateTimeField) {
       return false;
@@ -83,6 +87,7 @@ export function HomeScreen() {
   const refreshHome = () => {
     void defaultLocationQuery.refetch();
     void carsQuery.refetch();
+    void hostStatusQuery.refetch();
   };
 
   const searchCars = () => {
@@ -123,6 +128,24 @@ export function HomeScreen() {
       },
     });
   };
+
+  const openHostEntry = (action: HostEntryAction) => {
+    if (action === 'onboarding') {
+      router.push('/(customer)/become-host');
+      return;
+    }
+
+    if (action === 'add_vehicle') {
+      router.push('/(host)/vehicles/new');
+      return;
+    }
+
+    router.replace('/(host)/dashboard');
+  };
+
+  const hostEntryCopy = hostStatusQuery.data
+    ? getHostEntryCopy('home', hostStatusQuery.data.status)
+    : undefined;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -172,6 +195,12 @@ export function HomeScreen() {
           onViewAll={searchCars}
           title="Popular cars"
           variant="popular"
+        />
+
+        <HostEntryCard
+          copy={hostEntryCopy}
+          isLoading={hostStatusQuery.isLoading}
+          onPress={hostEntryCopy ? () => openHostEntry(hostEntryCopy.action) : undefined}
         />
 
         <PromotionalSection />

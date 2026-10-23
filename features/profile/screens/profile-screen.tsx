@@ -33,11 +33,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
 import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
+import { useHostStatus } from '@/features/host/hooks/use-host-status';
 import {
-  canAccessHostMode,
   customerModeRoute,
   hostModeRoute,
 } from '@/features/host/utils/host-mode';
+import { getHostEntryCopy, type HostEntryAction } from '@/features/host/utils/host-entry';
+import { type HostLifecycleStatus } from '@/services/hosts/hosts-api';
 import { usersApi } from '@/services/users/users-api';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
 import { useAuthStore } from '@/store/auth-store';
@@ -78,6 +80,7 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
   const logout = useAuthStore((state) => state.logout);
   const [isLogoutSheetOpen, setLogoutSheetOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const hostStatusQuery = useHostStatus();
 
   const profileQuery = useQuery({
     initialData: authUser ?? undefined,
@@ -116,6 +119,18 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
     }
     router.push('/(customer)/personal-information');
   }, [mode]);
+
+  const openHostEntry = useCallback(
+    (action: HostEntryAction) => {
+      if (mode === 'host') {
+        router.replace(customerModeRoute);
+        return;
+      }
+
+      openHostRoute(action);
+    },
+    [mode],
+  );
 
   const sections = useMemo<SectionItem[]>(
     () => [
@@ -256,15 +271,10 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
                 {mode === 'customer' || mode === 'host' ? (
                   <HostBanner
-                    hasHostCapability={hasHostCapability(profile)}
+                    hostStatus={hostStatusQuery.data?.status}
+                    isLoading={hostStatusQuery.isLoading}
                     mode={mode}
-                    onPress={() =>
-                      mode === 'host'
-                        ? router.replace(customerModeRoute)
-                        : hasHostCapability(profile)
-                          ? router.replace(hostModeRoute)
-                          : router.push('/(customer)/become-host')
-                    }
+                    onPress={openHostEntry}
                   />
                 ) : null}
 
@@ -314,8 +324,18 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
   );
 }
 
-function hasHostCapability(profile: SafeUser | undefined) {
-  return canAccessHostMode(profile);
+function openHostRoute(action: HostEntryAction) {
+  if (action === 'onboarding') {
+    router.push('/(customer)/become-host');
+    return;
+  }
+
+  if (action === 'add_vehicle') {
+    router.push('/(host)/vehicles/new');
+    return;
+  }
+
+  router.replace(hostModeRoute);
 }
 
 function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {
@@ -364,20 +384,46 @@ function InfoLine({ icon, text, trailing }: { icon: React.ReactNode; text: strin
   );
 }
 
-function HostBanner({ hasHostCapability, mode, onPress }: { hasHostCapability: boolean; mode: ProfileScreenProps['mode']; onPress: () => void }) {
-  const title = mode === 'host' ? 'Switch to Customer' : hasHostCapability ? 'Switch to Host' : 'Become a Host';
+function HostBanner({
+  hostStatus,
+  isLoading,
+  mode,
+  onPress,
+}: {
+  hostStatus?: HostLifecycleStatus;
+  isLoading: boolean;
+  mode: ProfileScreenProps['mode'];
+  onPress: (action: HostEntryAction) => void;
+}) {
+  const entry = hostStatus ? getHostEntryCopy('profile', hostStatus) : null;
+  const title = mode === 'host'
+    ? 'Switch to Customer'
+    : entry?.title ?? 'Host setup';
   const body = mode === 'host'
     ? 'Return to your customer trips'
-    : hasHostCapability
-      ? 'Manage your cars and bookings'
-      : 'List your car and start earning';
-  const cta = mode === 'host' ? 'Open customer mode' : hasHostCapability ? 'Open host mode' : 'Get started';
+    : entry?.body ?? 'Checking your host account status.';
+  const cta = mode === 'host'
+    ? 'Open customer mode'
+    : entry?.cta ?? 'Loading';
+
+  const handlePress = () => {
+    if (mode === 'host') {
+      onPress('dashboard');
+      return;
+    }
+
+    if (entry) {
+      onPress(entry.action);
+    }
+  };
 
   return (
     <Pressable
       accessibilityLabel={title}
       accessibilityRole="button"
-      onPress={onPress}
+      accessibilityState={{ busy: isLoading }}
+      disabled={mode !== 'host' && !entry}
+      onPress={handlePress}
       style={({ pressed }) => [styles.hostBanner, pressed && styles.pressed]}
     >
       <View style={styles.hostIcon}>
@@ -387,8 +433,14 @@ function HostBanner({ hasHostCapability, mode, onPress }: { hasHostCapability: b
         <Text style={styles.hostTitle}>{title}</Text>
         <Text style={styles.hostBody}>{body}</Text>
         <View style={styles.hostCta}>
-          <Text style={styles.hostCtaText}>{cta}</Text>
-          <ArrowRight color={colors.surface} size={18} />
+          {isLoading && mode !== 'host' ? (
+            <ActivityIndicator color={colors.surface} size="small" />
+          ) : (
+            <>
+              <Text style={styles.hostCtaText}>{cta}</Text>
+              <ArrowRight color={colors.surface} size={18} />
+            </>
+          )}
         </View>
       </View>
       <View style={styles.hostAccent} />

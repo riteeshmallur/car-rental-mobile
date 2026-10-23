@@ -56,6 +56,8 @@ describe('host mode, add vehicle, and booking actions', () => {
   it('uses live host APIs for dashboard, drafts, availability, and booking decisions', () => {
     hostsApi.dashboard();
     hostsApi.listBookings();
+    hostsApi.status();
+    hostsApi.saveOnboardingDraft({ activeStepIndex: 1, values: { personalInfo: { firstName: 'Ava' } } });
     vehiclesApi.createDraft({ make: 'Hyundai' });
     vehiclesApi.updateDraft('vehicle-1', { model: 'Creta' });
     vehiclesApi.createAvailabilityBlock('vehicle-1', { startsAt: '2026-10-20', endsAt: '2026-10-22' });
@@ -68,10 +70,12 @@ describe('host mode, add vehicle, and booking actions', () => {
 
     expect(mockApiRequest).toHaveBeenNthCalledWith(1, { method: 'GET', url: '/hosts/me/dashboard' });
     expect(mockApiRequest).toHaveBeenNthCalledWith(2, { method: 'GET', url: '/hosts/me/bookings' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, expect.objectContaining({ method: 'POST', url: '/vehicles' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(5, expect.objectContaining({ method: 'POST', url: '/vehicles/vehicle-1/blocks' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(9, { method: 'POST', url: '/vehicles/vehicle-1/submit' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(10, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/approve' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(11, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/reject' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, { method: 'GET', url: '/hosts/me/status' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, expect.objectContaining({ method: 'PATCH', url: '/hosts/me/onboarding-draft' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(5, expect.objectContaining({ method: 'POST', url: '/vehicles' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(7, expect.objectContaining({ method: 'POST', url: '/vehicles/vehicle-1/blocks' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(11, { method: 'POST', url: '/vehicles/vehicle-1/submit' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(12, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/approve' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(13, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/reject' }));
   });
 });
