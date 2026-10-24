@@ -15,12 +15,18 @@ const privacy = [
   ['Account controls', 'You can request an export of your account data or request account deletion from Privacy & security.'],
   ['Sharing', 'Vehicle pickup details and booking information are shared only as required to operate a confirmed rental.'],
 ];
+const hostTerms = [
+  ['Hosting on HopIn', 'Keep your host profile, vehicle details, pricing, and availability accurate so customers can make informed booking decisions.'],
+  ['Bookings and handoffs', 'Honor confirmed bookings, follow agreed handoff procedures, and communicate promptly when a vehicle or booking needs attention.'],
+  ['Safety and compliance', 'Maintain required vehicle documents and cooperate with identity verification, payout setup, and applicable platform safety policies when requested.'],
+];
 
 export function PolicyScreen() {
   const params = useLocalSearchParams<{ type?: string }>();
   const isPrivacy = params.type === 'privacy';
-  const title = isPrivacy ? 'Privacy policy' : 'Terms of service';
-  const sections = isPrivacy ? privacy : terms;
+  const isHostTerms = params.type === 'host-terms';
+  const title = isPrivacy ? 'Privacy policy' : isHostTerms ? 'Host Terms' : 'Terms of service';
+  const sections = isPrivacy ? privacy : isHostTerms ? hostTerms : terms;
   const goBack = useSafeBack({ fallback: '/(customer)/help-support' });
   return <SafeAreaView edges={['top']} style={styles.safeArea}><View style={styles.screen}><View style={styles.header}><Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={goBack} style={styles.iconButton}><ArrowLeft color="#102550" size={21} /></Pressable><Text style={styles.title}>{title}</Text></View><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><Text style={styles.updated}>Last updated: 30 September 2026</Text>{sections.map(([heading, body]) => <View key={heading} style={styles.section}><Text style={styles.heading}>{heading}</Text><Text style={styles.body}>{body}</Text></View>)}<Pressable accessibilityRole="button" onPress={() => router.push('/(customer)/privacy-security')} style={styles.link}><Text style={styles.linkText}>Manage account privacy</Text></Pressable></ScrollView></View></SafeAreaView>;
 }

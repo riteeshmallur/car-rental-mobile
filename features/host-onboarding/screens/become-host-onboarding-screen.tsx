@@ -1,17 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  ArrowLeft,
-  BadgeIndianRupee,
-  CalendarCheck,
-  CarFront,
-  Check,
-  ClipboardCheck,
-  FileCheck2,
-  HandCoins,
-  UserRound,
-} from 'lucide-react-native';
+import { ArrowLeft, Check, ClipboardCheck, UserRound } from 'lucide-react-native';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -28,160 +18,107 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  HOST_TERMS_VERSION,
   hostOnboardingSchema,
   type HostOnboardingFormValues,
 } from '@/features/host-onboarding/schemas/host-onboarding-schema';
 import { hostStatusQueryKey, useHostStatus } from '@/features/host/hooks/use-host-status';
-import { hostsApi } from '@/services/hosts/hosts-api';
-import { usersApi } from '@/services/users/users-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import { hostsApi } from '@/services/hosts/hosts-api';
+import { usersApi } from '@/services/users/users-api';
 import { useAuthStore } from '@/store/auth-store';
+import { type SafeUser } from '@/types/auth';
 import { normalizeApiError } from '@/utils/errors';
 
-type StepKey = 'personalInfo' | 'identity' | 'payout' | 'terms' | 'hostProfile';
+type StepKey = 'hostProfile' | 'terms';
 
 const steps: Array<{ key: StepKey; label: string }> = [
-  { key: 'personalInfo', label: 'Personal' },
-  { key: 'identity', label: 'Verify' },
-  { key: 'payout', label: 'Payout' },
-  { key: 'terms', label: 'Terms' },
-  { key: 'hostProfile', label: 'Profile' },
+  { key: 'hostProfile', label: 'Host profile' },
+  { key: 'terms', label: 'Host terms' },
 ];
 
-const introItems = [
-  {
-    icon: <CarFront color="#102550" size={22} />,
-    title: 'List your car',
-    body: 'Add photos, pricing, pickup location, and rental rules.',
-  },
-  {
-    icon: <CalendarCheck color="#102550" size={22} />,
-    title: 'Set your availability',
-    body: 'Choose when your car is bookable and block unavailable dates.',
-  },
-  {
-    icon: <ClipboardCheck color="#102550" size={22} />,
-    title: 'Receive bookings',
-    body: 'Customers book available windows after your listing is published.',
-  },
-  {
-    icon: <HandCoins color="#102550" size={22} />,
-    title: 'Earn money',
-    body: 'Payout details are captured before you start hosting.',
-  },
-];
+type PartialHostOnboardingValues = Partial<HostOnboardingFormValues>;
 
-function getDefaultValues(): HostOnboardingFormValues {
-  const user = useAuthStore.getState().user;
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+function defaultValues(user: SafeUser | null | undefined): HostOnboardingFormValues {
+  const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
 
   return {
-    personalInfo: {
-      firstName: user?.firstName ?? '',
-      lastName: user?.lastName ?? '',
-      email: user?.email ?? '',
-      phoneNumber: user?.phoneNumber ?? '',
-    },
-    identity: {
-      documentType: 'pan',
-      documentLast4: '',
-      verificationConsent: false,
-    },
-    payout: {
-      payoutMethod: 'upi',
-      accountHolderName: displayName,
-      bankName: null,
-      accountLast4: null,
-      upiId: null,
+    hostProfile: {
+      displayName: name || 'HopIn Host',
+      bio: '',
     },
     terms: {
       accepted: false,
-    },
-    hostProfile: {
-      displayName: displayName || 'HopIn Host',
-      bio: '',
+      policyVersion: HOST_TERMS_VERSION,
     },
   };
 }
 
-type PartialHostOnboardingValues = {
-  [Key in keyof HostOnboardingFormValues]?: Partial<HostOnboardingFormValues[Key]>;
-};
-
-function getDraftValues(values: Record<string, unknown>): HostOnboardingFormValues {
-  const defaults = getDefaultValues();
-  const draft = values as PartialHostOnboardingValues;
+function draftValues(
+  values: Record<string, unknown> | undefined,
+  user: SafeUser | null | undefined,
+): HostOnboardingFormValues {
+  const defaults = defaultValues(user);
+  const draft = (values ?? {}) as PartialHostOnboardingValues;
 
   return {
-    personalInfo: { ...defaults.personalInfo, ...draft.personalInfo },
-    identity: { ...defaults.identity, ...draft.identity },
-    payout: { ...defaults.payout, ...draft.payout },
-    terms: { ...defaults.terms, ...draft.terms },
     hostProfile: { ...defaults.hostProfile, ...draft.hostProfile },
+    terms: {
+      ...defaults.terms,
+      ...draft.terms,
+      policyVersion: HOST_TERMS_VERSION,
+    },
   };
 }
 
 export function BecomeHostOnboardingScreen() {
   const queryClient = useQueryClient();
+  const storedUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const hostStatusQuery = useHostStatus();
-  const [introVisible, setIntroVisible] = useState(true);
+  const accountQuery = useQuery({
+    queryKey: ['users', 'me'],
+    queryFn: usersApi.me,
+    initialData: storedUser ?? undefined,
+  });
+  const account = accountQuery.data ?? storedUser;
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const hasHydratedDraft = useRef(false);
-  const handleInternalBack = useCallback(() => {
-    if (isComplete || introVisible) {
-      return false;
-    }
-
-    if (activeStepIndex > 0) {
-      setActiveStepIndex((current) => Math.max(0, current - 1));
-    } else {
-      setIntroVisible(true);
-    }
-
-    return true;
-  }, [activeStepIndex, introVisible, isComplete]);
-  const goBack = useSafeBack({
-    fallback: isComplete ? '/(host)/dashboard' : '/(customer)/profile',
-    onBeforeBack: handleInternalBack,
-    preferFallback: isComplete,
-  });
-  useWebBackGuard({ active: !introVisible && !isComplete, onBack: goBack });
 
   const {
     control,
     formState: { errors },
-    handleSubmit,
     getValues,
+    handleSubmit,
     reset,
     setError,
     trigger,
-    watch,
   } = useForm<HostOnboardingFormValues>({
-    defaultValues: getDefaultValues(),
+    defaultValues: defaultValues(storedUser),
     mode: 'onChange',
     resolver: zodResolver(hostOnboardingSchema),
   });
-
   const watchedValues = useWatch({ control });
-  const payoutMethod = watch('payout.payoutMethod');
+  const activeStep = steps[activeStepIndex];
+  const isProfileCreated =
+    hostStatusQuery.data?.status === 'profile_created' ||
+    hostStatusQuery.data?.status === 'active';
 
   const draftMutation = useMutation({
     mutationFn: hostsApi.saveOnboardingDraft,
-    onSuccess: (status) => {
-      queryClient.setQueryData(hostStatusQueryKey, status);
-    },
+    onSuccess: (status) => queryClient.setQueryData(hostStatusQueryKey, status),
   });
 
   const saveDraft = useCallback(
     (
       stepIndex: number,
-      values: Record<string, unknown> = getValues() as unknown as Record<string, unknown>,
+      values: Record<string, unknown> = getValues() as Record<string, unknown>,
     ) => {
       draftMutation.mutate({
-        activeStepIndex: stepIndex,
+        activeStepIndex: Math.min(stepIndex, steps.length - 1),
         values,
       });
     },
@@ -189,20 +126,23 @@ export function BecomeHostOnboardingScreen() {
   );
 
   useEffect(() => {
-    if (hostStatusQuery.isLoading || hasHydratedDraft.current) {
+    if (
+      hasHydratedDraft.current ||
+      hostStatusQuery.isLoading ||
+      (!account && accountQuery.isLoading)
+    ) {
       return;
     }
 
     const draft = hostStatusQuery.data?.draft;
+    reset(draftValues(draft?.values, account));
 
     if (hostStatusQuery.data?.status === 'in_progress' && draft) {
-      reset(getDraftValues(draft.values));
-      setActiveStepIndex(draft.activeStepIndex);
-      setIntroVisible(false);
+      setActiveStepIndex(Math.min(draft.activeStepIndex, steps.length - 1));
     }
 
     hasHydratedDraft.current = true;
-  }, [hostStatusQuery.data, hostStatusQuery.isLoading, reset]);
+  }, [account, accountQuery.isLoading, hostStatusQuery.data, hostStatusQuery.isLoading, reset]);
 
   const completeMutation = useMutation({
     mutationFn: async (values: HostOnboardingFormValues) => {
@@ -210,6 +150,7 @@ export function BecomeHostOnboardingScreen() {
       return usersApi.me();
     },
     onError: (error) => {
+      setIsTransitioning(false);
       setError('root', { message: normalizeApiError(error).message });
     },
     onSuccess: (updatedUser) => {
@@ -221,39 +162,65 @@ export function BecomeHostOnboardingScreen() {
   });
 
   useEffect(() => {
-    if (
-      !hasHydratedDraft.current ||
-      introVisible ||
-      isComplete ||
-      completeMutation.isPending
-    ) {
+    if (!hasHydratedDraft.current || isComplete || completeMutation.isPending) {
       return;
     }
 
     const timer = setTimeout(() => {
-      saveDraft(activeStepIndex, watchedValues as unknown as Record<string, unknown>);
-    }, 700);
+      saveDraft(activeStepIndex, watchedValues as Record<string, unknown>);
+    }, 650);
 
     return () => clearTimeout(timer);
-  }, [activeStepIndex, completeMutation.isPending, introVisible, isComplete, saveDraft, watchedValues]);
-
-  const hasCompletedHostProfile =
-    hostStatusQuery.data?.status === 'profile_created' ||
-    hostStatusQuery.data?.status === 'active';
+  }, [activeStepIndex, completeMutation.isPending, isComplete, saveDraft, watchedValues]);
 
   useEffect(() => {
-    if (hasCompletedHostProfile) {
+    if (!isComplete) {
+      return;
+    }
+
+    const timer = setTimeout(() => router.replace('/(host)/dashboard'), 1300);
+
+    return () => clearTimeout(timer);
+  }, [isComplete]);
+
+  useEffect(() => {
+    if (isProfileCreated) {
       router.replace('/(host)/dashboard');
     }
-  }, [hasCompletedHostProfile]);
+  }, [isProfileCreated]);
 
-  const activeStep = steps[activeStepIndex];
-  const progress = ((activeStepIndex + 1) / steps.length) * 100;
+  const handleInternalBack = useCallback(() => {
+    if (isComplete) {
+      return false;
+    }
+
+    if (activeStepIndex > 0) {
+      const previousStep = activeStepIndex - 1;
+      setActiveStepIndex(previousStep);
+      saveDraft(previousStep);
+      return true;
+    }
+
+    saveDraft(0);
+    return false;
+  }, [activeStepIndex, isComplete, saveDraft]);
+  const goBack = useSafeBack({
+    fallback: isComplete ? '/(host)/dashboard' : '/(customer)/profile',
+    onBeforeBack: handleInternalBack,
+    preferFallback: isComplete,
+  });
+  useWebBackGuard({ active: !isComplete && !isProfileCreated, onBack: goBack });
 
   const goNext = async () => {
+    if (isTransitioning || completeMutation.isPending) {
+      return;
+    }
+
+    setIsTransitioning(true);
     const isStepValid = await trigger(activeStep.key);
 
     if (!isStepValid) {
+      setIsTransitioning(false);
       return;
     }
 
@@ -261,63 +228,43 @@ export function BecomeHostOnboardingScreen() {
       const nextStepIndex = activeStepIndex + 1;
       setActiveStepIndex(nextStepIndex);
       saveDraft(nextStepIndex);
+      setIsTransitioning(false);
       return;
     }
 
     handleSubmit((values) => completeMutation.mutate(values))();
   };
 
-  if (hasCompletedHostProfile) {
-    return (
-      <OnboardingShell onBack={goBack} title="Host setup complete">
-        <View style={styles.completeState}>
-          <ActivityIndicator color="#0B6FE8" />
-          <Text style={styles.completeBody}>Opening your host dashboard.</Text>
-        </View>
-      </OnboardingShell>
-    );
+  const isLoading =
+    !hasHydratedDraft.current ||
+    hostStatusQuery.isLoading ||
+    (!account && accountQuery.isLoading);
+  const hasLoadError = hostStatusQuery.isError || (!account && accountQuery.isError);
+
+  if (isProfileCreated) {
+    return <RedirectingState title="Opening host dashboard" />;
   }
 
-  if (introVisible) {
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (hasLoadError) {
     return (
-      <OnboardingShell
-        footer={
+      <OnboardingShell onBack={goBack} title="Become a Host">
+        <View style={styles.stateCard}>
+          <Text style={styles.stateTitle}>We could not load your host setup</Text>
+          <Text style={styles.stateBody}>Check your connection and try again.</Text>
           <Pressable
             accessibilityRole="button"
-            disabled={draftMutation.isPending || hostStatusQuery.isLoading}
             onPress={() => {
-              setIntroVisible(false);
-              saveDraft(0);
+              void hostStatusQuery.refetch();
+              void accountQuery.refetch();
             }}
-            style={styles.primaryButton}
+            style={styles.retryButton}
           >
-            <Text style={styles.primaryButtonText}>Start onboarding</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
-        }
-        onBack={goBack}
-        title="Become a Host"
-      >
-        <View style={styles.introHeader}>
-          <View style={styles.heroIcon}>
-            <BadgeIndianRupee color="#102550" size={38} />
-          </View>
-          <Text style={styles.introTitle}>Turn your car into an earning asset</Text>
-          <Text style={styles.introBody}>
-            Complete host setup once. Your existing HopIn account will keep working
-            for customer trips and gain host capability.
-          </Text>
-        </View>
-
-        <View style={styles.introList}>
-          {introItems.map((item) => (
-            <View key={item.title} style={styles.introItem}>
-              <View style={styles.introIcon}>{item.icon}</View>
-              <View style={styles.introCopy}>
-                <Text style={styles.introItemTitle}>{item.title}</Text>
-                <Text style={styles.introItemBody}>{item.body}</Text>
-              </View>
-            </View>
-          ))}
         </View>
       </OnboardingShell>
     );
@@ -325,236 +272,87 @@ export function BecomeHostOnboardingScreen() {
 
   if (isComplete) {
     return (
-      <OnboardingShell onBack={goBack} title="Host enabled">
+      <OnboardingShell onBack={goBack} title="Host profile created">
         <View style={styles.completeState}>
           <View style={styles.successIcon}>
-            <Check color="#047857" size={42} />
+            <Check color="#047857" size={34} />
           </View>
-          <Text style={styles.completeTitle}>You can now host on HopIn</Text>
+          <Text style={styles.completeTitle}>Your host profile is ready</Text>
           <Text style={styles.completeBody}>
-            Host capability is enabled on your existing account. Switch to host mode
-            whenever you want to manage listings.
+            Your host status is Setup Pending. You can start vehicle listing drafts
+            while verification and payout setup are completed later.
           </Text>
+          <ActivityIndicator color="#0B6FE8" />
+          <Text style={styles.redirectingText}>Opening your host dashboard…</Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace('/(host)/dashboard')}
             style={styles.primaryButton}
           >
-            <Text style={styles.primaryButtonText}>Switch to Host</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace('/(host)/vehicles/new')}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>Start adding a vehicle</Text>
+            <Text style={styles.primaryButtonText}>Open dashboard now</Text>
           </Pressable>
         </View>
       </OnboardingShell>
     );
   }
 
+  const accountName = [account?.firstName, account?.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const accountDetails = [account?.email, account?.phoneNumber].filter(Boolean).join(' · ');
+
   return (
     <OnboardingShell
       footer={
         <View style={styles.footerActions}>
+          {activeStepIndex > 0 ? (
+            <Pressable accessibilityRole="button" onPress={goBack} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Back</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
-            onPress={goBack}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>Back</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={completeMutation.isPending}
+            accessibilityState={{ disabled: isTransitioning || completeMutation.isPending }}
+            disabled={isTransitioning || completeMutation.isPending}
             onPress={goNext}
             style={[
               styles.primaryButton,
-              completeMutation.isPending && styles.disabledButton,
+              activeStepIndex === 0 && styles.fullWidthButton,
+              (isTransitioning || completeMutation.isPending) && styles.disabledButton,
             ]}
           >
-            {completeMutation.isPending ? (
+            {isTransitioning || completeMutation.isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {activeStepIndex === steps.length - 1 ? 'Finish' : 'Next'}
+                {activeStepIndex === 0 ? 'Continue' : 'Create Host Profile'}
               </Text>
             )}
           </Pressable>
         </View>
       }
       onBack={goBack}
-      title="Host onboarding"
+      title="Become a Host"
     >
-      <ProgressHeader activeIndex={activeStepIndex} progress={progress} />
-
-      {activeStep.key === 'personalInfo' ? (
-        <View style={styles.form}>
-          <StepTitle
-            icon={<UserRound color="#102550" size={20} />}
-            subtitle="This profile stays shared between customer and host mode."
-            title="Personal information"
-          />
-          <Field
-            control={control}
-            error={errors.personalInfo?.firstName?.message}
-            label="First name"
-            name="personalInfo.firstName"
-            placeholder="First name"
-          />
-          <Field
-            control={control}
-            error={errors.personalInfo?.lastName?.message}
-            label="Last name"
-            name="personalInfo.lastName"
-            placeholder="Last name"
-          />
-          <Field
-            autoCapitalize="none"
-            control={control}
-            error={errors.personalInfo?.email?.message}
-            inputMode="email"
-            keyboardType="email-address"
-            label="Email"
-            name="personalInfo.email"
-            placeholder="name@example.com"
-          />
-          <Field
-            control={control}
-            error={errors.personalInfo?.phoneNumber?.message}
-            inputMode="tel"
-            keyboardType="phone-pad"
-            label="Mobile number"
-            name="personalInfo.phoneNumber"
-            placeholder="+91..."
-          />
-        </View>
-      ) : null}
-
-      {activeStep.key === 'identity' ? (
-        <View style={styles.form}>
-          <StepTitle
-            icon={<FileCheck2 color="#102550" size={20} />}
-            subtitle="We collect a lightweight verification record before hosting."
-            title="Identity and verification"
-          />
-          <Text style={styles.fieldLabel}>Document type</Text>
-          <SegmentedField
-            control={control}
-            name="identity.documentType"
-            options={[
-              ['pan', 'PAN'],
-              ['aadhaar', 'Aadhaar'],
-              ['driving_license', 'Driving license'],
-              ['passport', 'Passport'],
-            ]}
-          />
-          <Field
-            control={control}
-            error={errors.identity?.documentLast4?.message}
-            inputMode="numeric"
-            keyboardType="number-pad"
-            label="Document last 4 digits"
-            maxLength={4}
-            name="identity.documentLast4"
-            placeholder="1234"
-          />
-          <CheckboxField
-            control={control}
-            error={errors.identity?.verificationConsent?.message}
-            label="I consent to identity verification for hosting."
-            name="identity.verificationConsent"
-          />
-        </View>
-      ) : null}
-
-      {activeStep.key === 'payout' ? (
-        <View style={styles.form}>
-          <StepTitle
-            icon={<HandCoins color="#102550" size={20} />}
-            subtitle="Payout details are stored with your host onboarding record."
-            title="Payout information"
-          />
-          <Text style={styles.fieldLabel}>Payout method</Text>
-          <SegmentedField
-            control={control}
-            name="payout.payoutMethod"
-            options={[
-              ['upi', 'UPI'],
-              ['bank_account', 'Bank account'],
-            ]}
-          />
-          <Field
-            control={control}
-            error={errors.payout?.accountHolderName?.message}
-            label="Account holder name"
-            name="payout.accountHolderName"
-            placeholder="Full name"
-          />
-          {payoutMethod === 'upi' ? (
-            <Field
-              autoCapitalize="none"
-              control={control}
-              error={errors.payout?.upiId?.message}
-              label="UPI ID"
-              name="payout.upiId"
-              placeholder="name@bank"
-            />
-          ) : (
-            <>
-              <Field
-                control={control}
-                error={errors.payout?.bankName?.message}
-                label="Bank name"
-                name="payout.bankName"
-                placeholder="Bank name"
-              />
-              <Field
-                control={control}
-                error={errors.payout?.accountLast4?.message}
-                inputMode="numeric"
-                keyboardType="number-pad"
-                label="Account last 4 digits"
-                maxLength={4}
-                name="payout.accountLast4"
-                placeholder="1234"
-              />
-            </>
-          )}
-        </View>
-      ) : null}
-
-      {activeStep.key === 'terms' ? (
-        <View style={styles.form}>
-          <StepTitle
-            icon={<ClipboardCheck color="#102550" size={20} />}
-            subtitle="Host access requires accepting marketplace responsibilities."
-            title="Host terms acceptance"
-          />
-          <View style={styles.termsBox}>
-            <Text style={styles.termsText}>
-              Keep vehicle details accurate, honor confirmed bookings, maintain
-              availability, follow handoff rules, and accept HopIn host policies.
-            </Text>
-          </View>
-          <CheckboxField
-            control={control}
-            error={errors.terms?.accepted?.message}
-            label="I accept the HopIn host terms."
-            name="terms.accepted"
-          />
-        </View>
-      ) : null}
+      <ProgressHeader activeIndex={activeStepIndex} />
 
       {activeStep.key === 'hostProfile' ? (
         <View style={styles.form}>
           <StepTitle
             icon={<UserRound color="#102550" size={20} />}
-            subtitle="Customers see this host profile on vehicle listings."
-            title="Host profile creation"
+            subtitle="Your customer account details stay shared. Choose how customers will see you as a host."
+            title="Create Host Profile"
           />
+          <View style={styles.accountCard}>
+            <Text style={styles.accountLabel}>USING YOUR HOPIN ACCOUNT</Text>
+            <Text style={styles.accountName}>{accountName || 'Your HopIn account'}</Text>
+            <Text style={styles.accountDetails}>
+              {accountDetails || 'Your verified account details will be used.'}
+            </Text>
+          </View>
           <Field
+            autoCapitalize="words"
             control={control}
             error={errors.hostProfile?.displayName?.message}
             label="Host display name"
@@ -564,16 +362,85 @@ export function BecomeHostOnboardingScreen() {
           <Field
             control={control}
             error={errors.hostProfile?.bio?.message}
-            label="Host bio"
+            label="Host bio · Optional"
+            maxLength={500}
             multiline
             name="hostProfile.bio"
-            placeholder="Tell customers what kind of experience you provide."
+            placeholder="Tell customers a little about your hosting style."
           />
-          {errors.root?.message ? (
-            <Text style={styles.errorText}>{errors.root.message}</Text>
-          ) : null}
         </View>
       ) : null}
+
+      {activeStep.key === 'terms' ? (
+        <View style={styles.form}>
+          <StepTitle
+            icon={<ClipboardCheck color="#102550" size={20} />}
+            subtitle="Review the essentials before your host profile is created."
+            title="Accept Host Terms"
+          />
+          <View style={styles.termsBox}>
+            <Text style={styles.termsHeading}>As a HopIn host, you agree to:</Text>
+            <Text style={styles.termsText}>Keep listing details and availability accurate.</Text>
+            <Text style={styles.termsText}>Honor confirmed bookings and handoff commitments.</Text>
+            <Text style={styles.termsText}>Follow safety, pricing, and platform policies.</Text>
+          </View>
+          <View style={styles.policyLinks}>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push('/(customer)/policy?type=host-terms')}
+            >
+              <Text style={styles.policyLinkText}>Read Host Terms</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push('/(customer)/policy?type=privacy')}
+            >
+              <Text style={styles.policyLinkText}>Privacy Policy</Text>
+            </Pressable>
+          </View>
+          <CheckboxField
+            control={control}
+            error={errors.terms?.accepted?.message}
+            label="I agree to the HopIn Host Terms."
+            name="terms.accepted"
+          />
+          {errors.root?.message ? <Text style={styles.errorText}>{errors.root.message}</Text> : null}
+        </View>
+      ) : null}
+
+      {draftMutation.isError ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => saveDraft(activeStepIndex)}
+          style={styles.saveError}
+        >
+          <Text style={styles.saveErrorText}>Progress was not saved. Tap to retry.</Text>
+        </Pressable>
+      ) : draftMutation.isPending ? (
+        <Text accessibilityLiveRegion="polite" style={styles.savingText}>Saving progress…</Text>
+      ) : null}
+    </OnboardingShell>
+  );
+}
+
+function LoadingState() {
+  return (
+    <OnboardingShell onBack={() => router.replace('/(customer)/profile')} title="Become a Host">
+      <View style={styles.stateCard}>
+        <ActivityIndicator color="#0B6FE8" />
+        <Text style={styles.stateBody}>Loading your host setup…</Text>
+      </View>
+    </OnboardingShell>
+  );
+}
+
+function RedirectingState({ title }: { title: string }) {
+  return (
+    <OnboardingShell onBack={() => router.replace('/(host)/dashboard')} title="Host profile ready">
+      <View style={styles.stateCard}>
+        <ActivityIndicator color="#0B6FE8" />
+        <Text style={styles.stateBody}>{title}…</Text>
+      </View>
     </OnboardingShell>
   );
 }
@@ -591,27 +458,14 @@ function OnboardingShell({
 }) {
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: 'padding', default: undefined })}
-        style={styles.keyboardView}
-      >
+      <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', default: undefined })} style={styles.keyboardView}>
         <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            onPress={onBack}
-            style={styles.iconButton}
-          >
+          <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={onBack} style={styles.iconButton}>
             <ArrowLeft color="#102550" size={22} />
           </Pressable>
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          style={styles.contentScroll}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={styles.contentScroll} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
         {footer ? <View style={styles.footer}>{footer}</View> : null}
@@ -620,68 +474,32 @@ function OnboardingShell({
   );
 }
 
-function ProgressHeader({
-  activeIndex,
-  progress,
-}: {
-  activeIndex: number;
-  progress: number;
-}) {
+function ProgressHeader({ activeIndex }: { activeIndex: number }) {
   return (
     <View style={styles.progressCard}>
-      <View style={styles.progressTop}>
-        <Text style={styles.progressTitle}>
-          Step {activeIndex + 1} of {steps.length}
-        </Text>
-        <Text style={styles.progressTitle}>{Math.round(progress)}%</Text>
-      </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
-      </View>
-      <View style={styles.stepLabels}>
+      <Text style={styles.progressTitle}>Step {activeIndex + 1} of {steps.length}</Text>
+      <View style={styles.stepRow}>
         {steps.map((step, index) => (
-          <Text
-            key={step.key}
-            numberOfLines={1}
-            style={[
-              styles.stepLabel,
-              index === activeIndex && styles.activeStepLabel,
-            ]}
-          >
-            {step.label}
-          </Text>
+          <View key={step.key} style={styles.stepItem}>
+            <View style={[styles.stepDot, index <= activeIndex && styles.activeStepDot]}>
+              {index < activeIndex ? <Check color="#FFFFFF" size={13} /> : <Text style={[styles.stepNumber, index <= activeIndex && styles.activeStepNumber]}>{index + 1}</Text>}
+            </View>
+            <Text style={[styles.stepLabel, index === activeIndex && styles.activeStepLabel]}>{step.label}</Text>
+          </View>
         ))}
       </View>
     </View>
   );
 }
 
-function StepTitle({
-  icon,
-  subtitle,
-  title,
-}: {
-  icon: React.ReactNode;
-  subtitle: string;
-  title: string;
-}) {
-  return (
-    <View style={styles.stepTitleRow}>
-      <View style={styles.stepIcon}>{icon}</View>
-      <View style={styles.stepCopy}>
-        <Text style={styles.stepTitle}>{title}</Text>
-        <Text style={styles.stepSubtitle}>{subtitle}</Text>
-      </View>
-    </View>
-  );
+function StepTitle({ icon, subtitle, title }: { icon: React.ReactNode; subtitle: string; title: string }) {
+  return <View style={styles.stepTitleRow}><View style={styles.stepIcon}>{icon}</View><View style={styles.stepCopy}><Text style={styles.stepTitle}>{title}</Text><Text style={styles.stepSubtitle}>{subtitle}</Text></View></View>;
 }
 
 function Field({
   autoCapitalize,
   control,
   error,
-  inputMode,
-  keyboardType,
   label,
   maxLength,
   multiline,
@@ -691,8 +509,6 @@ function Field({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   control: ReturnType<typeof useForm<HostOnboardingFormValues>>['control'];
   error?: string;
-  inputMode?: 'text' | 'email' | 'numeric' | 'tel';
-  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'phone-pad';
   label: string;
   maxLength?: number;
   multiline?: boolean;
@@ -702,76 +518,23 @@ function Field({
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onBlur, onChange, value } }) => (
-          <TextInput
-            autoCapitalize={autoCapitalize}
-            inputMode={inputMode}
-            keyboardType={keyboardType}
-            maxLength={maxLength}
-            multiline={multiline}
-            onBlur={onBlur}
-            onChangeText={onChange}
-            placeholder={placeholder}
-            placeholderTextColor="#536B91"
-            style={[
-              styles.input,
-              multiline && styles.multilineInput,
-              error && styles.inputError,
-            ]}
-            value={value ? String(value) : ''}
-          />
-        )}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Controller control={control} name={name} render={({ field: { onBlur, onChange, value } }) => (
+        <TextInput
+          accessibilityLabel={label}
+          autoCapitalize={autoCapitalize}
+          maxLength={maxLength}
+          multiline={multiline}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor="#536B91"
+          style={[styles.input, multiline && styles.multilineInput, error && styles.inputError]}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          value={value ? String(value) : ''}
+        />
+      )} />
+      {error ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{error}</Text> : null}
     </View>
-  );
-}
-
-function SegmentedField({
-  control,
-  name,
-  options,
-}: {
-  control: ReturnType<typeof useForm<HostOnboardingFormValues>>['control'];
-  name: Parameters<typeof Controller<HostOnboardingFormValues>>[0]['name'];
-  options: Array<[string, string]>;
-}) {
-  return (
-    <Controller
-      control={control}
-      name={name}
-      render={({ field: { onChange, value } }) => (
-        <View style={styles.segmented}>
-          {options.map(([optionValue, label]) => {
-            const isSelected = value === optionValue;
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                key={optionValue}
-                onPress={() => onChange(optionValue)}
-                style={[
-                  styles.segment,
-                  isSelected && styles.selectedSegment,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    isSelected && styles.selectedSegmentText,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-    />
   );
 }
 
@@ -788,373 +551,79 @@ function CheckboxField({
 }) {
   return (
     <View style={styles.field}>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, value } }) => (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: Boolean(value) }}
-            onPress={() => onChange(!value)}
-            style={styles.checkboxRow}
-          >
-            <View style={[styles.checkbox, value && styles.checkedBox]}>
-              {value ? <Check color="#FFFFFF" size={14} /> : null}
-            </View>
-            <Text style={styles.checkboxText}>{label}</Text>
-          </Pressable>
-        )}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Controller control={control} name={name} render={({ field: { onChange, value } }) => (
+        <Pressable accessibilityLabel={label} accessibilityRole="checkbox" accessibilityState={{ checked: Boolean(value) }} onPress={() => onChange(!value)} style={styles.checkboxRow}>
+          <View style={[styles.checkbox, value && styles.checkedBox]}>{value ? <Check color="#FFFFFF" size={14} /> : null}</View>
+          <Text style={styles.checkboxText}>{label}</Text>
+        </Pressable>
+      )} />
+      {error ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F3F9FF',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  header: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  iconButton: {
-    height: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  headerTitle: {
-    color: '#102550',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  content: {
-    gap: 16,
-    padding: 16,
-    paddingBottom: 24,
-  },
-  contentScroll: {
-    flex: 1,
-    minHeight: 0,
-  },
-  introHeader: {
-    gap: 12,
-  },
-  heroIcon: {
-    height: 82,
-    width: 82,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#EAF4FF',
-  },
-  introTitle: {
-    color: '#102550',
-    fontSize: 30,
-    fontWeight: '900',
-    lineHeight: 36,
-  },
-  introBody: {
-    color: '#536B91',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 23,
-  },
-  introList: {
-    gap: 10,
-  },
-  introItem: {
-    flexDirection: 'row',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-  },
-  introIcon: {
-    height: 40,
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#F3F9FF',
-  },
-  introCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  introItemTitle: {
-    color: '#102550',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  introItemBody: {
-    color: '#536B91',
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  progressCard: {
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-  },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  progressTitle: {
-    color: '#102550',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  progressTrack: {
-    height: 8,
-    overflow: 'hidden',
-    borderRadius: 8,
-    backgroundColor: '#D6E8FF',
-  },
-  progressFill: {
-    height: 8,
-    borderRadius: 8,
-    backgroundColor: '#0B6FE8',
-  },
-  stepLabels: {
-    flexDirection: 'row',
-    gap: 6,
-    minWidth: 0,
-  },
-  stepLabel: {
-    flex: 1,
-    minWidth: 0,
-    color: '#536B91',
-    fontSize: 10,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  activeStepLabel: {
-    color: '#102550',
-  },
-  form: {
-    gap: 13,
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-  },
-  stepTitleRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingBottom: 4,
-  },
-  stepIcon: {
-    height: 38,
-    width: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#F3F9FF',
-  },
-  stepCopy: {
-    flex: 1,
-    gap: 3,
-  },
-  stepTitle: {
-    color: '#102550',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  stepSubtitle: {
-    color: '#536B91',
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  field: {
-    gap: 6,
-  },
-  fieldLabel: {
-    color: '#536B91',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#102550',
-    fontSize: 15,
-    fontWeight: '700',
-    paddingHorizontal: 12,
-  },
-  multilineInput: {
-    minHeight: 112,
-    paddingTop: 12,
-    textAlignVertical: 'top',
-  },
-  inputError: {
-    borderColor: '#DC2626',
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  segmented: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  segment: {
-    minHeight: 40,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-  },
-  selectedSegment: {
-    borderColor: '#0B6FE8',
-    backgroundColor: '#0B6FE8',
-  },
-  segmentText: {
-    color: '#536B91',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  selectedSegmentText: {
-    color: '#FFFFFF',
-  },
-  checkboxRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#F3F9FF',
-    padding: 12,
-  },
-  checkbox: {
-    height: 22,
-    width: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#536B91',
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
-  },
-  checkedBox: {
-    borderColor: '#0B6FE8',
-    backgroundColor: '#0B6FE8',
-  },
-  checkboxText: {
-    flex: 1,
-    color: '#102550',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 19,
-  },
-  termsBox: {
-    borderRadius: 8,
-    backgroundColor: '#F3F9FF',
-    padding: 12,
-  },
-  termsText: {
-    color: '#536B91',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: '#D6E8FF',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-  },
-  footerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  primaryButton: {
-    minHeight: 52,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#0B6FE8',
-    paddingHorizontal: 14,
-  },
-  secondaryButton: {
-    minHeight: 52,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D6E8FF',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  secondaryButtonText: {
-    color: '#102550',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  disabledButton: {
-    opacity: 0.55,
-  },
-  completeState: {
-    minHeight: 520,
-    justifyContent: 'center',
-    gap: 16,
-  },
-  successIcon: {
-    height: 82,
-    width: 82,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#DCFCE7',
-  },
-  completeTitle: {
-    color: '#102550',
-    fontSize: 28,
-    fontWeight: '900',
-    lineHeight: 34,
-  },
-  completeBody: {
-    color: '#536B91',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 23,
-  },
+  safeArea: { backgroundColor: '#F3F9FF', flex: 1 },
+  keyboardView: { flex: 1 },
+  header: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 72, paddingHorizontal: 16 },
+  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  headerTitle: { color: '#102550', fontSize: 24, fontWeight: '900' },
+  content: { gap: 16, padding: 16, paddingBottom: 24 },
+  contentScroll: { flex: 1, minHeight: 0 },
+  footer: { backgroundColor: '#FFFFFF', borderTopColor: '#D6E8FF', borderTopWidth: 1, padding: 16 },
+  footerActions: { flexDirection: 'row', gap: 10 },
+  primaryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 12, flex: 1, justifyContent: 'center', minHeight: 50, paddingHorizontal: 16 },
+  fullWidthButton: { flex: 1 },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  secondaryButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, justifyContent: 'center', minHeight: 50, paddingHorizontal: 18 },
+  secondaryButtonText: { color: '#102550', fontSize: 15, fontWeight: '800' },
+  disabledButton: { backgroundColor: '#536B91', opacity: 0.65 },
+  progressCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 14, padding: 14 },
+  progressTitle: { color: '#536B91', fontSize: 13, fontWeight: '800' },
+  stepRow: { flexDirection: 'row', gap: 16 },
+  stepItem: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8 },
+  stepDot: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+  activeStepDot: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' },
+  stepNumber: { color: '#536B91', fontSize: 12, fontWeight: '900' },
+  activeStepNumber: { color: '#FFFFFF' },
+  stepLabel: { color: '#536B91', flex: 1, fontSize: 12, fontWeight: '700' },
+  activeStepLabel: { color: '#102550', fontWeight: '900' },
+  form: { gap: 16 },
+  stepTitleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
+  stepIcon: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 44, justifyContent: 'center', width: 44 },
+  stepCopy: { flex: 1, gap: 4 },
+  stepTitle: { color: '#102550', fontSize: 21, fontWeight: '900' },
+  stepSubtitle: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  accountCard: { backgroundColor: '#EAF4FF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 5, padding: 14 },
+  accountLabel: { color: '#536B91', fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
+  accountName: { color: '#102550', fontSize: 16, fontWeight: '900' },
+  accountDetails: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  field: { gap: 7 },
+  fieldLabel: { color: '#102550', fontSize: 14, fontWeight: '800' },
+  input: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, color: '#102550', fontSize: 16, minHeight: 50, paddingHorizontal: 14 },
+  multilineInput: { minHeight: 104, paddingTop: 13 },
+  inputError: { borderColor: '#DC2626' },
+  termsBox: { backgroundColor: '#EAF4FF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 8, padding: 14 },
+  termsHeading: { color: '#102550', fontSize: 15, fontWeight: '900' },
+  termsText: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  policyLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  policyLinkText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900', textDecorationLine: 'underline' },
+  checkboxRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 48 },
+  checkbox: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 6, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+  checkedBox: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' },
+  checkboxText: { color: '#102550', flex: 1, fontSize: 14, fontWeight: '700', lineHeight: 20 },
+  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', lineHeight: 18 },
+  savingText: { color: '#536B91', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  saveError: { alignItems: 'center', backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
+  saveErrorText: { color: '#B91C1C', fontSize: 13, fontWeight: '800' },
+  completeState: { alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 60 },
+  successIcon: { alignItems: 'center', backgroundColor: '#DCFCE7', borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },
+  completeTitle: { color: '#102550', fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  completeBody: { color: '#536B91', fontSize: 15, fontWeight: '600', lineHeight: 22, textAlign: 'center' },
+  redirectingText: { color: '#536B91', fontSize: 13, fontWeight: '700' },
+  stateCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 12, marginTop: 24, padding: 22 },
+  stateTitle: { color: '#102550', fontSize: 18, fontWeight: '900', textAlign: 'center' },
+  stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
+  retryButton: { alignItems: 'center', borderColor: '#0B6FE8', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 },
+  retryButtonText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' },
 });

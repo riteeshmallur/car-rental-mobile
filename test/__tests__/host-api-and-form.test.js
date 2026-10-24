@@ -8,6 +8,10 @@ const {
   hostVehicleDefaultValues,
   hostVehicleFormSchema,
 } = require('@/features/host-vehicles/schemas/host-vehicle-form-schema');
+const {
+  hostOnboardingSchema,
+  HOST_TERMS_VERSION,
+} = require('@/features/host-onboarding/schemas/host-onboarding-schema');
 const { bookingsApi } = require('@/services/bookings/bookings-api');
 
 describe('host mode, add vehicle, and booking actions', () => {
@@ -36,6 +40,28 @@ describe('host mode, add vehicle, and booking actions', () => {
 
     expect(invalid.success).toBe(false);
     expect(valid.success).toBe(true);
+  });
+
+  it('uses the two-step host profile contract without customer account fields', () => {
+    const valid = hostOnboardingSchema.safeParse({
+      hostProfile: { displayName: 'Ava Patel', bio: 'Weekend road-trip host.' },
+      terms: { accepted: true, policyVersion: HOST_TERMS_VERSION },
+    });
+    const missingTerms = hostOnboardingSchema.safeParse({
+      hostProfile: { displayName: 'Ava Patel', bio: '' },
+      terms: { accepted: false, policyVersion: HOST_TERMS_VERSION },
+    });
+
+    expect(valid.success).toBe(true);
+    expect(missingTerms.success).toBe(false);
+
+    hostsApi.completeOnboarding(valid.data);
+
+    expect(mockApiRequest).toHaveBeenCalledWith({
+      method: 'POST',
+      url: '/hosts/me/onboarding',
+      data: valid.data,
+    });
   });
 
   it('rejects a maximum rental duration below the minimum', () => {

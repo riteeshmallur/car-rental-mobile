@@ -40,26 +40,9 @@ export type HostStatus = {
 };
 
 export type CompleteHostOnboardingPayload = {
-  personalInfo: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-  };
-  identity: {
-    documentType: 'aadhaar' | 'pan' | 'passport' | 'driving_license';
-    documentLast4: string;
-    verificationConsent: boolean;
-  };
-  payout: {
-    payoutMethod: 'upi' | 'bank_account';
-    accountHolderName: string;
-    bankName?: string | null;
-    accountLast4?: string | null;
-    upiId?: string | null;
-  };
   terms: {
     accepted: boolean;
+    policyVersion: string;
   };
   hostProfile: {
     displayName: string;
@@ -71,7 +54,7 @@ export const hostsApi = {
   completeOnboarding(payload: CompleteHostOnboardingPayload) {
     return apiRequest<HostProfile>({
       method: 'POST',
-      url: '/hosts/onboarding',
+      url: '/hosts/me/onboarding',
       data: payload,
     });
   },
