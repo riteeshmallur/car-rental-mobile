@@ -9,6 +9,10 @@ import {
   Camera,
   CarFront,
   Check,
+  Circle,
+  CircleAlert,
+  CircleCheck,
+  Clock3,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -18,7 +22,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -50,13 +54,8 @@ import {
   type UpsertHostVehiclePayload,
 } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
-import { AddVehicleFooter } from '@/features/host-vehicles/components/add-vehicle-footer';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
-import {
-  AddVehicleHeader,
-  type DraftSaveStatus,
-} from '@/features/host-vehicles/components/add-vehicle-header';
 import {
   VehicleSelectionSheet,
   type VehicleSelectionOption,
@@ -73,80 +72,17 @@ type StepKey =
   | 'availability'
   | 'review';
 
-type WizardStep = {
-  key: StepKey;
-  title: string;
-  helper: string;
-  fields: FieldPath<HostVehicleFormValues>[];
-};
+type SetupSection =
+  | 'details'
+  | 'photos'
+  | 'location'
+  | 'documents'
+  | 'pricing'
+  | 'availability'
+  | 'review';
 
-const steps: WizardStep[] = [
-  {
-    key: 'vehicleDetails',
-    title: 'Vehicle details',
-    helper: 'Tell us about your vehicle.',
-    fields: [
-      'make',
-      'model',
-      'manufacturingYear',
-      'registrationNumber',
-      'vehicleType',
-      'transmission',
-      'fuelType',
-      'seats',
-      'doors',
-      'description',
-    ],
-  },
-  {
-    key: 'vehicleLocation',
-    title: 'Vehicle location',
-    helper: 'Where will renters pick up and return the vehicle?',
-    fields: ['locationId', 'address', 'city', 'state', 'country'],
-  },
-  {
-    key: 'features',
-    title: 'Features',
-    helper: 'Add features that make your vehicle easier to choose.',
-    fields: ['features'],
-  },
-  {
-    key: 'photos',
-    title: 'Photos',
-    helper: 'Use clear exterior and interior images.',
-    fields: ['imageUrls'],
-  },
-  {
-    key: 'documents',
-    title: 'Documents',
-    helper: 'Keep your vehicle documents ready for verification.',
-    fields: ['registrationCertificateNumber', 'insurancePolicyNumber'],
-  },
-  {
-    key: 'pricing',
-    title: 'Pricing',
-    helper: 'Set the daily price and rental rules.',
-    fields: [
-      'pricePerDay',
-      'securityDeposit',
-      'mileageLimitPerDay',
-      'minimumRentalDays',
-      'maximumRentalDays',
-    ],
-  },
-  {
-    key: 'availability',
-    title: 'Availability',
-    helper: 'Control when the listing can receive bookings.',
-    fields: ['availableFrom', 'availableTo', 'advanceNoticeHours'],
-  },
-  {
-    key: 'review',
-    title: 'Review and submit',
-    helper: 'Confirm the details before sending for approval.',
-    fields: [],
-  },
-];
+type VehicleDocumentType = 'rc' | 'insurance' | 'puc';
+type VehicleDocumentUrls = Record<VehicleDocumentType, string | null>;
 
 const vehicleTypes = [
   ['car', 'Car'],
@@ -221,24 +157,41 @@ const minimumPhotoWidth = 480;
 const minimumPhotoHeight = 360;
 const maximumPhotoDimension = 2560;
 
+const setupSections: Array<{
+  key: SetupSection;
+  title: string;
+  helper: string;
+}> = [
+  { key: 'details', title: 'Vehicle details', helper: 'Core vehicle information and optional features.' },
+  { key: 'photos', title: 'Photos', helper: 'Add clear exterior and interior photos.' },
+  { key: 'location', title: 'Pickup location', helper: 'Set the renter pickup address.' },
+  { key: 'documents', title: 'Vehicle documents', helper: 'Add RC, insurance and PUC details.' },
+  { key: 'pricing', title: 'Pricing', helper: 'Set your daily price and rental rules.' },
+  { key: 'availability', title: 'Availability', helper: 'Choose when bookings can be accepted.' },
+  { key: 'review', title: 'Review & submit', helper: 'Check each requirement before approval.' },
+];
+
+const emptyDocumentUrls: VehicleDocumentUrls = { rc: null, insurance: null, puc: null };
+
 export function HostAddVehicleWizardScreen() {
-  const params = useLocalSearchParams<{ vehicleId?: string | string[] }>();
-  const requestedVehicleId = Array.isArray(params.vehicleId)
-    ? params.vehicleId[0]
-    : params.vehicleId;
+  const params = useLocalSearchParams<{
+    vehicleId?: string | string[];
+    section?: string | string[];
+  }>();
+  const requestedVehicleId = Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId;
+  const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
+  const activeSection = isSetupSection(requestedSection) ? requestedSection : null;
   const queryClient = useQueryClient();
-  const [stepIndex, setStepIndex] = useState(0);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [documentUpload, setDocumentUpload] = useState<{ type: VehicleDocumentType; progress: number } | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<VehicleDocumentUrls>(emptyDocumentUrls);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [submissionComplete, setSubmissionComplete] = useState(false);
   const [resumeChecked, setResumeChecked] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<DraftSaveStatus>('idle');
-  const [selectionField, setSelectionField] = useState<
-    'make' | 'model' | 'manufacturingYear' | 'colour' | null
-  >(null);
+  const [selectionField, setSelectionField] = useState<'make' | 'model' | 'manufacturingYear' | 'colour' | null>(null);
   const actionInFlightRef = useRef(false);
   const photoPickerOpenRef = useRef(false);
 
@@ -247,16 +200,7 @@ export function HostAddVehicleWizardScreen() {
     resolver: zodResolver(hostVehicleFormSchema),
     mode: 'onTouched',
   });
-
-  const {
-    control,
-    formState: { errors },
-    getValues,
-    reset,
-    setValue,
-    trigger,
-    watch,
-  } = form;
+  const { control, formState: { errors }, getValues, reset, setValue, trigger, watch } = form;
 
   const hostVehiclesQuery = useQuery({
     queryKey: ['host', 'vehicles'],
@@ -266,54 +210,47 @@ export function HostAddVehicleWizardScreen() {
   });
 
   useEffect(() => {
-    if (resumeChecked || !hostVehiclesQuery.data) {
+    if (resumeChecked || hostVehiclesQuery.isLoading) {
       return;
     }
 
     const draft = requestedVehicleId
-      ? hostVehiclesQuery.data.find((vehicle) => vehicle.id === requestedVehicleId)
-      : hostVehiclesQuery.data.find((vehicle) =>
-          ['DRAFT', 'CHANGES_REQUIRED'].includes(vehicle.status),
-        );
+      ? hostVehiclesQuery.data?.find((vehicle) => vehicle.id === requestedVehicleId)
+      : hostVehiclesQuery.data?.find((vehicle) => ['DRAFT', 'CHANGES_REQUIRED'].includes(vehicle.status));
 
     if (draft) {
       setDraftId(draft.id);
       reset(mapListingToFormValues(draft));
-      setStepIndex(getStepIndex(draft.draftStep));
-      setSaveStatus('saved');
+      setDocumentUrls(getVehicleDocumentUrls(draft.listingDocuments));
     }
 
     setResumeChecked(true);
-  }, [hostVehiclesQuery.data, requestedVehicleId, reset, resumeChecked]);
+  }, [hostVehiclesQuery.data, hostVehiclesQuery.isLoading, requestedVehicleId, reset, resumeChecked]);
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: UpsertHostVehiclePayload) => {
-      if (draftId) {
-        return vehiclesApi.updateDraft(draftId, payload);
-      }
-
-      return vehiclesApi.createDraft(payload);
-    },
-    onMutate: () => {
-      setSaveStatus('saving');
-    },
+    mutationFn: (payload: UpsertHostVehiclePayload) =>
+      draftId ? vehiclesApi.updateDraft(draftId, payload) : vehiclesApi.createDraft(payload),
     onSuccess: (vehicle) => {
       setDraftId(vehicle.id);
       reset(mapListingToFormValues(vehicle));
+      queryClient.setQueryData<HostVehicleListing[]>(['host', 'vehicles'], (current = []) => {
+        const existingIndex = current.findIndex((listing) => listing.id === vehicle.id);
+
+        if (existingIndex < 0) {
+          return [vehicle, ...current];
+        }
+
+        return current.map((listing) => (listing.id === vehicle.id ? vehicle : listing));
+      });
       queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
-      setSaveStatus('saved');
-    },
-    onError: () => {
-      setSaveStatus('failed');
     },
   });
 
   const submitMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       if (!draftId) {
-        throw new Error('Save the draft before submitting.');
+        throw new Error('Complete vehicle setup before submitting.');
       }
-
       return vehiclesApi.submit(draftId);
     },
     onSuccess: () => {
@@ -325,453 +262,491 @@ export function HostAddVehicleWizardScreen() {
   const uploadPhotosMutation = useMutation({
     mutationFn: async (imageUris: string[]) => {
       if (!draftId) {
-        throw new Error('Save vehicle details before uploading photos.');
+        throw new Error('Complete the vehicle basics before uploading photos.');
       }
-
       let listing: HostVehicleListing | null = null;
-
       setUploadProgress(0);
       for (const [index, imageUri] of imageUris.entries()) {
         listing = await vehiclesApi.uploadImage(draftId, imageUri, (progress) => {
           setUploadProgress((index + progress) / imageUris.length);
         });
       }
-
       if (!listing) {
         throw new Error('No photos were selected for upload.');
       }
-
       setUploadProgress(1);
       return listing;
     },
     onSettled: () => setUploadProgress(null),
   });
 
-  const step = steps[stepIndex];
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async ({ imageUri, type }: { imageUri: string; type: VehicleDocumentType }) => {
+      if (!draftId) {
+        throw new Error('Complete the vehicle basics before uploading documents.');
+      }
+      return vehiclesApi.uploadDocument(draftId, type, imageUri, (progress) => {
+        setDocumentUpload({ type, progress });
+      });
+    },
+    onMutate: ({ type }) => setDocumentUpload({ type, progress: 0 }),
+    onSuccess: (listing) => {
+      reset(mapListingToFormValues(listing));
+      setDocumentUrls(getVehicleDocumentUrls(listing.listingDocuments));
+      queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
+    },
+    onSettled: () => setDocumentUpload(null),
+  });
+
   const features = watch('features');
   const imageUrls = watch('imageUrls');
   const make = watch('make');
   const selectedValue = selectionField ? String(watch(selectionField) ?? '') : '';
-  const baseSelectionOptions = selectionField
-    ? selectionField === 'make'
-      ? makeOptions
-      : selectionField === 'model'
-        ? modelOptionsByMake[make] ?? []
-        : selectionField === 'manufacturingYear'
-          ? yearOptions
-          : colourOptions
-    : [];
-  const selectionOptions =
-    selectionField && selectedValue && !baseSelectionOptions.some((option) => option.value === selectedValue)
-      ? [{ label: selectedValue, value: selectedValue }, ...baseSelectionOptions]
-      : baseSelectionOptions;
-
+  const baseSelectionOptions = selectionField === 'make'
+    ? makeOptions
+    : selectionField === 'model'
+      ? modelOptionsByMake[make] ?? []
+      : selectionField === 'manufacturingYear'
+        ? yearOptions
+        : selectionField === 'colour'
+          ? colourOptions
+          : [];
+  const selectionOptions = selectedValue && !baseSelectionOptions.some((option) => option.value === selectedValue)
+    ? [{ label: selectedValue, value: selectedValue }, ...baseSelectionOptions]
+    : baseSelectionOptions;
+  const values = getValues();
+  const setupProgress = getSetupProgress(values, documentUrls);
+  const isRestoringDraft = hostVehiclesQuery.isLoading && !resumeChecked;
+  const isBusy = saveMutation.isPending || uploadPhotosMutation.isPending || uploadDocumentMutation.isPending || submitMutation.isPending;
   const serverError = useMemo(() => {
-    const error =
-      saveMutation.error ?? uploadPhotosMutation.error ?? submitMutation.error;
+    const error = saveMutation.error ?? uploadPhotosMutation.error ?? uploadDocumentMutation.error ?? submitMutation.error;
     return error ? normalizeApiError(error) : null;
-  }, [saveMutation.error, submitMutation.error, uploadPhotosMutation.error]);
+  }, [saveMutation.error, submitMutation.error, uploadDocumentMutation.error, uploadPhotosMutation.error]);
+
+  const goToChecklist = () => {
+    if (draftId) {
+      router.replace({ pathname: '/(host)/vehicles/new', params: { vehicleId: draftId } });
+    }
+  };
+  const goToSection = (section: SetupSection) => {
+    if (draftId) {
+      router.push({ pathname: '/(host)/vehicles/new', params: { vehicleId: draftId, section } });
+    }
+  };
+  const goBack = useSafeBack({
+    fallback: '/(host)/cars',
+    onBeforeBack: () => {
+      if (activeSection && draftId) {
+        goToChecklist();
+        return true;
+      }
+      return false;
+    },
+  });
+  useWebBackGuard({ active: Boolean(activeSection), onBack: goBack });
 
   const addFeature = () => {
     const nextFeature = featureInput.trim();
-
-    if (
-      !nextFeature ||
-      features.some((feature) => feature.toLocaleLowerCase() === nextFeature.toLocaleLowerCase())
-    ) {
+    if (!nextFeature || features.some((feature) => feature.toLocaleLowerCase() === nextFeature.toLocaleLowerCase())) {
       setFeatureInput('');
       return;
     }
-
-    setValue('features', [...features, nextFeature], {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    setValue('features', [...features, nextFeature], { shouldDirty: true, shouldValidate: false });
     setFeatureInput('');
   };
-
-  const togglePopularFeature = (feature: string) => {
-    const existingFeature = features.find(
-      (item) => item.toLocaleLowerCase() === feature.toLocaleLowerCase(),
-    );
-
-    if (existingFeature) {
-      removeFeature(existingFeature);
-      return;
-    }
-
-    setValue('features', [...features, feature], {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
   const removeFeature = (feature: string) => {
-    setValue(
-      'features',
-      features.filter((item) => item !== feature),
-      { shouldDirty: true, shouldValidate: true },
-    );
+    setValue('features', features.filter((item) => item !== feature), { shouldDirty: true, shouldValidate: false });
+  };
+  const togglePopularFeature = (feature: string) => {
+    const existing = features.find((item) => item.toLocaleLowerCase() === feature.toLocaleLowerCase());
+    if (existing) {
+      removeFeature(existing);
+      return;
+    }
+    setValue('features', [...features, feature], { shouldDirty: true, shouldValidate: false });
   };
 
-  const pickPhotos = async () => {
-    if (photoPickerOpenRef.current) {
+  const addPhotoAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
+    const invalidType = assets.some((asset) => asset.mimeType && !['image/jpeg', 'image/png', 'image/webp'].includes(asset.mimeType));
+    const invalidSize = assets.some((asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes);
+    const invalidDimensions = assets.some((asset) => !asset.width || !asset.height || asset.width < minimumPhotoWidth || asset.height < minimumPhotoHeight);
+    if (invalidType || invalidSize || invalidDimensions) {
+      setPhotoError(invalidType ? 'Choose JPG, PNG, or WebP images only.' : invalidDimensions ? `Each photo must be at least ${minimumPhotoWidth} x ${minimumPhotoHeight} pixels.` : 'Each photo must be 10 MB or smaller.');
       return;
     }
-
+    const nextImages = await Promise.all(assets.map(async (asset) => {
+      const scale = Math.min(1, maximumPhotoDimension / Math.max(asset.width, asset.height));
+      return ImageManipulator.manipulateAsync(asset.uri, [{ resize: { width: Math.round(asset.width * scale), height: Math.round(asset.height * scale) } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
+    }));
+    setPhotoError(null);
+    setValue('imageUrls', [...imageUrls, ...nextImages.map((image) => image.uri)].slice(0, maximumPhotoCount), { shouldDirty: true, shouldValidate: false });
+  };
+  const pickPhotos = async (source: 'camera' | 'library') => {
+    if (photoPickerOpenRef.current) return;
     photoPickerOpenRef.current = true;
-    const remainingPhotoCount = maximumPhotoCount - imageUrls.length;
-
-    if (remainingPhotoCount <= 0) {
-      setPhotoError(`You can add up to ${maximumPhotoCount} photos.`);
-      photoPickerOpenRef.current = false;
-      return;
-    }
-
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
+      const remaining = maximumPhotoCount - imageUrls.length;
+      if (remaining <= 0) {
+        setPhotoError(`You can add up to ${maximumPhotoCount} photos.`);
+        return;
+      }
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          'Photo access required',
-          'Allow photo access in device settings to add vehicle images.',
-        );
+        Alert.alert(source === 'camera' ? 'Camera access required' : 'Photo access required', 'Allow access in device settings to add vehicle photos.');
         return;
       }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        mediaTypes: ['images'],
-        quality: 1,
-        selectionLimit: remainingPhotoCount,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const invalidType = result.assets.some(
-        (asset) => asset.mimeType && !['image/jpeg', 'image/png', 'image/webp'].includes(asset.mimeType),
-      );
-      const invalidSize = result.assets.some(
-        (asset) => asset.fileSize && asset.fileSize > maximumPhotoSizeBytes,
-      );
-      const invalidDimensions = result.assets.some(
-        (asset) =>
-          !asset.width ||
-          !asset.height ||
-          asset.width < minimumPhotoWidth ||
-          asset.height < minimumPhotoHeight,
-      );
-
-      if (invalidType || invalidSize || invalidDimensions) {
-        setPhotoError(
-          invalidType
-            ? 'Choose JPG, PNG, or WebP images only.'
-            : invalidDimensions
-              ? `Each photo must be at least ${minimumPhotoWidth} x ${minimumPhotoHeight} pixels.`
-              : 'Each photo must be 10 MB or smaller.',
-        );
-        return;
-      }
-
-      const nextImages = await Promise.all(
-        result.assets.map(async (asset) => {
-          const scale = Math.min(
-            1,
-            maximumPhotoDimension / Math.max(asset.width, asset.height),
-          );
-          const width = Math.round(asset.width * scale);
-          const height = Math.round(asset.height * scale);
-          const compressed = await ImageManipulator.manipulateAsync(
-            asset.uri,
-            [{ resize: { width, height } }],
-            { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG },
-          );
-
-          return compressed.uri;
-        }),
-      );
-      setPhotoError(null);
-      setValue('imageUrls', [...imageUrls, ...nextImages].slice(0, maximumPhotoCount), {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+        : await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ['images'], quality: 1, selectionLimit: remaining });
+      if (!result.canceled) await addPhotoAssets(result.assets);
     } catch {
-      setPhotoError('Could not open your photo library. Please try again.');
+      setPhotoError('Could not add your photos. Please try again.');
     } finally {
       photoPickerOpenRef.current = false;
     }
   };
-
   const removePhoto = (uri: string) => {
     setPhotoError(null);
-    setValue(
-      'imageUrls',
-      imageUrls.filter((item) => item !== uri),
-      { shouldDirty: true, shouldValidate: true },
-    );
+    setValue('imageUrls', imageUrls.filter((item) => item !== uri), { shouldDirty: true, shouldValidate: false });
   };
-
   const setCoverPhoto = (uri: string) => {
-    setValue('imageUrls', [uri, ...imageUrls.filter((item) => item !== uri)], {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+    setValue('imageUrls', [uri, ...imageUrls.filter((item) => item !== uri)], { shouldDirty: true, shouldValidate: false });
+  };
+  const movePhoto = (uri: string, direction: 'earlier' | 'later') => {
+    const currentIndex = imageUrls.indexOf(uri);
+    const targetIndex = direction === 'earlier' ? currentIndex - 1 : currentIndex + 1;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= imageUrls.length) {
+      return;
+    }
+    const nextImages = [...imageUrls];
+    [nextImages[currentIndex], nextImages[targetIndex]] = [nextImages[targetIndex], nextImages[currentIndex]];
+    setValue('imageUrls', nextImages, { shouldDirty: true, shouldValidate: false });
   };
 
-  const saveAndContinue = async () => {
+  const pickVehicleDocument = (type: VehicleDocumentType, source: 'camera' | 'library') => {
+    const selectDocument = async () => {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Access required', 'Allow access in device settings to add this document image.');
+        return;
+      }
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, selectionLimit: 1 });
+      if (!result.canceled) {
+        await uploadDocumentMutation.mutateAsync({ type, imageUri: result.assets[0].uri });
+      }
+    };
+    void selectDocument().catch(() => undefined);
+  };
+
+  const createDraft = async () => {
     if (actionInFlightRef.current) {
       return;
     }
-
     actionInFlightRef.current = true;
-    setValidationMessage(null);
-    setSaveStatus('saving');
-
+    const valid = await trigger(['make', 'model', 'manufacturingYear', 'registrationNumber']);
+    if (!valid) {
+      actionInFlightRef.current = false;
+      return;
+    }
     try {
-      const valid = step.fields.length ? await trigger(step.fields) : true;
-
-      if (!valid) {
-        setSaveStatus('idle');
-        return;
-      }
-
-      if (step.key === 'review') {
-        const allValid = await trigger();
-
-        if (!allValid) {
-          let invalidStepIndex = 0;
-
-          for (const [index, candidate] of steps.entries()) {
-            if (candidate.key !== 'review' && candidate.fields.length) {
-              const stepIsValid = await trigger(candidate.fields);
-
-              if (!stepIsValid) {
-                invalidStepIndex = index;
-                break;
-              }
-            }
-          }
-
-          setValidationMessage(`Complete ${steps[invalidStepIndex].title} before submitting.`);
-          setSaveStatus('idle');
-          setStepIndex(invalidStepIndex);
-          return;
-        }
-
-        await submitMutation.mutateAsync();
-        return;
-      }
-
-      let values = getValues();
-
-      if (step.key === 'photos') {
-        const localImageUris = values.imageUrls.filter(
-          (uri) => !/^https?:\/\//i.test(uri) && !uri.startsWith('/uploads/'),
-        );
-
-        if (localImageUris.length > 0) {
-          const listing = await uploadPhotosMutation.mutateAsync(localImageUris);
-          setValue('imageUrls', listing.imageUrls, {
-            shouldDirty: true,
-            shouldValidate: true,
-          });
-          values = { ...values, imageUrls: listing.imageUrls };
-        }
-      }
-
-      const nextStep = steps[Math.min(stepIndex + 1, steps.length - 1)];
-      const payload = buildStepPayload(step.key, values, nextStep.key);
-      await saveMutation.mutateAsync(payload);
-      setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+      const vehicle = await saveMutation.mutateAsync(buildStepPayload('vehicleDetails', getValues(), 'setup'));
+      router.replace({ pathname: '/(host)/vehicles/new', params: { vehicleId: vehicle.id } });
     } catch {
-      // Mutation state renders the backend or upload error without an unhandled promise.
-      setSaveStatus('failed');
+      // The mutation state renders the API error.
     } finally {
       actionInFlightRef.current = false;
     }
   };
 
-  const retrySave = () => {
-    void saveAndContinue();
+  const saveSection = async () => {
+    if (!activeSection || !draftId || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    setValidationMessage(null);
+    try {
+      if (activeSection === 'review') {
+        const incomplete = setupSections.filter((section) => section.key !== 'review' && getSetupStatus(section.key, getValues(), documentUrls) !== 'completed');
+        if (incomplete.length) {
+          setValidationMessage(`Complete ${incomplete[0].title.toLowerCase()} before submitting.`);
+          return;
+        }
+        await submitMutation.mutateAsync();
+        return;
+      }
+
+      const fields = getSectionFields(activeSection);
+      const valid = fields.length ? await trigger(fields) : true;
+      if (!valid) return;
+      let nextValues = getValues();
+      if (activeSection === 'photos') {
+        const localUris = nextValues.imageUrls.filter((uri) => !/^https?:\/\//i.test(uri) && !uri.startsWith('/uploads/'));
+        if (localUris.length) {
+          const listing = await uploadPhotosMutation.mutateAsync(localUris);
+          nextValues = { ...nextValues, imageUrls: listing.imageUrls };
+          setValue('imageUrls', listing.imageUrls, { shouldDirty: false, shouldValidate: false });
+        }
+      }
+      await saveMutation.mutateAsync(buildSectionPayload(activeSection, nextValues));
+      goToChecklist();
+    } catch {
+      // The mutation state renders the API error.
+    } finally {
+      actionInFlightRef.current = false;
+    }
   };
 
-  const handleInternalBack = useCallback(() => {
-    if (actionInFlightRef.current) {
-      return true;
-    }
-
-    if (stepIndex > 0) {
-      setStepIndex((current) => current - 1);
-      return true;
-    }
-
-    return false;
-  }, [stepIndex]);
-  const goBack = useSafeBack({
-    fallback: '/(host)/cars',
-    onBeforeBack: handleInternalBack,
-  });
-  useWebBackGuard({ active: stepIndex > 0, onBack: goBack });
-
-  const isRestoringDraft = hostVehiclesQuery.isLoading && !resumeChecked;
-  const isBusy =
-    saveMutation.isPending ||
-    uploadPhotosMutation.isPending ||
-    submitMutation.isPending;
-
   if (submissionComplete) {
-    return (
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <View style={styles.submissionComplete}>
-          <View style={styles.submissionIcon}>
-            <Check color="#FFFFFF" size={34} strokeWidth={3} />
-          </View>
-          <Text style={styles.submissionTitle}>Vehicle submitted for review</Text>
-          <Text style={styles.submissionBody}>
-            We'll let you know once your listing is approved.
-          </Text>
-          <Pressable
-            accessibilityLabel="View my cars"
-            accessibilityRole="button"
-            onPress={() => router.replace('/(host)/cars')}
-            style={styles.submissionButton}
-          >
-            <Text style={styles.submissionButtonText}>View my cars</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
+    return <SubmissionComplete />;
   }
 
+  const sectionDefinition = activeSection ? setupSections.find((section) => section.key === activeSection) : null;
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
-        <AddVehicleHeader
-          disabled={isBusy || isRestoringDraft}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <VehicleSetupHeader
           onBack={goBack}
-          onRetry={retrySave}
-          saveStatus={saveStatus}
-          stepNumber={stepIndex + 1}
-          totalSteps={steps.length}
+          title={activeSection ? sectionDefinition?.title ?? 'Vehicle setup' : draftId ? 'Vehicle setup' : 'Add vehicle'}
         />
-
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          style={styles.contentScroll}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={styles.contentScroll} showsVerticalScrollIndicator={false}>
           {isRestoringDraft ? (
-            <View style={styles.restoreDraftState}>
-              <ActivityIndicator color="#0B6FE8" size="small" />
-              <Text style={styles.restoreDraftText}>Restoring your saved draft...</Text>
-            </View>
+            <View style={styles.restoreDraftState}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.restoreDraftText}>Loading your vehicle setup...</Text></View>
+          ) : !draftId ? (
+            <QuickVehicleSetup control={control} errors={errors} make={make} onOpenSelection={setSelectionField} />
+          ) : !activeSection ? (
+            <VehicleSetupChecklist documentUrls={documentUrls} onOpenSection={goToSection} progress={setupProgress} values={values} />
           ) : (
             <View pointerEvents={isBusy ? 'none' : 'auto'} style={styles.stepContent}>
-              <View style={styles.stepHeader}>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepHelper}>{step.helper}</Text>
-              </View>
-
-              {step.key === 'vehicleDetails' ? (
-                <VehicleDetailsStep
-                  control={control}
-                  errors={errors}
-                  make={make}
-                  onOpenSelection={setSelectionField}
-                />
-              ) : null}
-              {step.key === 'vehicleLocation' ? (
-                <VehicleLocationStep
-                  control={control}
-                  errors={errors}
-                  setValue={setValue}
-                />
-              ) : null}
-              {step.key === 'features' ? (
-                <FeaturesStep
-                  error={errors.features?.message}
-                  featureInput={featureInput}
-                  features={features}
-                  onAddFeature={addFeature}
-                  onChangeFeatureInput={setFeatureInput}
-                  onRemoveFeature={removeFeature}
-                  onTogglePopularFeature={togglePopularFeature}
-                />
-              ) : null}
-              {step.key === 'photos' ? (
-                <PhotosStep
-                  error={photoError ?? errors.imageUrls?.message}
-                  imageUrls={imageUrls}
-                  isUploading={uploadPhotosMutation.isPending}
-                  uploadProgress={uploadProgress}
-                  onPickPhotos={pickPhotos}
-                  onRemovePhoto={removePhoto}
-                  onSetCoverPhoto={setCoverPhoto}
-                />
-              ) : null}
-              {step.key === 'documents' ? (
-                <DocumentsStep control={control} errors={errors} />
-              ) : null}
-              {step.key === 'pricing' ? (
-                <PricingStep control={control} errors={errors} />
-              ) : null}
-              {step.key === 'availability' ? (
-                <AvailabilityStep control={control} errors={errors} setValue={setValue} />
-              ) : null}
-              {step.key === 'review' ? (
-                <ReviewStep
-                  onEdit={(targetStep) => setStepIndex(targetStep)}
-                  values={getValues()}
-                />
-              ) : null}
-
-              {serverError || validationMessage ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorBoxText}>{serverError?.message ?? validationMessage}</Text>
-                </View>
-              ) : null}
+              <View style={styles.stepHeader}><Text style={styles.stepTitle}>{sectionDefinition?.title}</Text><Text style={styles.stepHelper}>{sectionDefinition?.helper}</Text></View>
+              {activeSection === 'details' ? <><VehicleDetailsStep control={control} errors={errors} make={make} onOpenSelection={setSelectionField} optionalDescription /><ExpandableVehicleExtras control={control} error={errors.features?.message} featureInput={featureInput} features={features} onAddFeature={addFeature} onChangeFeatureInput={setFeatureInput} onRemoveFeature={removeFeature} onTogglePopularFeature={togglePopularFeature} /></> : null}
+              {activeSection === 'location' ? <VehicleLocationStep control={control} errors={errors} setValue={setValue} /> : null}
+              {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} imageUrls={imageUrls} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onSetCoverPhoto={setCoverPhoto} /> : null}
+              {activeSection === 'documents' ? <DocumentsStep control={control} documentUpload={documentUpload} documentUrls={documentUrls} errors={errors} onPickDocument={pickVehicleDocument} /> : null}
+              {activeSection === 'pricing' ? <PricingStep control={control} errors={errors} /> : null}
+              {activeSection === 'availability' ? <AvailabilityStep control={control} errors={errors} setValue={setValue} /> : null}
+              {activeSection === 'review' ? <ReviewStep onEdit={goToSection} values={getValues()} /> : null}
+              {serverError || validationMessage ? <View style={styles.errorBox}><Text style={styles.errorBoxText}>{serverError?.message ?? validationMessage}</Text></View> : null}
             </View>
           )}
         </ScrollView>
-
-        <AddVehicleFooter
-          busy={isBusy || isRestoringDraft}
-          busyLabel={isRestoringDraft ? 'Restoring draft...' : undefined}
-          isSubmit={step.key === 'review'}
-          onPress={saveAndContinue}
-        />
+        {!isRestoringDraft && (!draftId || activeSection) ? <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : 'Save changes'} onPress={!draftId ? createDraft : saveSection} /> : null}
       </KeyboardAvoidingView>
-      {selectionField ? (
-        <VehicleSelectionSheet
-          onClose={() => setSelectionField(null)}
-          onSelect={(value) => {
-            if (selectionField === 'make') {
-              setValue('make', value, { shouldDirty: true, shouldValidate: true });
-              setValue('model', '', { shouldDirty: true, shouldValidate: true });
-              return;
-            }
+      {selectionField ? <VehicleSelectionSheet onClose={() => setSelectionField(null)} onSelect={(value) => { if (selectionField === 'make') { setValue('make', value, { shouldDirty: true, shouldValidate: true }); setValue('model', '', { shouldDirty: true, shouldValidate: false }); } else { setValue(selectionField, value, { shouldDirty: true, shouldValidate: true }); } }} options={selectionOptions} title={selectionField === 'manufacturingYear' ? 'Select year' : selectionField === 'colour' ? 'Select colour' : `Select ${selectionField}`} value={selectedValue} visible /> : null}
+    </SafeAreaView>
+  );
+}
 
-            setValue(selectionField, value, { shouldDirty: true, shouldValidate: true });
-          }}
-          options={selectionOptions}
-          title={
-            selectionField === 'manufacturingYear'
-              ? 'Select year'
-              : selectionField === 'colour'
-                ? 'Select colour'
-                : `Select ${selectionField}`
-          }
-          value={selectedValue}
-          visible
-        />
-      ) : null}
+function isSetupSection(value: string | undefined): value is SetupSection {
+  return Boolean(value && setupSections.some((section) => section.key === value));
+}
+
+function getSectionFields(section: SetupSection): FieldPath<HostVehicleFormValues>[] {
+  switch (section) {
+    case 'details':
+      return ['make', 'model', 'manufacturingYear', 'registrationNumber', 'vehicleType', 'transmission', 'fuelType', 'seats', 'doors'];
+    case 'photos':
+      return ['imageUrls'];
+    case 'location':
+      return ['locationId', 'address', 'city', 'state', 'country'];
+    case 'documents':
+      return ['registrationCertificateNumber', 'insurancePolicyNumber'];
+    case 'pricing':
+      return ['pricePerDay', 'securityDeposit', 'mileageLimitPerDay', 'minimumRentalDays', 'maximumRentalDays'];
+    case 'availability':
+      return ['availableFrom', 'availableTo', 'advanceNoticeHours'];
+    default:
+      return [];
+  }
+}
+
+function buildSectionPayload(section: SetupSection, values: HostVehicleFormValues): UpsertHostVehiclePayload {
+  if (section === 'details') {
+    return {
+      ...buildStepPayload('vehicleDetails', values, 'setup'),
+      features: values.features,
+      draftStep: 'details',
+    };
+  }
+  const stepBySection: Partial<Record<SetupSection, StepKey>> = {
+    photos: 'photos',
+    location: 'vehicleLocation',
+    documents: 'documents',
+    pricing: 'pricing',
+    availability: 'availability',
+  };
+  const step = stepBySection[section];
+  return step ? buildStepPayload(step, values, section) : { draftStep: section };
+}
+
+function getSetupStatus(
+  section: Exclude<SetupSection, 'review'>,
+  values: HostVehicleFormValues,
+  documentUrls: VehicleDocumentUrls = emptyDocumentUrls,
+) {
+  const hasDetails = Boolean(values.make && values.model && values.manufacturingYear && values.registrationNumber);
+  const checks: Record<Exclude<SetupSection, 'review'>, { complete: boolean; started: boolean }> = {
+    details: {
+      complete: hasDetails,
+      started: hasDetails,
+    },
+    photos: { complete: values.imageUrls.length > 0, started: values.imageUrls.length > 0 },
+    location: {
+      complete: Boolean(values.locationId && values.address && values.city && values.state && values.country),
+      started: Boolean(values.address || values.city),
+    },
+    documents: {
+      complete: Boolean(
+        values.registrationCertificateNumber &&
+          values.insurancePolicyNumber &&
+          Boolean(documentUrls.rc && documentUrls.insurance),
+      ),
+      started: Boolean(values.registrationCertificateNumber || values.insurancePolicyNumber || values.pollutionCertificateNumber || documentUrls.rc || documentUrls.insurance || documentUrls.puc),
+    },
+    pricing: {
+      complete: Boolean(values.pricePerDay && values.minimumRentalDays),
+      started: Boolean(values.pricePerDay || values.securityDeposit || values.mileageLimitPerDay),
+    },
+    availability: {
+      complete: Boolean(values.availableFrom),
+      started: Boolean(values.availableFrom || values.availableTo),
+    },
+  };
+  const check = checks[section];
+  return check.complete ? 'completed' : check.started ? 'in_progress' : 'not_started';
+}
+
+function getSetupProgress(values: HostVehicleFormValues, documentUrls: VehicleDocumentUrls = emptyDocumentUrls) {
+  const sections = setupSections.filter((section): section is typeof section & { key: Exclude<SetupSection, 'review'> } => section.key !== 'review');
+  const completed = sections.filter((section) => getSetupStatus(section.key, values, documentUrls) === 'completed').length;
+  return { completed, total: sections.length };
+}
+
+function VehicleSetupHeader({
+  onBack,
+  title,
+}: {
+  onBack: () => void;
+  title: string;
+}) {
+  return (
+    <View style={styles.setupHeader}>
+      <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={onBack} style={styles.setupBackButton}>
+        <ChevronLeft color="#102550" size={24} />
+      </Pressable>
+      <View style={styles.setupHeaderCopy}>
+        <Text accessibilityRole="header" style={styles.setupHeaderTitle}>{title}</Text>
+      </View>
+    </View>
+  );
+}
+
+function VehicleSetupFooter({ busy, label, onPress }: { busy: boolean; label: string; onPress: () => void }) {
+  return (
+    <View style={styles.setupFooter}>
+      <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={onPress} style={[styles.setupPrimaryButton, busy && styles.setupPrimaryButtonDisabled]}>
+        {busy ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.setupPrimaryButtonText}>{label}</Text><ChevronRight color="#FFFFFF" size={20} /></>}
+      </Pressable>
+    </View>
+  );
+}
+
+function QuickVehicleSetup({
+  control,
+  errors,
+  make,
+  onOpenSelection,
+}: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
+  errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  make: string;
+  onOpenSelection: (field: 'make' | 'model' | 'manufacturingYear') => void;
+}) {
+  return (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>Add your vehicle</Text>
+        <Text style={styles.stepHelper}>Enter the basics first. You can complete the remaining listing details next.</Text>
+      </View>
+      <View style={styles.setupIntroCard}>
+        <CarFront color="#0B6FE8" size={22} />
+        <Text style={styles.setupIntroText}>Your vehicle information stays private until you submit it for review.</Text>
+      </View>
+      <View style={styles.form}>
+        <SelectField control={control} error={errors.make?.message} icon={<CarFront color="#536B91" size={18} />} label="Vehicle make" name="make" onPress={() => onOpenSelection('make')} placeholder="Select make" />
+        <SelectField control={control} disabled={!make} error={errors.model?.message} icon={<CarFront color="#536B91" size={18} />} label="Vehicle model" name="model" onPress={() => onOpenSelection('model')} placeholder={make ? 'Select model' : 'Select make first'} />
+        <View style={styles.row}>
+          <SelectField control={control} error={errors.manufacturingYear?.message} icon={<CalendarDays color="#536B91" size={18} />} label="Manufacturing year" name="manufacturingYear" onPress={() => onOpenSelection('manufacturingYear')} placeholder="Select year" />
+          <TextField control={control} error={errors.registrationNumber?.message} label="Registration number" name="registrationNumber" autoCapitalize="characters" />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function VehicleSetupChecklist({
+  documentUrls,
+  onOpenSection,
+  progress,
+  values,
+}: {
+  documentUrls: VehicleDocumentUrls;
+  onOpenSection: (section: SetupSection) => void;
+  progress: { completed: number; total: number };
+  values: HostVehicleFormValues;
+}) {
+  return (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>Vehicle setup</Text>
+        <Text style={styles.stepHelper}>Complete the sections in any order, then submit your listing for review.</Text>
+      </View>
+      <View style={styles.setupProgressCard}>
+        <View><Text style={styles.setupProgressTitle}>Listing progress</Text><Text style={styles.setupProgressText}>{progress.completed} of {progress.total} required sections complete</Text></View>
+        <Text style={styles.setupProgressCount}>{Math.round((progress.completed / progress.total) * 100)}%</Text>
+        <View style={styles.setupProgressTrack}><View style={[styles.setupProgressFill, { width: `${(progress.completed / progress.total) * 100}%` }]} /></View>
+      </View>
+      <View style={styles.setupChecklist}>
+        {setupSections.map((section) => {
+          const status = section.key === 'review' ? (progress.completed === progress.total ? 'completed' : 'action_required') : getSetupStatus(section.key, values, documentUrls);
+          return <ChecklistRow key={section.key} onPress={() => onOpenSection(section.key)} section={section} status={status} />;
+        })}
+      </View>
+    </View>
+  );
+}
+
+function ChecklistRow({
+  onPress,
+  section,
+  status,
+}: {
+  onPress: () => void;
+  section: { key: SetupSection; title: string; helper: string };
+  status: 'completed' | 'in_progress' | 'not_started' | 'action_required';
+}) {
+  const statusLabel = status === 'completed' ? 'Completed' : status === 'in_progress' ? 'In progress' : status === 'action_required' ? 'Action required' : 'Not started';
+  const Icon = status === 'completed' ? CircleCheck : status === 'action_required' ? CircleAlert : status === 'in_progress' ? Clock3 : Circle;
+  return (
+    <Pressable accessibilityHint={`Open ${section.title}`} accessibilityLabel={`${section.title}, ${statusLabel}`} accessibilityRole="button" key={section.key} onPress={onPress} style={({ pressed }) => [styles.checklistRow, pressed && styles.checklistRowPressed]}>
+      <View style={[styles.checklistIcon, status === 'completed' && styles.checklistIconComplete]}><Icon color={status === 'completed' ? '#16805C' : status === 'action_required' ? '#FF644F' : '#536B91'} size={20} /></View>
+      <View style={styles.checklistCopy}><Text style={styles.checklistTitle}>{section.title}</Text><Text numberOfLines={1} style={styles.checklistHelper}>{section.helper}</Text><Text style={[styles.checklistStatus, status === 'completed' && styles.checklistStatusComplete, status === 'action_required' && styles.checklistStatusRequired]}>{statusLabel}</Text></View>
+      <ChevronRight color="#536B91" size={20} />
+    </Pressable>
+  );
+}
+
+function SubmissionComplete() {
+  return (
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+      <View style={styles.submissionComplete}>
+        <View style={styles.submissionIcon}><Check color="#FFFFFF" size={34} strokeWidth={3} /></View>
+        <Text style={styles.submissionTitle}>Vehicle submitted for review</Text>
+        <Text style={styles.submissionBody}>We'll let you know once your listing is approved.</Text>
+        <Pressable accessibilityLabel="View my cars" accessibilityRole="button" onPress={() => router.replace('/(host)/cars')} style={styles.submissionButton}><Text style={styles.submissionButtonText}>View my cars</Text></Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -781,10 +756,12 @@ function VehicleDetailsStep({
   errors,
   make,
   onOpenSelection,
+  optionalDescription = false,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
   make: string;
   onOpenSelection: (field: 'make' | 'model' | 'manufacturingYear' | 'colour') => void;
+  optionalDescription?: boolean;
 }) {
   return (
     <View style={styles.form}>
@@ -857,13 +834,41 @@ function VehicleDetailsStep({
         onPress={() => onOpenSelection('colour')}
         placeholder="Select colour"
       />
-      <TextField
-        control={control}
-        error={errors.description?.message}
-        label="Description"
-        multiline
-        name="description"
-      />
+      {!optionalDescription ? <TextField control={control} error={errors.description?.message} label="Description" multiline name="description" /> : null}
+    </View>
+  );
+}
+
+function ExpandableVehicleExtras({
+  control,
+  error,
+  featureInput,
+  features,
+  onAddFeature,
+  onChangeFeatureInput,
+  onRemoveFeature,
+  onTogglePopularFeature,
+}: {
+  control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
+  error?: string;
+  featureInput: string;
+  features: string[];
+  onAddFeature: () => void;
+  onChangeFeatureInput: (value: string) => void;
+  onRemoveFeature: (feature: string) => void;
+  onTogglePopularFeature: (feature: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <View style={styles.extrasCard}>
+      <Pressable accessibilityLabel="Optional description and features" accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={styles.extrasHeader}>
+        <View><Text style={styles.extrasTitle}>Optional details</Text><Text style={styles.extrasHelper}>Description and features help renters choose.</Text></View>
+        <ChevronRight color="#536B91" size={20} style={expanded ? styles.extrasChevronExpanded : undefined} />
+      </Pressable>
+      {expanded ? <View style={styles.extrasContent}>
+        <TextField control={control} label="Description" multiline name="description" />
+        <FeaturesStep error={error} featureInput={featureInput} features={features} onAddFeature={onAddFeature} onChangeFeatureInput={onChangeFeatureInput} onRemoveFeature={onRemoveFeature} onTogglePopularFeature={onTogglePopularFeature} />
+      </View> : null}
     </View>
   );
 }
@@ -1182,6 +1187,7 @@ function PhotosStep({
   error,
   imageUrls,
   isUploading,
+  onMovePhoto,
   uploadProgress,
   onPickPhotos,
   onRemovePhoto,
@@ -1190,32 +1196,25 @@ function PhotosStep({
   error?: string;
   imageUrls: string[];
   isUploading: boolean;
+  onMovePhoto: (uri: string, direction: 'earlier' | 'later') => void;
   uploadProgress: number | null;
-  onPickPhotos: () => void;
+  onPickPhotos: (source: 'camera' | 'library') => void;
   onRemovePhoto: (uri: string) => void;
   onSetCoverPhoto: (uri: string) => void;
 }) {
   return (
     <View style={styles.form}>
       {imageUrls.length === 0 ? (
-        <Pressable
-          accessibilityHint="Opens your photo library to choose up to 10 vehicle photos."
-          accessibilityLabel="Choose vehicle photos"
-          accessibilityRole="button"
-          accessibilityState={{ busy: isUploading, disabled: isUploading }}
-          disabled={isUploading}
-          onPress={onPickPhotos}
-          style={({ pressed }) => [
-            styles.photoPickerButton,
-            pressed && !isUploading && styles.photoPickerButtonPressed,
-          ]}
-        >
-          <Camera color="#0B6FE8" size={30} />
-          <Text style={styles.photoPickerText}>Choose photos</Text>
-          <Text style={styles.photoPickerSubtext}>Add up to 10 photos</Text>
-          <Text style={styles.photoPickerSubtext}>JPG, PNG, or WebP • Max 10 MB each</Text>
-        </Pressable>
+        <View style={styles.photoSourceWrap}>
+          <Pressable accessibilityHint="Take a vehicle photo with your camera." accessibilityLabel="Take vehicle photos" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('camera')} style={({ pressed }) => [styles.photoPickerButton, pressed && !isUploading && styles.photoPickerButtonPressed]}>
+            <Camera color="#0B6FE8" size={30} /><Text style={styles.photoPickerText}>Use camera</Text><Text style={styles.photoPickerSubtext}>Capture exterior or interior</Text>
+          </Pressable>
+          <Pressable accessibilityHint="Open your photo library to select vehicle photos." accessibilityLabel="Choose vehicle photos" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('library')} style={({ pressed }) => [styles.photoPickerButton, pressed && !isUploading && styles.photoPickerButtonPressed]}>
+            <Plus color="#0B6FE8" size={30} /><Text style={styles.photoPickerText}>Choose photos</Text><Text style={styles.photoPickerSubtext}>JPG, PNG, WebP • Max 10 MB</Text>
+          </Pressable>
+        </View>
       ) : null}
+      <View style={styles.photoGuidance}><Text style={styles.photoGuidanceTitle}>Recommended coverage</Text><Text style={styles.photoGuidanceText}>Front, rear, both sides and interior. Add clear photos in good light.</Text></View>
       {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {isUploading ? (
         <View style={styles.photoUploadStatus}>
@@ -1228,7 +1227,7 @@ function PhotosStep({
       {imageUrls.length ? <Text style={styles.photoCount}>Photos ({imageUrls.length}/10)</Text> : null}
       {imageUrls.length ? (
         <View style={styles.photoGrid}>
-          {imageUrls.map((uri) => {
+          {imageUrls.map((uri, index) => {
             const imageUrl = getVehicleImageVariantUrl(uri, 'detail') ?? uri;
 
             return (
@@ -1260,6 +1259,30 @@ function PhotosStep({
             >
               <Trash2 color="#FFFFFF" size={15} />
             </Pressable>
+            {imageUrls.length > 1 ? (
+              <View style={styles.photoReorderActions}>
+                <Pressable
+                  accessibilityLabel="Move photo earlier"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: index === 0 }}
+                  disabled={index === 0}
+                  onPress={() => onMovePhoto(uri, 'earlier')}
+                  style={styles.photoReorderButton}
+                >
+                  <ChevronLeft color="#FFFFFF" size={15} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Move photo later"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: index === imageUrls.length - 1 }}
+                  disabled={index === imageUrls.length - 1}
+                  onPress={() => onMovePhoto(uri, 'later')}
+                  style={styles.photoReorderButton}
+                >
+                  <ChevronRight color="#FFFFFF" size={15} />
+                </Pressable>
+              </View>
+            ) : null}
             </View>
             );
           })}
@@ -1268,7 +1291,7 @@ function PhotosStep({
             accessibilityLabel="Add more photos"
             accessibilityRole="button"
             disabled={isUploading}
-            onPress={onPickPhotos}
+            onPress={() => onPickPhotos('library')}
             style={({ pressed }) => [
               styles.addMorePhotoTile,
               pressed && !isUploading && styles.addMorePhotoTilePressed,
@@ -1286,35 +1309,60 @@ function PhotosStep({
 
 function DocumentsStep({
   control,
+  documentUpload,
+  documentUrls,
   errors,
+  onPickDocument,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
+  documentUpload: { type: VehicleDocumentType; progress: number } | null;
+  documentUrls: VehicleDocumentUrls;
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  onPickDocument: (type: VehicleDocumentType, source: 'camera' | 'library') => void;
 }) {
   return (
     <View style={styles.form}>
-      <View style={styles.documentNotice}>
-        <FileText color="#0B6FE8" size={18} />
-        <Text style={styles.documentNoticeText}>
-          Document uploads can be connected later; references are saved with the draft now.
-        </Text>
-      </View>
+      <View style={styles.documentNotice}><FileText color="#0B6FE8" size={18} /><Text style={styles.documentNoticeText}>Use a clear photo of each document. Images are validated and stored securely with your vehicle setup.</Text></View>
+      <VehicleDocumentCard label="Registration certificate (RC)" uploaded={Boolean(documentUrls.rc)} uploading={documentUpload?.type === 'rc' ? documentUpload.progress : null} onPick={(source) => onPickDocument('rc', source)} />
       <TextField
         control={control}
         error={errors.registrationCertificateNumber?.message}
         label="RC number"
         name="registrationCertificateNumber"
       />
+      <VehicleDocumentCard label="Insurance" uploaded={Boolean(documentUrls.insurance)} uploading={documentUpload?.type === 'insurance' ? documentUpload.progress : null} onPick={(source) => onPickDocument('insurance', source)} />
       <TextField
         control={control}
         error={errors.insurancePolicyNumber?.message}
         label="Insurance policy number"
         name="insurancePolicyNumber"
       />
+      <VehicleDocumentCard label="Pollution certificate (PUC)" optional uploaded={Boolean(documentUrls.puc)} uploading={documentUpload?.type === 'puc' ? documentUpload.progress : null} onPick={(source) => onPickDocument('puc', source)} />
       <TextField
         control={control}
         label="Pollution certificate / PUC"
         name="pollutionCertificateNumber"
       />
+    </View>
+  );
+}
+
+function VehicleDocumentCard({
+  label,
+  onPick,
+  optional = false,
+  uploaded,
+  uploading,
+}: {
+  label: string;
+  onPick: (source: 'camera' | 'library') => void;
+  optional?: boolean;
+  uploaded: boolean;
+  uploading: number | null;
+}) {
+  return (
+    <View style={styles.documentUploadCard}>
+      <View style={styles.documentUploadCopy}><Text style={styles.documentUploadTitle}>{label}{optional ? ' - Optional' : ''}</Text><Text style={styles.documentUploadStatus}>{uploading !== null ? `Uploading ${Math.round(uploading * 100)}%` : uploaded ? 'Image added' : 'Not uploaded'}</Text></View>
+      {uploading !== null ? <ActivityIndicator color="#0B6FE8" /> : <View style={styles.documentUploadActions}><Pressable accessibilityLabel={`Use camera for ${label}`} accessibilityRole="button" onPress={() => onPick('camera')} style={styles.documentUploadButton}><Camera color="#0B6FE8" size={17} /></Pressable><Pressable accessibilityLabel={`Choose ${label} image`} accessibilityRole="button" onPress={() => onPick('library')} style={styles.documentUploadButton}><Plus color="#0B6FE8" size={17} /></Pressable></View>}
     </View>
   );
 }
@@ -1325,6 +1373,7 @@ function PricingStep({
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
 }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   return (
     <View style={styles.form}>
       <CurrencyField
@@ -1340,33 +1389,24 @@ function PricingStep({
         name="securityDeposit"
         placeholder="Optional"
       />
-      <TextField
-        control={control}
-        error={errors.mileageLimitPerDay?.message}
-        keyboardType="number-pad"
-        label="Mileage limit per day"
-        name="mileageLimitPerDay"
-        placeholder="Optional"
-        suffix="km"
-      />
-      <View style={styles.row}>
-        <TextField
-          control={control}
-          error={errors.minimumRentalDays?.message}
-          keyboardType="number-pad"
-          label="Min days"
-          name="minimumRentalDays"
-          suffix="days"
-        />
-        <TextField
-          control={control}
-          error={errors.maximumRentalDays?.message}
-          keyboardType="number-pad"
-          label="Max days"
-          name="maximumRentalDays"
-          placeholder="Optional"
-          suffix="days"
-        />
+      <View style={styles.extrasCard}>
+        <Pressable
+          accessibilityLabel="Advanced pricing"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: advancedOpen }}
+          onPress={() => setAdvancedOpen((value) => !value)}
+          style={styles.extrasHeader}
+        >
+          <View><Text style={styles.extrasTitle}>Advanced pricing</Text><Text style={styles.extrasHelper}>Mileage and booking-duration rules.</Text></View>
+          <ChevronRight color="#536B91" size={20} style={advancedOpen ? styles.extrasChevronExpanded : undefined} />
+        </Pressable>
+        {advancedOpen ? <View style={styles.extrasContent}>
+          <TextField control={control} error={errors.mileageLimitPerDay?.message} keyboardType="number-pad" label="Mileage limit per day" name="mileageLimitPerDay" placeholder="Optional" suffix="km" />
+          <View style={styles.row}>
+            <TextField control={control} error={errors.minimumRentalDays?.message} keyboardType="number-pad" label="Min days" name="minimumRentalDays" suffix="days" />
+            <TextField control={control} error={errors.maximumRentalDays?.message} keyboardType="number-pad" label="Max days" name="maximumRentalDays" placeholder="Optional" suffix="days" />
+          </View>
+        </View> : null}
       </View>
     </View>
   );
@@ -1736,7 +1776,7 @@ function ReviewStep({
   onEdit,
   values,
 }: {
-  onEdit: (stepIndex: number) => void;
+  onEdit: (section: SetupSection) => void;
   values: HostVehicleFormValues;
 }) {
   const coverImageUrl = getVehicleImageVariantUrl(values.imageUrls[0], 'thumbnail');
@@ -1744,13 +1784,13 @@ function ReviewStep({
     {
       icon: <MapPin color="#0B6FE8" size={19} />,
       label: 'Location',
-      stepIndex: 1,
+      section: 'location' as const,
       value: [values.address, values.city, values.state].filter(Boolean).join(', ') || 'Add pickup location',
     },
     {
       icon: <Plus color="#0B6FE8" size={19} />,
       label: 'Features',
-      stepIndex: 2,
+      section: 'details' as const,
       value: values.features.length
         ? `${values.features[0]}${values.features.length > 1 ? ` + ${values.features.length - 1} more` : ''}`
         : 'Add features',
@@ -1758,32 +1798,38 @@ function ReviewStep({
     {
       icon: <Camera color="#0B6FE8" size={19} />,
       label: 'Photos',
-      stepIndex: 3,
+      section: 'photos' as const,
       value: `${values.imageUrls.length} ${values.imageUrls.length === 1 ? 'photo' : 'photos'} added`,
     },
     {
       icon: <FileText color="#0B6FE8" size={19} />,
       label: 'Documents',
-      stepIndex: 4,
+      section: 'documents' as const,
       value: getDocumentSummary(values),
     },
     {
       icon: <Text style={styles.reviewCurrencyIcon}>₹</Text>,
       label: 'Price',
-      stepIndex: 5,
+      section: 'pricing' as const,
       value: values.pricePerDay ? `₹${formatIndianCurrency(values.pricePerDay)} / day` : 'Add daily price',
     },
     {
       icon: <CalendarDays color="#0B6FE8" size={19} />,
       label: 'Availability',
-      stepIndex: 6,
+      section: 'availability' as const,
       value: values.availableFrom ? `From ${formatListingDate(values.availableFrom)}` : 'Set availability',
     },
   ];
 
   return (
     <View style={styles.reviewList}>
-      <View style={styles.reviewVehicleCard}>
+      <Pressable
+        accessibilityHint="Edit vehicle details"
+        accessibilityLabel="Vehicle details"
+        accessibilityRole="button"
+        onPress={() => onEdit('details')}
+        style={({ pressed }) => [styles.reviewVehicleCard, pressed && styles.reviewRowPressed]}
+      >
         {coverImageUrl ? (
           <CachedVehicleImage
             accessibilityLabel="Vehicle cover photo"
@@ -1806,12 +1852,13 @@ function ReviewStep({
             {[`${values.seats} seats`, values.fuelType, values.transmission].filter(Boolean).join(' • ')}
           </Text>
         </View>
-      </View>
+        <ChevronRight color="#536B91" size={19} />
+      </Pressable>
       {rows.map((row) => (
         <Pressable
           accessibilityRole="button"
           key={row.label}
-          onPress={() => onEdit(row.stepIndex)}
+          onPress={() => onEdit(row.section)}
           style={({ pressed }) => [styles.reviewRow, pressed && styles.reviewRowPressed]}
         >
           <View style={styles.reviewRowIcon}>{row.icon}</View>
@@ -2046,7 +2093,7 @@ function SegmentField({
 function buildStepPayload(
   stepKey: StepKey,
   values: HostVehicleFormValues,
-  nextStep: StepKey,
+  nextStep: string,
 ): UpsertHostVehiclePayload {
   const payload: UpsertHostVehiclePayload = {
     draftStep: nextStep,
@@ -2174,9 +2221,12 @@ function mapListingToFormValues(vehicle: HostVehicleListing): HostVehicleFormVal
   };
 }
 
-function getStepIndex(stepKey: string | null) {
-  const index = steps.findIndex((step) => step.key === stepKey);
-  return index >= 0 ? index : 0;
+function getVehicleDocumentUrls(documents: Record<string, unknown>): VehicleDocumentUrls {
+  return {
+    rc: stringFromRecord(documents, 'registrationCertificateImageUrl') || null,
+    insurance: stringFromRecord(documents, 'insuranceImageUrl') || null,
+    puc: stringFromRecord(documents, 'pollutionCertificateImageUrl') || null,
+  };
 }
 
 function cleanString(value: string | null | undefined) {
@@ -3149,4 +3199,117 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 19,
   },
+  setupHeader: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#D6E8FF',
+    backgroundColor: '#F3F9FF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  setupBackButton: {
+    height: 44,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+  },
+  setupHeaderCopy: { flex: 1, minWidth: 0, gap: 2 },
+  setupHeaderTitle: { color: '#102550', fontSize: 20, fontWeight: '800' },
+  setupFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  setupPrimaryButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: '#0B6FE8',
+  },
+  setupPrimaryButtonDisabled: { opacity: 0.6 },
+  setupPrimaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  setupIntroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    backgroundColor: '#EAF4FF',
+    padding: 14,
+  },
+  setupIntroText: { flex: 1, color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  setupProgressCard: {
+    gap: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  setupProgressTitle: { color: '#102550', fontSize: 15, fontWeight: '800' },
+  setupProgressText: { color: '#536B91', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  setupProgressCount: { position: 'absolute', right: 16, top: 16, color: '#0B6FE8', fontSize: 16, fontWeight: '800' },
+  setupProgressTrack: { height: 6, overflow: 'hidden', borderRadius: 999, backgroundColor: '#D6E8FF' },
+  setupProgressFill: { height: '100%', borderRadius: 999, backgroundColor: '#0B6FE8' },
+  setupChecklist: { gap: 10 },
+  checklistRow: {
+    minHeight: 88,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+  },
+  checklistRowPressed: { backgroundColor: '#EAF4FF' },
+  checklistIcon: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#EAF4FF' },
+  checklistIconComplete: { backgroundColor: '#E7F5EE' },
+  checklistCopy: { flex: 1, minWidth: 0, gap: 2 },
+  checklistTitle: { color: '#102550', fontSize: 15, fontWeight: '800' },
+  checklistHelper: { color: '#536B91', fontSize: 12, fontWeight: '600' },
+  checklistStatus: { color: '#536B91', fontSize: 11, fontWeight: '800', marginTop: 3, textTransform: 'uppercase' },
+  checklistStatusComplete: { color: '#16805C' },
+  checklistStatusRequired: { color: '#FF644F' },
+  extrasCard: { overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: '#D6E8FF', backgroundColor: '#FFFFFF' },
+  extrasHeader: { minHeight: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  extrasTitle: { color: '#102550', fontSize: 14, fontWeight: '800' },
+  extrasHelper: { color: '#536B91', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  extrasChevronExpanded: { transform: [{ rotate: '90deg' }] },
+  extrasContent: { gap: 14, borderTopWidth: 1, borderTopColor: '#D6E8FF', padding: 14 },
+  photoSourceWrap: { flexDirection: 'row', gap: 10 },
+  photoGuidance: { borderRadius: 10, backgroundColor: '#EAF4FF', padding: 12 },
+  photoGuidanceTitle: { color: '#102550', fontSize: 12, fontWeight: '800' },
+  photoGuidanceText: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18, marginTop: 3 },
+  photoReorderActions: { position: 'absolute', right: 8, bottom: 8, flexDirection: 'row', gap: 4 },
+  photoReorderButton: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: 'rgba(37, 40, 43, 0.78)' },
+  documentUploadCard: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+  },
+  documentUploadCopy: { flex: 1, minWidth: 0, gap: 3 },
+  documentUploadTitle: { color: '#102550', fontSize: 13, fontWeight: '800' },
+  documentUploadStatus: { color: '#536B91', fontSize: 12, fontWeight: '600' },
+  documentUploadActions: { flexDirection: 'row', gap: 8 },
+  documentUploadButton: { height: 36, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#EAF4FF' },
 });

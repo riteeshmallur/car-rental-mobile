@@ -80,6 +80,33 @@ export const vehiclesApi = {
       },
     });
   },
+  async uploadDocument(
+    vehicleId: string,
+    documentType: 'rc' | 'insurance' | 'puc',
+    imageUri: string,
+    onProgress?: (progress: number) => void,
+  ) {
+    const filename = `vehicle-${documentType}-${Date.now()}.jpg`;
+    const formData = new FormData();
+    const image =
+      Platform.OS === 'web'
+        ? await fetch(imageUri).then((response) => response.blob())
+        : ({ name: filename, type: 'image/jpeg', uri: imageUri } as unknown as Blob);
+
+    formData.append('document', image, filename);
+    return apiRequest<HostVehicleListing>({
+      method: 'POST',
+      url: `/vehicles/${vehicleId}/documents/${documentType}`,
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Idempotency-Key': `vehicle-document-${vehicleId}-${documentType}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
+      onUploadProgress: (event) => {
+        if (event.total) onProgress?.(Math.min(1, event.loaded / event.total));
+      },
+    });
+  },
   submit(vehicleId: string) {
     return apiRequest<HostVehicleListing>({
       method: 'POST',

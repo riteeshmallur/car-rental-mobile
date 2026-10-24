@@ -42,8 +42,20 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
     queryKey: ['host', 'vehicles'],
     queryFn: hostsApi.listVehicles,
   });
+  const setupQuery = useQuery({
+    enabled: canManageListings,
+    queryKey: ['host', 'setup-status'],
+    queryFn: hostsApi.setupStatus,
+  });
 
   const openHostSetup = () => router.push('/(customer)/become-host');
+  const openIdentityVerification = () => {
+    if (canManageListings) {
+      router.push('/(host)/identity-verification');
+      return;
+    }
+    openHostSetup();
+  };
   const openVehicleDocuments = () => {
     if ((vehiclesQuery.data?.length ?? 0) === 0) {
       router.push('/(host)/vehicles/new');
@@ -52,10 +64,14 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
     router.push('/(host)/cars');
   };
 
-  const identityStatus = getIdentityStatus(hostStatus?.status, hostStatus?.verificationStatus);
+  const identityStatus = getIdentityStatus(
+    hostStatus?.status,
+    hostStatus?.verificationStatus,
+    setupQuery.data?.tasks.find((task) => task.key === 'identity_verification')?.status,
+  );
   const vehicleDocument = getVehicleDocumentState(hostStatus?.status, vehiclesQuery.data ?? []);
-  const isLoading = hostStatusQuery.isLoading || (canManageListings && vehiclesQuery.isLoading);
-  const error = hostStatusQuery.isError ? hostStatusQuery.error : vehiclesQuery.error;
+  const isLoading = hostStatusQuery.isLoading || (canManageListings && (vehiclesQuery.isLoading || setupQuery.isLoading));
+  const error = hostStatusQuery.isError ? hostStatusQuery.error : vehiclesQuery.error ?? setupQuery.error;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -81,6 +97,7 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
             onPress={() => {
               void hostStatusQuery.refetch();
               if (canManageListings) void vehiclesQuery.refetch();
+              if (canManageListings) void setupQuery.refetch();
             }}
             style={({ pressed }) => [styles.iconButton, pressed && !isLoading && styles.pressed]}
           >
@@ -116,7 +133,7 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
             <DocumentRow
               actionLabel={identityStatus.actionLabel}
               icon={<IdCard color={colors.brand} size={22} />}
-              onPress={identityStatus.actionLabel ? openHostSetup : undefined}
+              onPress={identityStatus.actionLabel ? openIdentityVerification : undefined}
               status={identityStatus.status}
               subtitle={identityStatus.subtitle}
               title="Driving Licence"
@@ -124,7 +141,7 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
             <DocumentRow
               actionLabel={identityStatus.actionLabel}
               icon={<FileCheck2 color={colors.brand} size={22} />}
-              onPress={identityStatus.actionLabel ? openHostSetup : undefined}
+              onPress={identityStatus.actionLabel ? openIdentityVerification : undefined}
               status={identityStatus.status}
               subtitle={identityStatus.identitySubtitle}
               title="Identity Verification"
@@ -150,7 +167,11 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
   );
 }
 
-function getIdentityStatus(status?: HostLifecycleStatus, verificationStatus?: string | null) {
+function getIdentityStatus(
+  status?: HostLifecycleStatus,
+  verificationStatus?: string | null,
+  setupStatus?: string,
+) {
   if (verificationStatus === 'verified' || status === 'active') {
     return {
       status: 'Verified' as const,
@@ -159,11 +180,29 @@ function getIdentityStatus(status?: HostLifecycleStatus, verificationStatus?: st
     };
   }
 
-  if (verificationStatus === 'pending' || status === 'profile_created') {
+  if (setupStatus === 'under_review') {
     return {
       status: 'Under Review' as const,
       subtitle: 'Your submitted verification is being reviewed.',
       identitySubtitle: 'Your submitted identity details are being reviewed.',
+    };
+  }
+
+  if (setupStatus === 'action_required') {
+    return {
+      actionLabel: 'Update details',
+      status: 'Action Required' as const,
+      subtitle: 'Update your driving licence details for another review.',
+      identitySubtitle: 'Update your identity details for another review.',
+    };
+  }
+
+  if (status === 'profile_created' || verificationStatus === 'pending') {
+    return {
+      actionLabel: 'Verify identity',
+      status: 'Action Required' as const,
+      subtitle: 'Submit your driving licence for host verification.',
+      identitySubtitle: 'Submit an identity document for host verification.',
     };
   }
 

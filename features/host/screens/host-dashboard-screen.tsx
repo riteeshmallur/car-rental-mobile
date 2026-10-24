@@ -5,9 +5,12 @@ import {
   Banknote,
   CalendarCheck2,
   CarFront,
+  CheckCircle2,
   Clock3,
   FileSearch,
+  Landmark,
   RefreshCw,
+  ShieldCheck,
 } from 'lucide-react-native';
 import {
   ActivityIndicator,
@@ -23,7 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatMoney } from '@/features/customer/utils/car-formatters';
 import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
 import { useSafeBack } from '@/hooks/use-safe-back';
-import { hostsApi } from '@/services/hosts/hosts-api';
+import { hostsApi, type HostSetupStatus, type HostSetupTaskKey } from '@/services/hosts/hosts-api';
 import { normalizeApiError } from '@/utils/errors';
 
 export function HostDashboardScreen() {
@@ -32,7 +35,17 @@ export function HostDashboardScreen() {
     queryKey: ['host', 'dashboard'],
     queryFn: hostsApi.dashboard,
   });
-  const isRefreshing = dashboardQuery.isRefetching && !dashboardQuery.isLoading;
+  const setupQuery = useQuery({
+    queryKey: ['host', 'setup-status'],
+    queryFn: hostsApi.setupStatus,
+  });
+  const isRefreshing =
+    (dashboardQuery.isRefetching && !dashboardQuery.isLoading) ||
+    (setupQuery.isRefetching && !setupQuery.isLoading);
+  const refreshDashboard = () => {
+    void dashboardQuery.refetch();
+    void setupQuery.refetch();
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -52,13 +65,13 @@ export function HostDashboardScreen() {
               <Text style={styles.title}>Dashboard</Text>
             </View>
           </View>
-          {dashboardQuery.isFetching ? (
+          {dashboardQuery.isFetching || setupQuery.isFetching ? (
             <ActivityIndicator color="#0B6FE8" />
           ) : (
             <Pressable
               accessibilityLabel="Refresh dashboard"
               accessibilityRole="button"
-              onPress={() => void dashboardQuery.refetch()}
+              onPress={refreshDashboard}
               style={styles.iconButton}
             >
               <RefreshCw color="#102550" size={20} />
@@ -80,12 +93,15 @@ export function HostDashboardScreen() {
             contentContainerStyle={styles.content}
             refreshControl={
               <RefreshControl
-                onRefresh={() => void dashboardQuery.refetch()}
+                onRefresh={refreshDashboard}
                 refreshing={isRefreshing}
               />
             }
             showsVerticalScrollIndicator={false}
           >
+            {setupQuery.data?.status !== 'complete' ? (
+              <HostSetupChecklist setup={setupQuery.data} isLoading={setupQuery.isLoading} onRetry={() => void setupQuery.refetch()} />
+            ) : null}
             <Text style={styles.intro}>A live view of your listing and booking activity.</Text>
             <View style={styles.metrics}>
               <MetricCard
@@ -94,24 +110,24 @@ export function HostDashboardScreen() {
                 value={String(dashboardQuery.data.activeListings)}
               />
               <MetricCard
-                icon={<FileSearch color="#B45309" size={20} />}
+                icon={<FileSearch color="#FF644F" size={20} />}
                 label="In review"
                 value={String(dashboardQuery.data.pendingListingReviews)}
               />
               <MetricCard
-                icon={<CalendarCheck2 color="#047857" size={20} />}
+                icon={<CalendarCheck2 color="#0B6FE8" size={20} />}
                 label="Booking requests"
                 value={String(dashboardQuery.data.bookingRequests)}
               />
               <MetricCard
-                icon={<Clock3 color="#7C3AED" size={20} />}
+                icon={<Clock3 color="#536B91" size={20} />}
                 label="Active trips"
                 value={String(dashboardQuery.data.activeTrips)}
               />
             </View>
             <View style={styles.payoutCard}>
               <View style={styles.payoutIcon}>
-                <Banknote color="#047857" size={22} />
+                <Banknote color="#0B6FE8" size={22} />
               </View>
               <View style={styles.payoutCopy}>
                 <Text style={styles.payoutLabel}>Pending payout</Text>
@@ -152,6 +168,108 @@ export function HostDashboardScreen() {
       <HostBottomNavigation />
     </SafeAreaView>
   );
+}
+
+function HostSetupChecklist({
+  isLoading,
+  onRetry,
+  setup,
+}: {
+  isLoading: boolean;
+  onRetry: () => void;
+  setup: HostSetupStatus | undefined;
+}) {
+  if (isLoading) {
+    return (
+      <View style={styles.setupCard}>
+        <ActivityIndicator color="#0B6FE8" />
+        <Text style={styles.setupLoadingText}>Checking host setup</Text>
+      </View>
+    );
+  }
+
+  if (!setup) {
+    return (
+      <View style={styles.setupCard}>
+        <Text style={styles.setupTitle}>Finish your host setup</Text>
+        <Text style={styles.setupBody}>We could not load your setup progress.</Text>
+        <Pressable accessibilityRole="button" onPress={onRetry} style={styles.setupRetryButton}>
+          <Text style={styles.setupRetryText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.setupCard}>
+      <View style={styles.setupHeader}>
+        <View>
+          <Text style={styles.setupEyebrow}>Setup in progress</Text>
+          <Text style={styles.setupTitle}>Complete your host setup</Text>
+        </View>
+        <View style={styles.progressBadge}>
+          <Text style={styles.progressText}>{setup.completedTasks}/{setup.totalTasks}</Text>
+        </View>
+      </View>
+      <Text style={styles.setupBody}>Add your car, then complete identity and payout reviews before your listings can be activated and earnings processed.</Text>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${Math.max(8, (setup.completedTasks / setup.totalTasks) * 100)}%` }]} />
+      </View>
+      <View style={styles.checklist}>
+        {setup.tasks.map((task) => <SetupTask key={task.key} status={task.status} taskKey={task.key} />)}
+      </View>
+    </View>
+  );
+}
+
+function SetupTask({ status, taskKey }: { status: HostSetupStatus['tasks'][number]['status']; taskKey: HostSetupTaskKey }) {
+  const definition = setupTaskDefinition(taskKey, status);
+  const Icon = definition.icon;
+  const complete = status === 'completed';
+  const pendingReview = status === 'under_review';
+
+  return (
+    <View style={styles.setupTask}>
+      <View style={[styles.setupTaskIcon, complete && styles.setupTaskIconComplete]}>
+        {complete ? <CheckCircle2 color="#179447" size={21} /> : <Icon color="#0B6FE8" size={20} />}
+      </View>
+      <View style={styles.setupTaskCopy}>
+        <Text style={styles.setupTaskTitle}>{definition.title}</Text>
+        <Text style={styles.setupTaskStatus}>{complete ? 'Completed' : pendingReview ? 'Under review' : status === 'action_required' ? 'Action required' : 'Pending'}</Text>
+      </View>
+      {definition.action && !complete && !pendingReview ? (
+        <Pressable accessibilityLabel={`${definition.action} ${definition.title}`} accessibilityRole="button" onPress={definition.onPress} style={styles.setupAction}>
+          <Text style={styles.setupActionText}>{definition.action}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function setupTaskDefinition(key: HostSetupTaskKey, status: HostSetupStatus['tasks'][number]['status']) {
+  if (key === 'host_profile') return { icon: CheckCircle2, title: 'Create Host Profile' };
+  if (key === 'first_car') {
+    return {
+      icon: CarFront,
+      title: 'Add Your First Car',
+      action: status === 'under_review' ? undefined : 'Add Car',
+      onPress: () => router.push('/(host)/vehicles/new'),
+    };
+  }
+  if (key === 'identity_verification') {
+    return {
+      icon: ShieldCheck,
+      title: 'Verify Identity',
+      action: 'Verify',
+      onPress: () => router.push('/(host)/identity-verification'),
+    };
+  }
+  return {
+    icon: Landmark,
+    title: 'Set Up Payouts',
+    action: 'Set Up',
+    onPress: () => router.push('/(host)/payout-setup'),
+  };
 }
 
 function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -233,19 +351,40 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   title: { color: '#102550', fontSize: 23, fontWeight: '900' },
   content: { gap: 12, padding: 16, paddingBottom: 32 },
+  setupCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 12, padding: 14 },
+  setupHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  setupEyebrow: { color: '#0B6FE8', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  setupTitle: { color: '#102550', fontSize: 18, fontWeight: '900', marginTop: 2 },
+  setupBody: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18 },
+  setupLoadingText: { color: '#536B91', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  setupRetryButton: { alignSelf: 'flex-start', backgroundColor: '#EAF4FF', borderRadius: 9, minHeight: 38, justifyContent: 'center', paddingHorizontal: 12 },
+  setupRetryText: { color: '#0B6FE8', fontSize: 13, fontWeight: '900' },
+  progressBadge: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 999, justifyContent: 'center', minHeight: 30, minWidth: 38, paddingHorizontal: 8 },
+  progressText: { color: '#075BC8', fontSize: 12, fontWeight: '900' },
+  progressTrack: { backgroundColor: '#D6E8FF', borderRadius: 999, height: 6, overflow: 'hidden' },
+  progressFill: { backgroundColor: '#0B6FE8', borderRadius: 999, height: 6 },
+  checklist: { borderTopColor: '#D6E8FF', borderTopWidth: 1 },
+  setupTask: { alignItems: 'center', borderBottomColor: '#EAF4FF', borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 58, paddingVertical: 8 },
+  setupTaskIcon: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 10, height: 38, justifyContent: 'center', width: 38 },
+  setupTaskIconComplete: { backgroundColor: '#E8F8EE' },
+  setupTaskCopy: { flex: 1, minWidth: 0 },
+  setupTaskTitle: { color: '#102550', fontSize: 14, fontWeight: '800' },
+  setupTaskStatus: { color: '#536B91', fontSize: 12, fontWeight: '600', marginTop: 1 },
+  setupAction: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 9, justifyContent: 'center', minHeight: 38, paddingHorizontal: 11 },
+  setupActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   intro: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 6, minHeight: 128, padding: 13, width: '48.5%' },
   metricIcon: { alignItems: 'center', backgroundColor: '#F3F9FF', borderRadius: 10, height: 36, justifyContent: 'center', width: 36 },
   metricLabel: { color: '#536B91', fontSize: 12, fontWeight: '700', lineHeight: 16 },
   metricValue: { color: '#102550', fontSize: 25, fontWeight: '900' },
-  payoutCard: { alignItems: 'center', backgroundColor: '#ECFDF3', borderColor: '#BBF7D0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 14 },
+  payoutCard: { alignItems: 'center', backgroundColor: '#EAF4FF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 14 },
   payoutIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 11, height: 42, justifyContent: 'center', width: 42 },
   payoutCopy: { flex: 1 },
-  payoutLabel: { color: '#166534', fontSize: 12, fontWeight: '800' },
-  payoutValue: { color: '#14532D', fontSize: 20, fontWeight: '900', marginTop: 2 },
-  payoutAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BBF7D0', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 12 },
-  payoutActionText: { color: '#047857', fontSize: 13, fontWeight: '900' },
+  payoutLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' },
+  payoutValue: { color: '#102550', fontSize: 20, fontWeight: '900', marginTop: 2 },
+  payoutAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 12 },
+  payoutActionText: { color: '#0B6FE8', fontSize: 13, fontWeight: '900' },
   sectionTitle: { color: '#102550', fontSize: 17, fontWeight: '900', marginTop: 4 },
   actionRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 76, padding: 13 },
   actionIcon: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 10, height: 40, justifyContent: 'center', width: 40 },

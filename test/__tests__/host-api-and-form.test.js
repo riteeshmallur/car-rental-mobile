@@ -81,6 +81,9 @@ describe('host mode, add vehicle, and booking actions', () => {
 
   it('uses live host APIs for dashboard, drafts, availability, and booking decisions', () => {
     hostsApi.dashboard();
+    hostsApi.setupStatus();
+    hostsApi.submitIdentityVerification({ documentType: 'driving_licence', documentNumber: 'KA0120261234' });
+    hostsApi.setupPayoutAccount({ method: 'upi', accountHolderName: 'Ava Patel', upiId: 'ava@upi' });
     hostsApi.listBookings();
     hostsApi.status();
     hostsApi.saveOnboardingDraft({ activeStepIndex: 1, values: { personalInfo: { firstName: 'Ava' } } });
@@ -95,13 +98,35 @@ describe('host mode, add vehicle, and booking actions', () => {
     bookingsApi.reject('booking-1', { reason: 'unavailable' });
 
     expect(mockApiRequest).toHaveBeenNthCalledWith(1, { method: 'GET', url: '/hosts/me/dashboard' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(2, { method: 'GET', url: '/hosts/me/bookings' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(3, { method: 'GET', url: '/hosts/me/status' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, expect.objectContaining({ method: 'PATCH', url: '/hosts/me/onboarding-draft' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(5, expect.objectContaining({ method: 'POST', url: '/vehicles' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(7, expect.objectContaining({ method: 'POST', url: '/vehicles/vehicle-1/blocks' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(11, { method: 'POST', url: '/vehicles/vehicle-1/submit' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(12, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/approve' }));
-    expect(mockApiRequest).toHaveBeenNthCalledWith(13, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/reject' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, { method: 'GET', url: '/hosts/me/setup-status' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, expect.objectContaining({ method: 'PATCH', url: '/hosts/me/identity-verification' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, expect.objectContaining({ method: 'PATCH', url: '/hosts/me/payout-account' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(5, { method: 'GET', url: '/hosts/me/bookings' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(6, { method: 'GET', url: '/hosts/me/status' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(7, expect.objectContaining({ method: 'PATCH', url: '/hosts/me/onboarding-draft' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(8, expect.objectContaining({ method: 'POST', url: '/vehicles' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(10, expect.objectContaining({ method: 'POST', url: '/vehicles/vehicle-1/blocks' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(14, { method: 'POST', url: '/vehicles/vehicle-1/submit' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(15, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/approve' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(16, expect.objectContaining({ method: 'POST', url: '/bookings/booking-1/reject' }));
+  });
+
+  it('uploads vehicle documents to the existing draft rather than keeping document state locally', async () => {
+    const originalFetch = global.fetch;
+    const OriginalFormData = global.FormData;
+    global.FormData = class MockFormData {
+      append = jest.fn();
+    };
+    global.fetch = jest.fn().mockResolvedValue({ blob: () => Promise.resolve(new Blob(['document'])) });
+
+    await vehiclesApi.uploadDocument('vehicle-1', 'rc', 'blob:document-image');
+
+    expect(mockApiRequest).toHaveBeenCalledWith(expect.objectContaining({
+      method: 'POST',
+      url: '/vehicles/vehicle-1/documents/rc',
+      headers: expect.objectContaining({ 'Content-Type': 'multipart/form-data' }),
+    }));
+    global.fetch = originalFetch;
+    global.FormData = OriginalFormData;
   });
 });
