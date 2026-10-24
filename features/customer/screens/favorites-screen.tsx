@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ArrowLeft, CarFront, Heart, MapPin, Star } from 'lucide-react-native';
+import { CarFront, Heart, MapPin, Star } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
-import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   rentersApi,
   type RenterFavourite,
@@ -27,7 +27,6 @@ const pageSize = 20;
 const favouritesQueryKey = ['renter', 'favourites', 'pages'] as const;
 
 export function FavoritesScreen() {
-  const goBack = useSafeBack({ fallback: '/(customer)/profile' });
   const queryClient = useQueryClient();
   const favouritesQuery = useInfiniteQuery({
     initialPageParam: 1,
@@ -84,14 +83,6 @@ export function FavoritesScreen() {
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            onPress={goBack}
-            style={styles.backButton}
-          >
-            <ArrowLeft color={colors.ink} size={22} />
-          </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Favorites</Text>
             <Text style={styles.subtitle}>Vehicles you have saved</Text>
@@ -158,6 +149,7 @@ export function FavoritesScreen() {
           />
         )}
       </View>
+      <BottomNavigation />
     </SafeAreaView>
   );
 }
@@ -276,8 +268,7 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: 18, paddingTop: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
-  backButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  header: { marginBottom: 18 },
   headerCopy: { flex: 1, gap: 2 },
   title: { color: colors.ink, fontSize: 24, fontWeight: '900' },
   subtitle: { color: colors.muted, fontSize: 14, fontWeight: '700' },

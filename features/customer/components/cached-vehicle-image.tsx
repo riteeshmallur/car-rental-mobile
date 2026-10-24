@@ -5,6 +5,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 type CachedVehicleImageProps = {
   accessibilityLabel?: string;
   contentFit?: ImageContentFit;
+  onError?: () => void;
   style: StyleProp<ViewStyle>;
   uri: string;
 };
@@ -12,6 +13,7 @@ type CachedVehicleImageProps = {
 export function CachedVehicleImage({
   accessibilityLabel,
   contentFit = 'cover',
+  onError,
   style,
   uri,
 }: CachedVehicleImageProps) {
@@ -33,7 +35,10 @@ export function CachedVehicleImage({
         cachePolicy="memory-disk"
         accessible={false}
         contentFit={contentFit}
-        onError={() => setLoading(false)}
+        onError={() => {
+          setLoading(false);
+          onError?.();
+        }}
         onLoadEnd={() => setLoading(false)}
         source={{ uri }}
         style={styles.image}

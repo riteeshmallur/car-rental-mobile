@@ -1,13 +1,14 @@
 import {
   Briefcase,
+  Heart,
   Home,
-  UserRound,
+  Menu,
   type LucideIcon,
 } from 'lucide-react-native';
 import { type Href, router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, shadows } from '@/utils/theme';
+import { shadows } from '@/utils/theme';
 
 type NavItem = {
   href: Href;
@@ -18,8 +19,9 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: '/(customer)/home', path: '/home', icon: Home, label: 'Home' },
-  { href: '/(customer)/trips', path: '/trips', icon: Briefcase, label: 'Trips' },
-  { href: '/(customer)/profile', path: '/profile', icon: UserRound, label: 'Profile' },
+  { href: '/(customer)/trips', path: '/trips', icon: Briefcase, label: 'My Bookings' },
+  { href: '/(customer)/favorites', path: '/favorites', icon: Heart, label: 'Favourites' },
+  { href: '/(customer)/profile', path: '/profile', icon: Menu, label: 'More' },
 ];
 
 export function BottomNavigation() {
@@ -27,50 +29,64 @@ export function BottomNavigation() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {navItems.map((item) => {
-        const isActive = pathname === item.path;
-        const Icon = item.icon;
+    <View style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <View style={styles.container}>
+        {navItems.map((item) => {
+          const isActive = pathname === item.path;
+          const Icon = item.icon;
 
-        return (
-          <Pressable
-            accessibilityLabel={item.label}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            key={item.path}
-            onPress={() => router.replace(item.href)}
-            style={({ pressed }) => [
-              styles.item,
-              isActive && styles.itemActive,
-              pressed && styles.itemPressed,
-            ]}
-          >
-            <Icon
-              color={isActive ? colors.brand : colors.muted}
-              fill={isActive && item.label === 'Home' ? colors.brand : 'transparent'}
-              size={21}
-            />
-            <Text style={[styles.label, isActive && styles.labelActive]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              accessibilityLabel={item.label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              key={item.path}
+              onPress={() => router.replace(item.href)}
+              style={({ pressed }) => [
+                styles.item,
+                isActive && styles.itemActive,
+                pressed && styles.itemPressed,
+              ]}
+            >
+              <Icon
+                color={isActive ? HOME_BLUE : HOME_MUTED}
+                fill={isActive && item.label === 'Home' ? HOME_BLUE : 'transparent'}
+                size={22}
+              />
+              <Text style={[styles.label, isActive && styles.labelActive]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
+const HOME_BLUE = '#156DF8';
+const HOME_MUTED = '#607694';
+
 const styles = StyleSheet.create({
-  container: {
+  shell: {
     flexShrink: 0,
-    minHeight: 74,
+    alignItems: 'center',
+    backgroundColor: '#F4FAFF',
+    paddingTop: 8,
+    paddingHorizontal: 18,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 560,
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingTop: 8,
+    borderWidth: 1,
+    borderColor: '#D6E8F8',
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 7,
     paddingHorizontal: 8,
     ...shadows.floating,
   },
@@ -89,11 +105,11 @@ const styles = StyleSheet.create({
   },
   label: {
     textAlign: 'center',
-    color: colors.muted,
+    color: HOME_MUTED,
     fontSize: 11,
     fontWeight: '800',
   },
   labelActive: {
-    color: colors.brand,
+    color: HOME_BLUE,
   },
 });

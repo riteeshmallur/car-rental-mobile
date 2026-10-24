@@ -1,9 +1,8 @@
 import {
-  ArrowLeftRight,
+  ArrowRight,
   CalendarDays,
-  ChevronRight,
-  Clock,
-  Search,
+  ChevronDown,
+  MapPin,
 } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -14,7 +13,9 @@ import {
 } from '@/features/customer/utils/rental-window';
 import { type DateTimeField } from '@/features/customer/components/date-time-picker-sheet';
 import { type LocationSearchResult } from '@/types/location';
-import { colors, radii, shadows } from '@/utils/theme';
+
+const HOME_BLUE = '#156DF8';
+const HOME_NAVY = '#0D275F';
 
 type RentalSearchCardProps = {
   location?: LocationSearchResult | null;
@@ -35,13 +36,8 @@ export function RentalSearchCard({
   rentalWindow,
   validationError,
 }: RentalSearchCardProps) {
-  const rentalDays = Math.max(
-    1,
-    Math.ceil(
-      (rentalWindow.returnAt.getTime() - rentalWindow.pickupAt.getTime()) /
-        (24 * 60 * 60 * 1000),
-    ),
-  );
+  const locationName = location?.city || location?.name || 'Bengaluru';
+  const locationCity = location?.city || 'Bengaluru';
 
   return (
     <View style={styles.container}>
@@ -52,13 +48,17 @@ export function RentalSearchCard({
         onPress={onLocationPress}
         style={({ pressed }) => [styles.locationField, pressed && styles.pressed]}
       >
-        <Search color={colors.muted} size={22} />
-        <Text numberOfLines={1} style={styles.locationText}>
-          {location?.name || 'Where would you like to pick up?'}
-        </Text>
+        <MapPin color={HOME_BLUE} fill={HOME_BLUE} size={27} />
+        <View style={styles.locationCopy}>
+          <Text numberOfLines={1} style={styles.locationText}>{locationName}</Text>
+          <Text numberOfLines={1} style={styles.locationHint}>
+            Pick up anywhere in {locationCity}
+          </Text>
+        </View>
+        <ChevronDown color={HOME_NAVY} size={24} />
       </Pressable>
 
-      <View style={styles.rentalCard}>
+      <View style={styles.datePanel}>
         <View style={styles.dateRow}>
           <RentalDate
             date={formatDate(rentalWindow.pickupAt)}
@@ -68,37 +68,17 @@ export function RentalSearchCard({
             time={formatTime(rentalWindow.pickupAt)}
           />
 
-          <View style={styles.swapColumn}>
-            <View style={styles.swapLine} />
-            <View style={styles.swapButton}>
-              <ArrowLeftRight color={colors.muted} size={18} />
-            </View>
-            <View style={styles.swapLine} />
-          </View>
+          <View accessibilityElementsHidden style={styles.dateDivider} />
 
           <RentalDate
             date={formatDate(rentalWindow.returnAt)}
-            label="Drop-off"
+            label="Return"
             onDatePress={() => onDateTimeFieldPress('returnDate')}
             onTimePress={() => onDateTimeFieldPress('returnTime')}
             time={formatTime(rentalWindow.returnAt)}
           />
         </View>
 
-        <Pressable
-          accessibilityHint="Opens the pickup and return date picker."
-          accessibilityLabel={`Rental duration, ${rentalDays} ${rentalDays === 1 ? 'day' : 'days'}`}
-          accessibilityRole="button"
-          onPress={() => onDateTimeFieldPress('returnDate')}
-          style={({ pressed }) => [styles.durationRow, pressed && styles.pressed]}
-        >
-          <Clock color={colors.muted} size={19} />
-          <Text style={styles.durationLabel}>Rental duration:</Text>
-          <Text style={styles.durationValue}>
-            {rentalDays} {rentalDays === 1 ? 'Day' : 'Days'}
-          </Text>
-          <ChevronRight color={colors.text} size={20} />
-        </Pressable>
       </View>
 
       {validationError ? (
@@ -124,8 +104,8 @@ export function RentalSearchCard({
           <ActivityIndicator accessibilityLabel="Searching available cars" color="#FFFFFF" />
         ) : (
           <>
-            <Search color={colors.surface} size={20} />
             <Text style={styles.searchButtonText}>Search Cars</Text>
+            <ArrowRight color="#FFFFFF" size={25} />
           </>
         )}
       </Pressable>
@@ -148,159 +128,155 @@ function RentalDate({
 }) {
   return (
     <View style={styles.dateBlock}>
-      <View style={styles.dateHeading}>
-        <View style={styles.calendarIcon}>
-          <CalendarDays color={colors.brand} size={20} />
+      <View style={styles.dateContent}>
+        <View accessibilityElementsHidden style={styles.calendarIcon}>
+          <CalendarDays color={HOME_BLUE} size={21} />
         </View>
-        <Text style={styles.dateLabel}>{label}</Text>
+        <View style={styles.dateCopy}>
+          <Pressable
+            accessibilityLabel={`${label} date, ${date}`}
+            accessibilityRole="button"
+            onPress={onDatePress}
+            style={({ pressed }) => [styles.datePressable, pressed && styles.pressed]}
+          >
+            <Text numberOfLines={1} style={styles.dateLabel}>{label}</Text>
+            <Text numberOfLines={1} style={styles.dateValue}>{date}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`${label} time, ${time}`}
+            accessibilityRole="button"
+            onPress={onTimePress}
+            style={({ pressed }) => [styles.timePressable, pressed && styles.pressed]}
+          >
+            <Text numberOfLines={1} style={styles.timeValue}>{time}</Text>
+          </Pressable>
+        </View>
       </View>
-      <Pressable
-        accessibilityLabel={`${label} date, ${date}`}
-        accessibilityRole="button"
-        onPress={onDatePress}
-      >
-        <Text style={styles.dateValue}>{date}</Text>
-      </Pressable>
-      <Pressable
-        accessibilityLabel={`${label} time, ${time}`}
-        accessibilityRole="button"
-        onPress={onTimePress}
-      >
-        <Text style={styles.timeValue}>{time}</Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 14,
+    gap: 8,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    padding: 8,
+    shadowColor: '#72A7E8',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 4,
   },
   locationField: {
-    minHeight: 58,
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    borderRadius: radii.md,
+    gap: 13,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: '#CDE3FF',
+    backgroundColor: '#F8FCFF',
     paddingHorizontal: 16,
-    ...shadows.card,
   },
   pressed: {
     opacity: 0.76,
   },
   locationText: {
     flex: 1,
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
+    color: HOME_NAVY,
+    fontSize: 17,
+    fontWeight: '800',
   },
-  rentalCard: {
+  locationCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  locationHint: {
+    color: '#7182A3',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  datePanel: {
     overflow: 'hidden',
-    borderRadius: radii.lg,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: colors.brandBorder,
-    backgroundColor: colors.surface,
-    ...shadows.card,
+    borderColor: '#D5E8FF',
+    backgroundColor: '#FFFFFF',
   },
   dateRow: {
-    minHeight: 140,
+    minHeight: 88,
     flexDirection: 'row',
     alignItems: 'stretch',
-    paddingHorizontal: 14,
-    paddingVertical: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   dateBlock: {
     minWidth: 0,
     flex: 1,
     justifyContent: 'center',
-    gap: 6,
   },
-  dateHeading: {
-    flexWrap: 'wrap',
+  dateContent: {
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
+  },
+  dateCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  datePressable: { minHeight: 42, justifyContent: 'center', gap: 1 },
+  timePressable: {
+    minHeight: 38,
+    justifyContent: 'center',
   },
   calendarIcon: {
-    height: 36,
-    width: 36,
+    height: 26,
+    width: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.brandBorder,
-    backgroundColor: colors.brandSoft,
+    borderRadius: 13,
+    backgroundColor: '#EBF5FF',
   },
   dateLabel: {
-    color: colors.text,
+    color: '#7081A2',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   dateValue: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
+    color: HOME_NAVY,
+    fontSize: 14,
+    fontWeight: '800',
   },
   timeValue: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#425776',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  swapColumn: {
-    width: 46,
-    alignItems: 'center',
-  },
-  swapLine: {
-    flex: 1,
+  dateDivider: {
+    alignSelf: 'stretch',
     width: 1,
-    backgroundColor: colors.brandSoft,
-  },
-  swapButton: {
-    height: 38,
-    width: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  durationRow: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderTopWidth: 1,
-    borderTopColor: colors.brandSoft,
-    marginHorizontal: 14,
-  },
-  durationLabel: {
-    flexShrink: 1,
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  durationValue: {
-    flex: 1,
-    color: colors.brand,
-    fontSize: 13,
-    fontWeight: '900',
+    marginHorizontal: 6,
+    backgroundColor: '#D5E8FF',
   },
   searchButton: {
-    minHeight: 52,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: radii.md,
-    backgroundColor: colors.brand,
-    ...shadows.card,
+    borderRadius: 16,
+    backgroundColor: HOME_BLUE,
+    shadowColor: HOME_BLUE,
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 3,
   },
   validationError: {
-    color: colors.error,
+    color: '#C6312D',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -308,11 +284,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   searchButtonPressed: {
-    backgroundColor: colors.brandPressed,
+    backgroundColor: '#095BE2',
   },
   searchButtonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '900',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,19 +12,57 @@ import {
   DateTimePickerSheet,
   type DateTimeField,
 } from '@/features/customer/components/date-time-picker-sheet';
-import { FeaturedCarList } from '@/features/customer/components/featured-car-list';
-import { PromotionalSection } from '@/features/customer/components/promotional-section';
 import { RentalSearchCard } from '@/features/customer/components/rental-search-card';
-import { HostEntryCard } from '@/features/host/components/host-entry-card';
-import { useHostStatus } from '@/features/host/hooks/use-host-status';
-import { getHostEntryCopy, type HostEntryAction } from '@/features/host/utils/host-entry';
+import {
+  HomeCategorySection,
+  type HomeCategory,
+} from '@/features/home/components/home-category-section';
+import {
+  HomeIntentCarousel,
+  type HomeIntent,
+} from '@/features/home/components/home-intent-carousel';
+import { HomeHero } from '@/features/home/components/home-hero';
 import { useAuthStore } from '@/store/auth-store';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import {
   getRentalWindowError,
 } from '@/features/customer/utils/rental-window';
-import { colors } from '@/utils/theme';
+import {
+  toSearchRouteParams,
+  type SearchFilters,
+} from '@/features/customer/utils/search-route-state';
+import { type VehicleSearchSort } from '@/types/car';
+
+const homeIntents: HomeIntent[] = [
+  {
+    id: 'weekend',
+    title: 'Drive More\nOut of Bengaluru',
+    description: 'Premium cars for city drives, weekend escapes and everything in between.',
+    action: 'Explore Now',
+    filters: { minSeats: 5 },
+    sort: 'recommended',
+    vehicleType: 'suv',
+  },
+  {
+    id: 'city',
+    title: 'Made for city drives',
+    description: 'Comfortable cars for everyday plans.',
+    action: 'Explore city cars',
+    filters: { vehicleType: 'hatchback' },
+    sort: 'distance',
+    vehicleType: 'hatchback',
+  },
+  {
+    id: 'space',
+    title: 'More room for every plan',
+    description: 'Find spacious cars for people and luggage.',
+    action: 'View spacious cars',
+    filters: { minSeats: 7 },
+    sort: 'recommended',
+    vehicleType: 'suv',
+  },
+];
 
 export function HomeScreen() {
   const user = useAuthStore((state) => state.user);
@@ -37,7 +75,6 @@ export function HomeScreen() {
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const hostStatusQuery = useHostStatus();
   const closePickerBeforeBack = useCallback(() => {
     if (!activeDateTimeField) {
       return false;
@@ -80,16 +117,17 @@ export function HomeScreen() {
   });
 
   const availableCars = carsQuery.data ?? [];
-  const popularCars = useMemo(() => availableCars.slice(0, 3), [availableCars]);
   const isRefreshing = defaultLocationQuery.isFetching || carsQuery.isFetching;
 
   const refreshHome = () => {
     void defaultLocationQuery.refetch();
     void carsQuery.refetch();
-    void hostStatusQuery.refetch();
   };
 
-  const searchCars = () => {
+  const openSearchResults = (
+    filters: SearchFilters = {},
+    sort: VehicleSearchSort = 'recommended',
+  ) => {
     if (!location) {
       setValidationError('Select a pickup location.');
       return;
@@ -105,46 +143,35 @@ export function HomeScreen() {
     setValidationError(null);
     router.push({
       pathname: '/(customer)/results',
-      params: {
+      params: toSearchRouteParams({
         locationId: location.id,
         locationName: location.name,
         locationCity: location.city,
         pickupDateTime: rentalWindow.pickupAt.toISOString(),
         returnDateTime: rentalWindow.returnAt.toISOString(),
-      },
+        filters,
+        sort,
+      }),
     });
   };
 
-  const openVehicle = (vehicleId: string) => {
-    router.push({
-      pathname: '/(customer)/vehicles/[id]',
-      params: {
-        id: vehicleId,
-        locationId: location?.id ?? '',
-        origin: 'home',
-        pickupDateTime: rentalWindow.pickupAt.toISOString(),
-        returnDateTime: rentalWindow.returnAt.toISOString(),
-      },
-    });
-  };
+  const searchCars = () => openSearchResults();
 
-  const openHostEntry = (action: HostEntryAction) => {
-    if (action === 'onboarding') {
-      router.push('/(customer)/become-host');
+  const handleIntentPress = (intent: HomeIntent) => {
+    const pickupTime = rentalWindow.pickupAt?.getTime();
+    const returnTime = rentalWindow.returnAt?.getTime();
+
+    if (!Number.isFinite(pickupTime) || !Number.isFinite(returnTime)) {
+      setActiveDateTimeField('pickupDate');
       return;
     }
 
-    if (action === 'add_vehicle') {
-      router.push('/(host)/vehicles/new');
-      return;
-    }
-
-    router.replace('/(host)/dashboard');
+    openSearchResults(intent.filters, intent.sort);
   };
 
-  const hostEntryCopy = hostStatusQuery.data
-    ? getHostEntryCopy('home', hostStatusQuery.data.status)
-    : undefined;
+  const handleCategoryPress = (category: HomeCategory) => {
+    openSearchResults(category.filters, category.sort);
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -156,45 +183,52 @@ export function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <CustomerHeader
-          user={user}
-        />
-
-        <RentalSearchCard
-          isSearching={carsQuery.isFetching}
-          location={location}
-          onDateTimeFieldPress={setActiveDateTimeField}
-          onLocationPress={() => router.push('/(customer)/location')}
-          onSearch={searchCars}
-          rentalWindow={rentalWindow}
-          validationError={validationError}
-        />
-
-        {carsQuery.isError ? (
-          <View style={styles.inlineError}>
-            <Text style={styles.inlineErrorTitle}>Cars could not be loaded</Text>
-            <Text style={styles.inlineErrorBody}>
-              Pull to refresh or try search again when the backend is reachable.
-            </Text>
+        <View style={styles.mobileContent}>
+          <View style={styles.heroShell}>
+            <HomeHero
+              header={
+                <CustomerHeader
+                  onNotificationsPress={() => router.push('/(customer)/notifications')}
+                  onProfilePress={() => router.push('/(customer)/profile')}
+                  user={user}
+                />
+              }
+            />
           </View>
-        ) : null}
 
-        <FeaturedCarList
-          cars={popularCars}
-          isLoading={carsQuery.isLoading || defaultLocationQuery.isLoading}
-          onCarPress={openVehicle}
-          onViewAll={searchCars}
-          title="Popular cars"
-          variant="popular"
-        />
+          <View style={styles.searchCardOffset}>
+            <RentalSearchCard
+              isSearching={carsQuery.isFetching}
+              location={location}
+              onDateTimeFieldPress={setActiveDateTimeField}
+              onLocationPress={() => router.push('/(customer)/location')}
+              onSearch={searchCars}
+              rentalWindow={rentalWindow}
+              validationError={validationError}
+            />
+          </View>
 
-        <HostEntryCard
-          copy={hostEntryCopy}
-          isLoading={hostStatusQuery.isLoading}
-          onPress={hostEntryCopy ? () => openHostEntry(hostEntryCopy.action) : undefined}
-        />
+          {carsQuery.isError ? (
+            <View style={styles.inlineError}>
+              <Text style={styles.inlineErrorTitle}>Cars could not be loaded</Text>
+              <Text style={styles.inlineErrorBody}>
+                Pull to refresh or try search again when the backend is reachable.
+              </Text>
+            </View>
+          ) : null}
 
-        <PromotionalSection />
+          <HomeIntentCarousel
+            cars={availableCars}
+            intents={homeIntents}
+            onIntentPress={handleIntentPress}
+          />
+
+          <HomeCategorySection
+            cars={availableCars}
+            onCategoryPress={handleCategoryPress}
+            onSeeAll={searchCars}
+          />
+        </View>
       </ScrollView>
       <DateTimePickerSheet
         field={activeDateTimeField}
@@ -211,17 +245,32 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F4FAFF',
   },
   scrollContent: {
-    gap: 20,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 24,
+    alignItems: 'center',
+    paddingBottom: 30,
   },
   scroll: {
     flex: 1,
     minHeight: 0,
+  },
+  mobileContent: {
+    width: '100%',
+    maxWidth: 560,
+    gap: 14,
+    paddingHorizontal: 18,
+  },
+  heroShell: {
+    marginHorizontal: -18,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 38,
+    borderBottomRightRadius: 38,
+    backgroundColor: '#EAF6FF',
+  },
+  searchCardOffset: {
+    marginTop: -44,
+    zIndex: 2,
   },
   inlineError: {
     gap: 4,
