@@ -45,7 +45,7 @@ export function HostDashboardScreen() {
               onPress={goBack}
               style={styles.iconButton}
             >
-              <ArrowLeft color="#0F172A" size={21} />
+              <ArrowLeft color="#102550" size={21} />
             </Pressable>
             <View>
               <Text style={styles.eyebrow}>Host</Text>
@@ -53,7 +53,7 @@ export function HostDashboardScreen() {
             </View>
           </View>
           {dashboardQuery.isFetching ? (
-            <ActivityIndicator color="#0B4FE8" />
+            <ActivityIndicator color="#0B6FE8" />
           ) : (
             <Pressable
               accessibilityLabel="Refresh dashboard"
@@ -61,7 +61,7 @@ export function HostDashboardScreen() {
               onPress={() => void dashboardQuery.refetch()}
               style={styles.iconButton}
             >
-              <RefreshCw color="#0F172A" size={20} />
+              <RefreshCw color="#102550" size={20} />
             </Pressable>
           )}
         </View>
@@ -89,7 +89,7 @@ export function HostDashboardScreen() {
             <Text style={styles.intro}>A live view of your listing and booking activity.</Text>
             <View style={styles.metrics}>
               <MetricCard
-                icon={<CarFront color="#0B4FE8" size={20} />}
+                icon={<CarFront color="#0B6FE8" size={20} />}
                 label="Active listings"
                 value={String(dashboardQuery.data.activeListings)}
               />
@@ -130,19 +130,19 @@ export function HostDashboardScreen() {
             <Text style={styles.sectionTitle}>Manage host activity</Text>
             <ActionRow
               body="Publish, pause, and manage availability."
-              icon={<CarFront color="#0B4FE8" size={20} />}
+              icon={<CarFront color="#0B6FE8" size={20} />}
               onPress={() => router.push('/(host)/cars')}
               title="My Cars"
             />
             <ActionRow
               body="Review pending requests and current trips."
-              icon={<CalendarCheck2 color="#0B4FE8" size={20} />}
+              icon={<CalendarCheck2 color="#0B6FE8" size={20} />}
               onPress={() => router.push('/(host)/bookings')}
               title="Bookings"
             />
             <ActionRow
               body="Review completed earnings by booking."
-              icon={<Banknote color="#0B4FE8" size={20} />}
+              icon={<Banknote color="#0B6FE8" size={20} />}
               onPress={() => router.push('/(host)/earnings')}
               title="Earnings"
             />
@@ -196,7 +196,7 @@ function ActionRow({
 function LoadingState() {
   return (
     <View style={styles.state}>
-      <ActivityIndicator color="#0B4FE8" />
+      <ActivityIndicator color="#0B6FE8" />
       <Text style={styles.stateBody}>Loading dashboard</Text>
     </View>
   );
@@ -225,20 +225,20 @@ function StateMessage({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: '#F7FAFF', flex: 1 },
+  safeArea: { backgroundColor: '#F3F9FF', flex: 1 },
   screen: { flex: 1 },
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76, paddingHorizontal: 16 },
   headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  eyebrow: { color: '#64748B', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: '#0F172A', fontSize: 23, fontWeight: '900' },
+  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  title: { color: '#102550', fontSize: 23, fontWeight: '900' },
   content: { gap: 12, padding: 16, paddingBottom: 32 },
-  intro: { color: '#64748B', fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  intro: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metricCard: { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 14, borderWidth: 1, gap: 6, minHeight: 128, padding: 13, width: '48.5%' },
-  metricIcon: { alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 10, height: 36, justifyContent: 'center', width: 36 },
-  metricLabel: { color: '#64748B', fontSize: 12, fontWeight: '700', lineHeight: 16 },
-  metricValue: { color: '#0F172A', fontSize: 25, fontWeight: '900' },
+  metricCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 6, minHeight: 128, padding: 13, width: '48.5%' },
+  metricIcon: { alignItems: 'center', backgroundColor: '#F3F9FF', borderRadius: 10, height: 36, justifyContent: 'center', width: 36 },
+  metricLabel: { color: '#536B91', fontSize: 12, fontWeight: '700', lineHeight: 16 },
+  metricValue: { color: '#102550', fontSize: 25, fontWeight: '900' },
   payoutCard: { alignItems: 'center', backgroundColor: '#ECFDF3', borderColor: '#BBF7D0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 14 },
   payoutIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 11, height: 42, justifyContent: 'center', width: 42 },
   payoutCopy: { flex: 1 },
@@ -246,17 +246,17 @@ const styles = StyleSheet.create({
   payoutValue: { color: '#14532D', fontSize: 20, fontWeight: '900', marginTop: 2 },
   payoutAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BBF7D0', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 12 },
   payoutActionText: { color: '#047857', fontSize: 13, fontWeight: '900' },
-  sectionTitle: { color: '#0F172A', fontSize: 17, fontWeight: '900', marginTop: 4 },
-  actionRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 76, padding: 13 },
-  actionIcon: { alignItems: 'center', backgroundColor: '#EFF6FF', borderRadius: 10, height: 40, justifyContent: 'center', width: 40 },
+  sectionTitle: { color: '#102550', fontSize: 17, fontWeight: '900', marginTop: 4 },
+  actionRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 76, padding: 13 },
+  actionIcon: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 10, height: 40, justifyContent: 'center', width: 40 },
   actionCopy: { flex: 1, minWidth: 0 },
-  actionTitle: { color: '#0F172A', fontSize: 15, fontWeight: '900' },
-  actionBody: { color: '#64748B', fontSize: 12, fontWeight: '600', lineHeight: 17, marginTop: 2 },
-  chevron: { color: '#64748B', fontSize: 28, lineHeight: 28 },
+  actionTitle: { color: '#102550', fontSize: 15, fontWeight: '900' },
+  actionBody: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 17, marginTop: 2 },
+  chevron: { color: '#536B91', fontSize: 28, lineHeight: 28 },
   pressed: { opacity: 0.78 },
   state: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 28 },
-  stateTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900', textAlign: 'center' },
-  stateBody: { color: '#64748B', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
-  retryButton: { alignItems: 'center', backgroundColor: '#0B4FE8', borderRadius: 12, justifyContent: 'center', minHeight: 46, minWidth: 124, paddingHorizontal: 16 },
+  stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
+  retryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', minHeight: 46, minWidth: 124, paddingHorizontal: 16 },
   retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 });

@@ -25,7 +25,7 @@ export function CustomerPlaceholderScreen({ title }: CustomerPlaceholderScreenPr
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   container: {
     flex: 1,
@@ -36,12 +36,12 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 28,
     fontWeight: '900',
   },
   body: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',

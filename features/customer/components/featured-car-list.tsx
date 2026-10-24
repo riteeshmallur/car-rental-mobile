@@ -36,7 +36,7 @@ export function FeaturedCarList({
 
       {isLoading ? (
         <View style={styles.loadingRow}>
-          <ActivityIndicator accessibilityLabel="Loading cars" color="#111827" />
+          <ActivityIndicator accessibilityLabel="Loading cars" color="#102550" />
           <Text style={styles.loadingText}>Loading cars</Text>
         </View>
       ) : cars.length === 0 ? (
@@ -92,10 +92,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
   },
   loadingText: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
   },

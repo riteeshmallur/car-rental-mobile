@@ -31,7 +31,7 @@ export function AddVehicleHeader({
           onPress={onBack}
           style={[styles.iconButton, disabled && styles.iconButtonDisabled]}
         >
-          <ArrowLeft color="#111827" size={22} />
+          <ArrowLeft color="#102550" size={22} />
         </Pressable>
         <View style={styles.titleGroup}>
           <Text accessibilityRole="header" style={styles.title}>Add vehicle</Text>
@@ -105,7 +105,7 @@ export function AddVehicleHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
     paddingHorizontal: 16,
   },
   headerRow: {
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E1E7F0',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
   },
   iconButtonDisabled: {
@@ -134,14 +134,14 @@ const styles = StyleSheet.create({
     width: 44,
   },
   title: {
-    color: '#101A35',
+    color: '#102550',
     fontSize: 20,
     fontWeight: '900',
     lineHeight: 25,
   },
   subtitle: {
     marginTop: 1,
-    color: '#6B7892',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     left: 5,
     right: 5,
     height: 2,
-    backgroundColor: '#DDE5F0',
+    backgroundColor: '#D6E8FF',
   },
   progressDot: {
     height: 14,
@@ -166,8 +166,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: '#DDE5F0',
-    backgroundColor: '#F7FAFF',
+    borderColor: '#D6E8FF',
+    backgroundColor: '#F3F9FF',
   },
   progressDotCurrent: {
     height: 16,

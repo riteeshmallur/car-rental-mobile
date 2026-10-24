@@ -245,7 +245,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4FAFF',
+    backgroundColor: '#F3F9FF',
   },
   scrollContent: {
     alignItems: 'center',
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 38,
     borderBottomRightRadius: 38,
-    backgroundColor: '#EAF6FF',
+    backgroundColor: '#EAF4FF',
   },
   searchCardOffset: {
     marginTop: -44,

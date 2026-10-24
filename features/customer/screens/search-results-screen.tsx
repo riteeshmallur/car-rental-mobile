@@ -324,7 +324,7 @@ export function SearchResultsScreen() {
             onPress={goBack}
             style={styles.iconButton}
           >
-            <ArrowLeft color="#111827" size={22} />
+            <ArrowLeft color="#102550" size={22} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Available cars</Text>
@@ -439,7 +439,7 @@ export function SearchResultsScreen() {
             ListFooterComponent={
               vehiclesQuery.isFetchingNextPage ? (
                 <View style={styles.footerLoader}>
-                  <ActivityIndicator color="#111827" />
+                  <ActivityIndicator color="#102550" />
                 </View>
               ) : null
             }
@@ -829,7 +829,7 @@ function VehicleResultCard({
             <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
           ) : (
             <View style={styles.vehicleImageFallback}>
-              <CarFront color="#0F172A" size={42} />
+              <CarFront color="#102550" size={42} />
             </View>
           )}
         </View>
@@ -851,13 +851,13 @@ function VehicleResultCard({
             <Text style={styles.vehicleMeta}>{vehicle.transmission}</Text>
             <Text style={styles.vehicleMeta}>{vehicle.fuelType}</Text>
             <View style={styles.seatsRow}>
-              <Users color="#6B7280" size={14} />
+              <Users color="#536B91" size={14} />
               <Text style={styles.vehicleMeta}>{vehicle.seats} seats</Text>
             </View>
           </View>
 
           <View style={styles.locationRow}>
-            <MapPin color="#6B7280" size={15} />
+            <MapPin color="#536B91" size={15} />
             <Text numberOfLines={1} style={styles.locationText}>
               {vehicle.distanceKm === null
                 ? locationLabel || 'Pickup location'
@@ -880,7 +880,7 @@ function VehicleResultCard({
             </View>
             <View style={styles.rentalDaysPill}>
               <Text style={styles.rentalDaysText}>{vehicle.rentalDays} day trip</Text>
-              <ChevronDown color="#111827" size={14} />
+              <ChevronDown color="#102550" size={14} />
             </View>
           </View>
         </View>
@@ -894,7 +894,7 @@ function VehicleResultCard({
         style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}
       >
         <Heart
-          color={isFavorite ? '#DC2626' : '#111827'}
+          color={isFavorite ? '#DC2626' : '#102550'}
           fill={isFavorite ? '#DC2626' : 'transparent'}
           size={19}
         />
@@ -949,7 +949,7 @@ function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   container: {
     flex: 1,
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
@@ -978,12 +978,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 24,
     fontWeight: '900',
   },
   subtitle: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1099,7 +1099,7 @@ const styles = StyleSheet.create({
     width: 46,
     marginTop: 10,
     borderRadius: radii.pill,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#D6E8FF',
   },
   sheetHeader: {
     flexShrink: 0,
@@ -1275,7 +1275,7 @@ const styles = StyleSheet.create({
   vehicleCard: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
   },
   vehicleImageFrame: {
     height: 178,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   vehicleImage: {
     height: '100%',
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
   },
   favoriteButton: {
     position: 'absolute',
@@ -1318,7 +1318,7 @@ const styles = StyleSheet.create({
   },
   vehicleTitle: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   vehicleMeta: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
     textTransform: 'capitalize',
@@ -1360,7 +1360,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     flex: 1,
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1385,13 +1385,13 @@ const styles = StyleSheet.create({
   },
   dailyPrice: {
     flexShrink: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
   totalPrice: {
     flexShrink: 1,
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1401,11 +1401,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F9FF',
     paddingHorizontal: 9,
   },
   rentalDaysText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1422,7 +1422,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 12,
@@ -1430,25 +1430,25 @@ const styles = StyleSheet.create({
   skeletonImage: {
     height: 160,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLineWide: {
     height: 18,
     width: '70%',
     borderRadius: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLine: {
     height: 14,
     width: '52%',
     borderRadius: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLineShort: {
     height: 14,
     width: '36%',
     borderRadius: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   stateMessage: {
     flex: 1,
@@ -1458,13 +1458,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   stateTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
   },
   stateBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,
@@ -1474,7 +1474,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
     marginTop: 6,
   },

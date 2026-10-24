@@ -74,7 +74,7 @@ export function HomeCategorySection({
           style={({ pressed }) => [styles.seeAllButton, pressed && styles.pressed]}
         >
           <Text style={styles.seeAll}>See all</Text>
-          <ArrowRight color="#FF705B" size={19} />
+          <ArrowRight color="#FF644F" size={19} />
         </Pressable>
       </View>
       <View style={styles.cards}>
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: '#0D275F',
+    color: '#102550',
     fontFamily: 'Georgia',
     fontSize: 27,
     fontWeight: '700',
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   seeAll: {
-    color: '#FF705B',
+    color: '#FF644F',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D9E8F8',
-    shadowColor: '#8CB5E4',
+    borderColor: '#D6E8FF',
+    shadowColor: '#0B6FE8',
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.12,
     shadowRadius: 9,
@@ -199,12 +199,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cardTitle: {
-    color: '#153264',
+    color: '#102550',
     fontSize: 12,
     fontWeight: '800',
   },
   cardSubtitle: {
-    color: '#7083A2',
+    color: '#536B91',
     fontSize: 9,
     fontWeight: '500',
   },

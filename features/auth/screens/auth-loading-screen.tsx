@@ -8,7 +8,7 @@ export function AuthLoadingScreen() {
         <View style={styles.logoMark}>
           <Text style={styles.logoText}>H</Text>
         </View>
-        <ActivityIndicator color="#111827" size="large" />
+        <ActivityIndicator color="#102550" size="large" />
         <Text style={styles.text}>Restoring your HopIn session</Text>
       </View>
     </SafeAreaView>
@@ -18,7 +18,7 @@ export function AuthLoadingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   container: {
     flex: 1,
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   logoText: {
     color: '#FFFFFF',
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   text: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
   },

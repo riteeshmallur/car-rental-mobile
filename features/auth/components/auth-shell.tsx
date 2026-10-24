@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
-    backgroundColor: '#0757F8',
+    backgroundColor: '#0B6FE8',
   },
   journeyLogoText: {
     color: colors.surface,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   journeyBrand: {
-    color: '#06183A',
+    color: '#102550',
     fontSize: 30,
     fontWeight: '900',
   },
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   journeyHeadline: {
-    color: '#06183A',
+    color: '#102550',
     fontSize: 38,
     fontWeight: '900',
     letterSpacing: 0,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   journeySubtitle: {
-    color: '#18345F',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '600',
     lineHeight: 25,
@@ -411,13 +411,13 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   journeyPanelTitle: {
-    color: '#081630',
+    color: '#102550',
     fontSize: 29,
     fontWeight: '900',
     lineHeight: 35,
   },
   journeyPanelSubtitle: {
-    color: '#45536C',
+    color: '#536B91',
     fontSize: 16,
     lineHeight: 24,
   },

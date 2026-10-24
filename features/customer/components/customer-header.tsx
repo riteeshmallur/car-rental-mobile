@@ -53,8 +53,8 @@ export function CustomerHeader({
   );
 }
 
-const HOME_NAVY = '#0D275F';
-const HOME_BLUE = '#156DF8';
+const HOME_NAVY = '#102550';
+const HOME_BLUE = '#0B6FE8';
 
 const styles = StyleSheet.create({
   container: {
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     marginTop: -3,
     marginLeft: 57,
     borderRadius: 2,
-    backgroundColor: '#FF705B',
+    backgroundColor: '#FF644F',
   },
   actions: {
     flexDirection: 'row',
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#BBD7FF',
+    borderColor: '#D6E8FF',
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.88)',
   },

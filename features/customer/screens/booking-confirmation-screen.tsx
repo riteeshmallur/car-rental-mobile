@@ -151,23 +151,23 @@ const styles = StyleSheet.create({
   section: {
     gap: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
   },
   sectionTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '900',
   },
   rowText: {
-    color: '#374151',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '800',
   },
   reference: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',

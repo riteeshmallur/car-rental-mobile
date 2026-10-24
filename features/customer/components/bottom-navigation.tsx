@@ -64,14 +64,14 @@ export function BottomNavigation() {
   );
 }
 
-const HOME_BLUE = '#156DF8';
-const HOME_MUTED = '#607694';
+const HOME_BLUE = '#0B6FE8';
+const HOME_MUTED = '#536B91';
 
 const styles = StyleSheet.create({
   shell: {
     flexShrink: 0,
     alignItems: 'center',
-    backgroundColor: '#F4FAFF',
+    backgroundColor: '#F3F9FF',
     paddingTop: 8,
     paddingHorizontal: 18,
   },
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     borderWidth: 1,
-    borderColor: '#D6E8F8',
+    borderColor: '#D6E8FF',
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
     paddingVertical: 7,

@@ -489,7 +489,7 @@ function SectionRow({ item }: { item: SectionItem }) {
         <Text style={[styles.sectionLabel, item.destructive && styles.destructiveText]}>{item.label}</Text>
         {item.description ? <Text style={styles.sectionDescription}>{item.description}</Text> : null}
       </View>
-      <ChevronRight color={item.destructive ? '#B91C1C' : '#9CA3AF'} size={18} />
+      <ChevronRight color={item.destructive ? '#B91C1C' : '#536B91'} size={18} />
     </Pressable>
   );
 }
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 14,
   },
   primaryButtonText: {
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
     width: 46,
     marginBottom: 22,
     borderRadius: radii.pill,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#D6E8FF',
   },
   sheetTitle: {
     color: colors.ink,

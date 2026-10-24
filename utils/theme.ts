@@ -1,15 +1,16 @@
 export const colors = {
-  brand: '#B8924B',
-  brandPressed: '#947237',
-  brandSoft: '#F5EEDF',
-  brandBorder: '#DEC79E',
-  background: '#F7F6F2',
+  brand: '#0B6FE8',
+  brandPressed: '#075BC8',
+  brandSoft: '#EAF4FF',
+  brandBorder: '#D6E8FF',
+  background: '#F3F9FF',
   surface: '#FFFFFF',
-  surfaceMuted: '#F2F0EB',
-  ink: '#25282B',
-  text: '#4D5153',
-  muted: '#777572',
-  border: '#E4E0D8',
+  surfaceMuted: '#EAF4FF',
+  ink: '#102550',
+  text: '#536B91',
+  muted: '#536B91',
+  border: '#D6E8FF',
+  coral: '#FF644F',
   success: '#179447',
   successSoft: '#E8F8EE',
   error: '#C62828',
@@ -25,11 +26,11 @@ export const radii = {
 
 export const shadows = {
   card: {
-    boxShadow: '0 5px 14px rgba(62, 51, 34, 0.07)',
+    boxShadow: '0 5px 14px rgba(16, 37, 80, 0.08)',
     elevation: 3,
   },
   floating: {
-    boxShadow: '0 -4px 12px rgba(62, 51, 34, 0.06)',
+    boxShadow: '0 -4px 12px rgba(16, 37, 80, 0.07)',
     elevation: 8,
   },
 } as const;

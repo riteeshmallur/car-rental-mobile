@@ -669,7 +669,7 @@ export function HostAddVehicleWizardScreen() {
         >
           {isRestoringDraft ? (
             <View style={styles.restoreDraftState}>
-              <ActivityIndicator color="#1769F5" size="small" />
+              <ActivityIndicator color="#0B6FE8" size="small" />
               <Text style={styles.restoreDraftText}>Restoring your saved draft...</Text>
             </View>
           ) : (
@@ -791,7 +791,7 @@ function VehicleDetailsStep({
       <SelectField
         control={control}
         error={errors.make?.message}
-        icon={<CarFront color="#52627C" size={18} />}
+        icon={<CarFront color="#536B91" size={18} />}
         label="Make"
         name="make"
         onPress={() => onOpenSelection('make')}
@@ -801,7 +801,7 @@ function VehicleDetailsStep({
         control={control}
         disabled={!make}
         error={errors.model?.message}
-        icon={<CarFront color="#52627C" size={18} />}
+        icon={<CarFront color="#536B91" size={18} />}
         label="Model"
         name="model"
         onPress={() => onOpenSelection('model')}
@@ -811,7 +811,7 @@ function VehicleDetailsStep({
         <SelectField
           control={control}
           error={errors.manufacturingYear?.message}
-          icon={<CalendarDays color="#52627C" size={18} />}
+          icon={<CalendarDays color="#536B91" size={18} />}
           label="Year"
           name="manufacturingYear"
           onPress={() => onOpenSelection('manufacturingYear')}
@@ -851,7 +851,7 @@ function VehicleDetailsStep({
       </View>
       <SelectField
         control={control}
-        icon={<Palette color="#52627C" size={18} />}
+        icon={<Palette color="#536B91" size={18} />}
         label="Colour"
         name="colour"
         onPress={() => onOpenSelection('colour')}
@@ -905,7 +905,7 @@ function VehicleLocationStep({
         name="country"
       />
       <View style={styles.locationHint}>
-        <MapPin color="#1769F5" size={17} />
+        <MapPin color="#0B6FE8" size={17} />
         <Text style={styles.locationHintText}>
           Location helps renters find the pickup point accurately.
         </Text>
@@ -1016,7 +1016,7 @@ function LocationSearchInput({
     <View style={styles.inputGroup}>
       <Text style={styles.label}>Pickup address</Text>
       <View style={[styles.locationSearchBox, error && styles.inputError]}>
-        <MapPin color="#52627C" size={18} />
+        <MapPin color="#536B91" size={18} />
         <TextInput
           accessibilityHint="Search for a city or pickup area, then choose a result."
           accessibilityLabel="Pickup address"
@@ -1026,11 +1026,11 @@ function LocationSearchInput({
           onChangeText={onChangeText}
           onFocus={onFocus}
           placeholder="Search city or pickup area"
-          placeholderTextColor="#8B96AA"
+          placeholderTextColor="#536B91"
           style={styles.locationSearchInput}
           value={value}
         />
-        <Search color="#52627C" size={18} />
+        <Search color="#536B91" size={18} />
       </View>
       {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {focused && query.length >= 2 ? (
@@ -1054,7 +1054,7 @@ function LocationSearchInput({
                   pressed && styles.locationResultPressed,
                 ]}
               >
-                <MapPin color="#1769F5" size={17} />
+                <MapPin color="#0B6FE8" size={17} />
                 <View style={styles.locationResultCopy}>
                   <Text numberOfLines={1} style={styles.locationResultTitle}>
                     {location.name}
@@ -1105,13 +1105,13 @@ function FeaturesStep({
       <View style={styles.inputGroup}>
         <View style={styles.inlineInputRow}>
           <View style={styles.featureSearchInput}>
-            <Search color="#52627C" size={18} />
+            <Search color="#536B91" size={18} />
             <TextInput
               accessibilityLabel="Search and add a feature"
               onChangeText={onChangeFeatureInput}
               onSubmitEditing={onAddFeature}
               placeholder="Search and add a feature"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#536B91"
               returnKeyType="done"
               style={styles.featureSearchTextInput}
               value={featureInput}
@@ -1141,7 +1141,7 @@ function FeaturesStep({
                 style={styles.chip}
               >
                 <Text style={styles.chipText}>{feature}</Text>
-                <Trash2 color="#52627C" size={14} />
+                <Trash2 color="#536B91" size={14} />
               </Pressable>
             ))}
           </View>
@@ -1210,7 +1210,7 @@ function PhotosStep({
             pressed && !isUploading && styles.photoPickerButtonPressed,
           ]}
         >
-          <Camera color="#1769F5" size={30} />
+          <Camera color="#0B6FE8" size={30} />
           <Text style={styles.photoPickerText}>Choose photos</Text>
           <Text style={styles.photoPickerSubtext}>Add up to 10 photos</Text>
           <Text style={styles.photoPickerSubtext}>JPG, PNG, or WebP • Max 10 MB each</Text>
@@ -1219,7 +1219,7 @@ function PhotosStep({
       {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {isUploading ? (
         <View style={styles.photoUploadStatus}>
-          <ActivityIndicator color="#1769F5" size="small" />
+          <ActivityIndicator color="#0B6FE8" size="small" />
           <Text style={styles.photoUploadStatusText}>
             Uploading photos{uploadProgress === null ? '...' : ` ${Math.round(uploadProgress * 100)}%`}
           </Text>
@@ -1274,7 +1274,7 @@ function PhotosStep({
               pressed && !isUploading && styles.addMorePhotoTilePressed,
             ]}
           >
-            <Plus color="#1769F5" size={30} />
+            <Plus color="#0B6FE8" size={30} />
             <Text style={styles.addMorePhotoText}>Add more</Text>
             </Pressable>
           ) : null}
@@ -1293,7 +1293,7 @@ function DocumentsStep({
   return (
     <View style={styles.form}>
       <View style={styles.documentNotice}>
-        <FileText color="#1769F5" size={18} />
+        <FileText color="#0B6FE8" size={18} />
         <Text style={styles.documentNoticeText}>
           Document uploads can be connected later; references are saved with the draft now.
         </Text>
@@ -1497,11 +1497,11 @@ function DateField({
                 onPress={onPress}
                 style={[styles.dateField, error && styles.inputError]}
               >
-                <CalendarDays color="#52627C" size={18} />
+                <CalendarDays color="#536B91" size={18} />
                 <Text style={[styles.dateFieldText, !dateValue && styles.placeholderText]}>
                   {dateValue ? formatListingDate(dateValue) : 'Select date'}
                 </Text>
-                <ChevronRight color="#52627C" size={18} />
+                <ChevronRight color="#536B91" size={18} />
               </Pressable>
               {optional && dateValue ? (
                 <Pressable
@@ -1666,7 +1666,7 @@ function WebDateCalendar({
             pressed && !previousMonthIsBeforeMinimum && styles.webDateCalendarNavigationButtonPressed,
           ]}
         >
-          <ChevronLeft color="#17213B" size={20} />
+          <ChevronLeft color="#102550" size={20} />
         </Pressable>
         <Text accessibilityRole="header" style={styles.webDateCalendarMonth}>
           {formatCalendarMonth(visibleMonth)}
@@ -1680,7 +1680,7 @@ function WebDateCalendar({
             pressed && styles.webDateCalendarNavigationButtonPressed,
           ]}
         >
-          <ChevronRight color="#17213B" size={20} />
+          <ChevronRight color="#102550" size={20} />
         </Pressable>
       </View>
       <View style={styles.webDateCalendarGrid}>
@@ -1742,13 +1742,13 @@ function ReviewStep({
   const coverImageUrl = getVehicleImageVariantUrl(values.imageUrls[0], 'thumbnail');
   const rows = [
     {
-      icon: <MapPin color="#1769F5" size={19} />,
+      icon: <MapPin color="#0B6FE8" size={19} />,
       label: 'Location',
       stepIndex: 1,
       value: [values.address, values.city, values.state].filter(Boolean).join(', ') || 'Add pickup location',
     },
     {
-      icon: <Plus color="#1769F5" size={19} />,
+      icon: <Plus color="#0B6FE8" size={19} />,
       label: 'Features',
       stepIndex: 2,
       value: values.features.length
@@ -1756,13 +1756,13 @@ function ReviewStep({
         : 'Add features',
     },
     {
-      icon: <Camera color="#1769F5" size={19} />,
+      icon: <Camera color="#0B6FE8" size={19} />,
       label: 'Photos',
       stepIndex: 3,
       value: `${values.imageUrls.length} ${values.imageUrls.length === 1 ? 'photo' : 'photos'} added`,
     },
     {
-      icon: <FileText color="#1769F5" size={19} />,
+      icon: <FileText color="#0B6FE8" size={19} />,
       label: 'Documents',
       stepIndex: 4,
       value: getDocumentSummary(values),
@@ -1774,7 +1774,7 @@ function ReviewStep({
       value: values.pricePerDay ? `₹${formatIndianCurrency(values.pricePerDay)} / day` : 'Add daily price',
     },
     {
-      icon: <CalendarDays color="#1769F5" size={19} />,
+      icon: <CalendarDays color="#0B6FE8" size={19} />,
       label: 'Availability',
       stepIndex: 6,
       value: values.availableFrom ? `From ${formatListingDate(values.availableFrom)}` : 'Set availability',
@@ -1792,7 +1792,7 @@ function ReviewStep({
           />
         ) : (
           <View style={styles.reviewVehicleImageFallback}>
-            <CarFront color="#1769F5" size={28} />
+            <CarFront color="#0B6FE8" size={28} />
           </View>
         )}
         <View style={styles.reviewVehicleCopy}>
@@ -1819,7 +1819,7 @@ function ReviewStep({
             <Text style={styles.reviewLabel}>{row.label}</Text>
             <Text numberOfLines={1} style={styles.reviewValue}>{row.value}</Text>
           </View>
-          <ChevronRight color="#738099" size={19} />
+          <ChevronRight color="#536B91" size={19} />
         </Pressable>
       ))}
     </View>
@@ -1862,7 +1862,7 @@ function TextField({
                 accessibilityLabel={label}
                 onBlur={onBlur}
                 onChangeText={onChange}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#536B91"
                 style={styles.inputWithSuffixText}
                 value={typeof value === 'string' ? value : String(value ?? '')}
               />
@@ -1875,7 +1875,7 @@ function TextField({
               accessibilityLabel={label}
               onBlur={onBlur}
               onChangeText={onChange}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#536B91"
               style={[
                 styles.input,
                 inputProps.editable === false && styles.inputReadOnly,
@@ -1931,7 +1931,7 @@ function CurrencyField({
                 onChangeText={(nextValue) => onChange(nextValue.replace(/,/g, ''))}
                 onFocus={() => setFocused(true)}
                 placeholder={placeholder}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#536B91"
                 style={styles.inputWithSuffixText}
                 value={displayValue}
               />
@@ -1985,7 +1985,7 @@ function SelectField({
               <Text style={[styles.selectText, !displayValue && styles.placeholderText]}>
                 {displayValue || placeholder}
               </Text>
-              <ChevronRight color="#52627C" size={18} />
+              <ChevronRight color="#536B91" size={18} />
             </Pressable>
             {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
           </View>
@@ -2322,7 +2322,7 @@ function isFuelType(value: unknown): value is HostVehicleFormValues['fuelType'] 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   flex: {
     flex: 1,
@@ -2344,13 +2344,13 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   stepTitle: {
-    color: '#101A35',
+    color: '#102550',
     fontSize: 24,
     fontWeight: '900',
     lineHeight: 30,
   },
   stepHelper: {
-    color: '#6B7892',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
@@ -2362,7 +2362,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   restoreDraftText: {
-    color: '#52627C',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -2375,7 +2375,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -2383,16 +2383,16 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
     paddingHorizontal: 14,
   },
   inputReadOnly: {
-    backgroundColor: '#F8FAFC',
-    color: '#52627C',
+    backgroundColor: '#F3F9FF',
+    color: '#536B91',
   },
   inputWithSuffix: {
     flexDirection: 'row',
@@ -2403,18 +2403,18 @@ const styles = StyleSheet.create({
   inputWithSuffixText: {
     flex: 1,
     minWidth: 0,
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
     paddingVertical: 14,
   },
   inputSuffix: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
   currencyPrefix: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
@@ -2446,7 +2446,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
   },
@@ -2455,7 +2455,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E1F7F0',
   },
   segmentText: {
-    color: '#34415D',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -2469,7 +2469,7 @@ const styles = StyleSheet.create({
     gap: 9,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
@@ -2480,14 +2480,14 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
   locationSearchInput: {
     flex: 1,
     minWidth: 0,
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
     paddingVertical: 13,
@@ -2496,7 +2496,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
   },
   locationResult: {
@@ -2505,12 +2505,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F7',
+    borderBottomColor: '#D6E8FF',
     paddingHorizontal: 13,
     paddingVertical: 10,
   },
   locationResultPressed: {
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   locationResultCopy: {
     flex: 1,
@@ -2518,17 +2518,17 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   locationResultTitle: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
   },
   locationResultMeta: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '700',
   },
   locationResultStatus: {
-    color: '#52627C',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
     padding: 14,
@@ -2538,18 +2538,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
     borderRadius: 12,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
     padding: 12,
   },
   locationHintText: {
     flex: 1,
-    color: '#52627C',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
   },
   selectInputDisabled: {
-    backgroundColor: '#F3F6FA',
+    backgroundColor: '#F3F9FF',
     opacity: 0.78,
   },
   selectIcon: {
@@ -2558,12 +2558,12 @@ const styles = StyleSheet.create({
   },
   selectText: {
     flex: 1,
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
   },
   placeholderText: {
-    color: '#8B96AA',
+    color: '#536B91',
   },
   inlineInputRow: {
     flexDirection: 'row',
@@ -2577,14 +2577,14 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
   featureSearchTextInput: {
     flex: 1,
     minWidth: 0,
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
     paddingVertical: 13,
@@ -2595,7 +2595,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#1769F5',
+    backgroundColor: '#0B6FE8',
   },
   chipGrid: {
     flexDirection: 'row',
@@ -2606,12 +2606,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   featureSectionTitle: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
   },
   featureEmptyText: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -2622,12 +2622,12 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
   },
   chipText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -2636,7 +2636,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
@@ -2645,7 +2645,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E1F7F0',
   },
   popularChipText: {
-    color: '#34415D',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -2660,21 +2660,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#BFD4F7',
-    backgroundColor: '#F8FBFF',
+    borderColor: '#D6E8FF',
+    backgroundColor: '#F3F9FF',
     padding: 20,
   },
   photoPickerButtonPressed: {
-    backgroundColor: '#EDF5FF',
+    backgroundColor: '#EAF4FF',
   },
   photoPickerText: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '900',
     marginTop: 3,
   },
   photoPickerSubtext: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -2683,16 +2683,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 9,
     borderRadius: 12,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
     padding: 12,
   },
   photoUploadStatusText: {
-    color: '#245AAE',
+    color: '#075BC8',
     fontSize: 13,
     fontWeight: '800',
   },
   photoCount: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
   },
@@ -2706,7 +2706,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1.2,
     overflow: 'hidden',
     borderRadius: 12,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   photo: {
     height: '100%',
@@ -2728,7 +2728,7 @@ const styles = StyleSheet.create({
     top: 7,
     left: 7,
     borderRadius: 999,
-    backgroundColor: '#1769F5',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -2759,14 +2759,14 @@ const styles = StyleSheet.create({
     gap: 7,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#BFD4F7',
-    backgroundColor: '#F0F6FF',
+    borderColor: '#D6E8FF',
+    backgroundColor: '#EAF4FF',
   },
   addMorePhotoTilePressed: {
-    backgroundColor: '#E2EEFF',
+    backgroundColor: '#EAF4FF',
   },
   addMorePhotoText: {
-    color: '#1769F5',
+    color: '#0B6FE8',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -2775,12 +2775,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 9,
     borderRadius: 12,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
     padding: 12,
   },
   documentNoticeText: {
     flex: 1,
-    color: '#245AAE',
+    color: '#075BC8',
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 19,
@@ -2798,13 +2798,13 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
   dateFieldText: {
     flex: 1,
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -2813,11 +2813,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
     paddingHorizontal: 11,
   },
   clearDateText: {
-    color: '#1769F5',
+    color: '#0B6FE8',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -2831,7 +2831,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 13,
   },
@@ -2840,7 +2840,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E1F7F0',
   },
   advanceNoticeOptionText: {
-    color: '#34415D',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -2863,7 +2863,7 @@ const styles = StyleSheet.create({
     height: 4,
     width: 40,
     borderRadius: 999,
-    backgroundColor: '#DCE4EF',
+    backgroundColor: '#D6E8FF',
     marginTop: 10,
   },
   datePickerHeader: {
@@ -2874,12 +2874,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   datePickerTitle: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
   datePickerDone: {
-    color: '#1769F5',
+    color: '#0B6FE8',
     fontSize: 15,
     fontWeight: '900',
   },
@@ -2900,16 +2900,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   webDateCalendarNavigationButtonDisabled: {
     opacity: 0.36,
   },
   webDateCalendarNavigationButtonPressed: {
-    backgroundColor: '#DFEAFA',
+    backgroundColor: '#EAF4FF',
   },
   webDateCalendarMonth: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
@@ -2924,7 +2924,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   webDateCalendarWeekday: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 11,
     fontWeight: '900',
   },
@@ -2936,16 +2936,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   webDateCalendarDaySelected: {
-    backgroundColor: '#1769F5',
+    backgroundColor: '#0B6FE8',
   },
   webDateCalendarDayDisabled: {
     opacity: 0.36,
   },
   webDateCalendarDayPressed: {
-    backgroundColor: '#DCEBFF',
+    backgroundColor: '#EAF4FF',
   },
   webDateCalendarDayText: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -2953,7 +2953,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   webDateCalendarDayTextDisabled: {
-    color: '#738099',
+    color: '#536B91',
   },
   toggleRow: {
     minHeight: 76,
@@ -2962,7 +2962,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 12,
   },
@@ -2971,7 +2971,7 @@ const styles = StyleSheet.create({
     width: 48,
     justifyContent: 'center',
     borderRadius: 999,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#D6E8FF',
     paddingHorizontal: 3,
   },
   toggleTrackActive: {
@@ -2987,7 +2987,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 20 }],
   },
   toggleText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
     lineHeight: 20,
@@ -2998,7 +2998,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   toggleHelper: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 17,
@@ -3013,7 +3013,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 10,
   },
@@ -3021,7 +3021,7 @@ const styles = StyleSheet.create({
     height: 78,
     width: 96,
     borderRadius: 10,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   reviewVehicleImageFallback: {
     height: 78,
@@ -3029,7 +3029,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   reviewVehicleCopy: {
     flex: 1,
@@ -3037,17 +3037,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewVehicleName: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
   reviewVehicleMeta: {
-    color: '#52627C',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '800',
   },
   reviewVehicleSpecs: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -3058,13 +3058,13 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   reviewRowPressed: {
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   reviewRowIcon: {
     height: 34,
@@ -3072,7 +3072,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EAF4FF',
   },
   reviewRowCopy: {
     flex: 1,
@@ -3080,18 +3080,18 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   reviewLabel: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 13,
     fontWeight: '900',
   },
   reviewValue: {
-    color: '#738099',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 17,
   },
   reviewCurrencyIcon: {
-    color: '#1769F5',
+    color: '#0B6FE8',
     fontSize: 20,
     fontWeight: '900',
   },
@@ -3112,13 +3112,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   submissionTitle: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 23,
     fontWeight: '900',
     textAlign: 'center',
   },
   submissionBody: {
-    color: '#6B7892',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,
@@ -3130,7 +3130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 13,
-    backgroundColor: '#1769F5',
+    backgroundColor: '#0B6FE8',
     marginTop: 16,
   },
   submissionButtonText: {

@@ -264,7 +264,7 @@ function ProfileInput({
             onBlur={onBlur}
             onChangeText={onChange}
             placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#536B91"
             style={[styles.input, error && styles.inputError]}
             value={value ?? ''}
           />

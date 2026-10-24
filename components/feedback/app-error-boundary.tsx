@@ -64,16 +64,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
     padding: 24,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
   },
   body: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
   },
   buttonText: {

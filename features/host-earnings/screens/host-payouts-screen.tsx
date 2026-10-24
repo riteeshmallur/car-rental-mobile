@@ -44,7 +44,7 @@ export function HostPayoutsScreen() {
               onPress={goBack}
               style={styles.iconButton}
             >
-              <ArrowLeft color="#0F172A" size={21} />
+              <ArrowLeft color="#102550" size={21} />
             </Pressable>
             <View>
               <Text style={styles.eyebrow}>Host</Text>
@@ -52,7 +52,7 @@ export function HostPayoutsScreen() {
             </View>
           </View>
           {payoutsQuery.isFetching ? (
-            <ActivityIndicator color="#0B4FE8" />
+            <ActivityIndicator color="#0B6FE8" />
           ) : (
             <Pressable
               accessibilityLabel="Refresh payouts"
@@ -60,7 +60,7 @@ export function HostPayoutsScreen() {
               onPress={() => void payoutsQuery.refetch()}
               style={styles.iconButton}
             >
-              <RefreshCw color="#0F172A" size={20} />
+              <RefreshCw color="#102550" size={20} />
             </Pressable>
           )}
         </View>
@@ -120,7 +120,7 @@ function PayoutCard({ payout }: { payout: HostPayoutRecord }) {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.dateRow}>
-          <CalendarDays color="#64748B" size={17} />
+          <CalendarDays color="#536B91" size={17} />
           <Text style={styles.dateText}>{formatDate(payout.createdAt)}</Text>
         </View>
         <View style={[styles.status, isPaid ? styles.statusPaid : styles.statusPending]}>
@@ -158,7 +158,7 @@ function PayoutDetail({ label, value }: { label: string; value: string }) {
 function LoadingState() {
   return (
     <View style={styles.state}>
-      <ActivityIndicator color="#0B4FE8" />
+      <ActivityIndicator color="#0B6FE8" />
       <Text style={styles.stateBody}>Loading payouts</Text>
     </View>
   );
@@ -189,23 +189,23 @@ function StateMessage({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: '#F7FAFF', flex: 1 },
+  safeArea: { backgroundColor: '#F3F9FF', flex: 1 },
   screen: { flex: 1 },
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76, paddingHorizontal: 16 },
   headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  eyebrow: { color: '#64748B', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: '#0F172A', fontSize: 23, fontWeight: '900' },
+  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  title: { color: '#102550', fontSize: 23, fontWeight: '900' },
   listContent: { gap: 12, padding: 16, paddingBottom: 32 },
   introCard: { alignItems: 'center', backgroundColor: '#ECFDF3', borderColor: '#BBF7D0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 14 },
   introIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, height: 42, justifyContent: 'center', width: 42 },
   introCopy: { flex: 1 },
   introTitle: { color: '#14532D', fontSize: 16, fontWeight: '900' },
   introBody: { color: '#166534', fontSize: 12, fontWeight: '700', lineHeight: 18, marginTop: 2 },
-  card: { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 14, borderWidth: 1, gap: 10, padding: 14 },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 10, padding: 14 },
   cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   dateRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  dateText: { color: '#64748B', fontSize: 13, fontWeight: '800' },
+  dateText: { color: '#536B91', fontSize: 13, fontWeight: '800' },
   status: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 },
   statusPaid: { backgroundColor: '#DCFCE7' },
   statusPending: { backgroundColor: '#FEF3C7' },
@@ -213,16 +213,16 @@ const styles = StyleSheet.create({
   statusTextPaid: { color: '#166534' },
   statusTextPending: { color: '#92400E' },
   totalRow: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
-  totalLabel: { color: '#334155', fontSize: 14, fontWeight: '800' },
-  totalValue: { color: '#0F172A', fontSize: 21, fontWeight: '900' },
-  line: { backgroundColor: '#EEF2F7', height: 1 },
+  totalLabel: { color: '#536B91', fontSize: 14, fontWeight: '800' },
+  totalValue: { color: '#102550', fontSize: 21, fontWeight: '900' },
+  line: { backgroundColor: '#D6E8FF', height: 1 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  detailLabel: { color: '#64748B', fontSize: 13, fontWeight: '600' },
-  detailValue: { color: '#334155', fontSize: 13, fontWeight: '800' },
+  detailLabel: { color: '#536B91', fontSize: 13, fontWeight: '600' },
+  detailValue: { color: '#536B91', fontSize: 13, fontWeight: '800' },
   processed: { color: '#047857', fontSize: 12, fontWeight: '800' },
   state: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 28 },
-  stateTitle: { color: '#0F172A', fontSize: 20, fontWeight: '900', textAlign: 'center' },
-  stateBody: { color: '#64748B', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
-  retryButton: { alignItems: 'center', backgroundColor: '#0B4FE8', borderRadius: 12, justifyContent: 'center', minHeight: 46, minWidth: 124, paddingHorizontal: 16 },
+  stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
+  retryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', minHeight: 46, minWidth: 124, paddingHorizontal: 16 },
   retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 });

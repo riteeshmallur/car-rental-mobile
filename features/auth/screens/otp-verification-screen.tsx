@@ -204,15 +204,15 @@ const styles = StyleSheet.create({
     opacity: 0.46,
   },
   secondaryButtonPressed: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EAF4FF',
   },
   secondaryButtonText: {
-    color: '#0B4FE8',
+    color: '#0B6FE8',
     fontSize: 15,
     fontWeight: '800',
   },
   devHint: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',

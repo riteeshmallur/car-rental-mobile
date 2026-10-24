@@ -63,20 +63,20 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   eyebrow: {
-    color: '#24437B',
+    color: '#102550',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 3,
   },
   title: {
-    color: '#0D275F',
+    color: '#102550',
     fontFamily: 'Georgia',
     fontSize: 35,
     fontWeight: '700',
     lineHeight: 39,
   },
   subtitle: {
-    color: '#405978',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '500',
     lineHeight: 21,

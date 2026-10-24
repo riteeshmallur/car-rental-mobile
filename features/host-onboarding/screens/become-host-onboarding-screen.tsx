@@ -51,22 +51,22 @@ const steps: Array<{ key: StepKey; label: string }> = [
 
 const introItems = [
   {
-    icon: <CarFront color="#111827" size={22} />,
+    icon: <CarFront color="#102550" size={22} />,
     title: 'List your car',
     body: 'Add photos, pricing, pickup location, and rental rules.',
   },
   {
-    icon: <CalendarCheck color="#111827" size={22} />,
+    icon: <CalendarCheck color="#102550" size={22} />,
     title: 'Set your availability',
     body: 'Choose when your car is bookable and block unavailable dates.',
   },
   {
-    icon: <ClipboardCheck color="#111827" size={22} />,
+    icon: <ClipboardCheck color="#102550" size={22} />,
     title: 'Receive bookings',
     body: 'Customers book available windows after your listing is published.',
   },
   {
-    icon: <HandCoins color="#111827" size={22} />,
+    icon: <HandCoins color="#102550" size={22} />,
     title: 'Earn money',
     body: 'Payout details are captured before you start hosting.',
   },
@@ -271,7 +271,7 @@ export function BecomeHostOnboardingScreen() {
     return (
       <OnboardingShell onBack={goBack} title="Host setup complete">
         <View style={styles.completeState}>
-          <ActivityIndicator color="#0B4FE8" />
+          <ActivityIndicator color="#0B6FE8" />
           <Text style={styles.completeBody}>Opening your host dashboard.</Text>
         </View>
       </OnboardingShell>
@@ -299,7 +299,7 @@ export function BecomeHostOnboardingScreen() {
       >
         <View style={styles.introHeader}>
           <View style={styles.heroIcon}>
-            <BadgeIndianRupee color="#0F172A" size={38} />
+            <BadgeIndianRupee color="#102550" size={38} />
           </View>
           <Text style={styles.introTitle}>Turn your car into an earning asset</Text>
           <Text style={styles.introBody}>
@@ -392,7 +392,7 @@ export function BecomeHostOnboardingScreen() {
       {activeStep.key === 'personalInfo' ? (
         <View style={styles.form}>
           <StepTitle
-            icon={<UserRound color="#111827" size={20} />}
+            icon={<UserRound color="#102550" size={20} />}
             subtitle="This profile stays shared between customer and host mode."
             title="Personal information"
           />
@@ -435,7 +435,7 @@ export function BecomeHostOnboardingScreen() {
       {activeStep.key === 'identity' ? (
         <View style={styles.form}>
           <StepTitle
-            icon={<FileCheck2 color="#111827" size={20} />}
+            icon={<FileCheck2 color="#102550" size={20} />}
             subtitle="We collect a lightweight verification record before hosting."
             title="Identity and verification"
           />
@@ -472,7 +472,7 @@ export function BecomeHostOnboardingScreen() {
       {activeStep.key === 'payout' ? (
         <View style={styles.form}>
           <StepTitle
-            icon={<HandCoins color="#111827" size={20} />}
+            icon={<HandCoins color="#102550" size={20} />}
             subtitle="Payout details are stored with your host onboarding record."
             title="Payout information"
           />
@@ -528,7 +528,7 @@ export function BecomeHostOnboardingScreen() {
       {activeStep.key === 'terms' ? (
         <View style={styles.form}>
           <StepTitle
-            icon={<ClipboardCheck color="#111827" size={20} />}
+            icon={<ClipboardCheck color="#102550" size={20} />}
             subtitle="Host access requires accepting marketplace responsibilities."
             title="Host terms acceptance"
           />
@@ -550,7 +550,7 @@ export function BecomeHostOnboardingScreen() {
       {activeStep.key === 'hostProfile' ? (
         <View style={styles.form}>
           <StepTitle
-            icon={<UserRound color="#111827" size={20} />}
+            icon={<UserRound color="#102550" size={20} />}
             subtitle="Customers see this host profile on vehicle listings."
             title="Host profile creation"
           />
@@ -602,7 +602,7 @@ function OnboardingShell({
             onPress={onBack}
             style={styles.iconButton}
           >
-            <ArrowLeft color="#111827" size={22} />
+            <ArrowLeft color="#102550" size={22} />
           </Pressable>
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
@@ -715,7 +715,7 @@ function Field({
             onBlur={onBlur}
             onChangeText={onChange}
             placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#536B91"
             style={[
               styles.input,
               multiline && styles.multilineInput,
@@ -813,7 +813,7 @@ function CheckboxField({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   keyboardView: {
     flex: 1,
@@ -831,12 +831,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 24,
     fontWeight: '900',
   },
@@ -858,16 +858,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
   },
   introTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 30,
     fontWeight: '900',
     lineHeight: 36,
   },
   introBody: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 23,
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -890,19 +890,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   introCopy: {
     flex: 1,
     gap: 4,
   },
   introItemTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '900',
   },
   introItemBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
   progressCard: {
     gap: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   progressTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -929,12 +929,12 @@ const styles = StyleSheet.create({
     height: 8,
     overflow: 'hidden',
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   progressFill: {
     height: 8,
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   stepLabels: {
     flexDirection: 'row',
@@ -944,18 +944,18 @@ const styles = StyleSheet.create({
   stepLabel: {
     flex: 1,
     minWidth: 0,
-    color: '#9CA3AF',
+    color: '#536B91',
     fontSize: 10,
     fontWeight: '900',
     textAlign: 'center',
   },
   activeStepLabel: {
-    color: '#111827',
+    color: '#102550',
   },
   form: {
     gap: 13,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -971,19 +971,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   stepCopy: {
     flex: 1,
     gap: 3,
   },
   stepTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
   stepSubtitle: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
@@ -992,17 +992,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   fieldLabel: {
-    color: '#374151',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '900',
   },
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    color: '#111827',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
     paddingHorizontal: 12,
@@ -1029,17 +1029,17 @@ const styles = StyleSheet.create({
     minHeight: 40,
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
   },
   selectedSegment: {
-    borderColor: '#0B4FE8',
-    backgroundColor: '#0B4FE8',
+    borderColor: '#0B6FE8',
+    backgroundColor: '#0B6FE8',
   },
   segmentText: {
-    color: '#374151',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1052,9 +1052,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
     padding: 12,
   },
   checkbox: {
@@ -1063,35 +1063,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#9CA3AF',
+    borderColor: '#536B91',
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
   },
   checkedBox: {
-    borderColor: '#0B4FE8',
-    backgroundColor: '#0B4FE8',
+    borderColor: '#0B6FE8',
+    backgroundColor: '#0B6FE8',
   },
   checkboxText: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 19,
   },
   termsBox: {
     borderRadius: 8,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
     padding: 12,
   },
   termsText: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 22,
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 16,
   },
@@ -1105,7 +1105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 14,
   },
   secondaryButton: {
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
@@ -1125,7 +1125,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   secondaryButtonText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '900',
   },
@@ -1146,13 +1146,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7',
   },
   completeTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 28,
     fontWeight: '900',
     lineHeight: 34,
   },
   completeBody: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 23,

@@ -14,8 +14,8 @@ import {
 import { type DateTimeField } from '@/features/customer/components/date-time-picker-sheet';
 import { type LocationSearchResult } from '@/types/location';
 
-const HOME_BLUE = '#156DF8';
-const HOME_NAVY = '#0D275F';
+const HOME_BLUE = '#0B6FE8';
+const HOME_NAVY = '#102550';
 
 type RentalSearchCardProps = {
   location?: LocationSearchResult | null;
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.96)',
     padding: 8,
-    shadowColor: '#72A7E8',
+    shadowColor: '#0B6FE8',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 18,
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
     gap: 13,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#CDE3FF',
-    backgroundColor: '#F8FCFF',
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
   },
   pressed: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   locationHint: {
-    color: '#7182A3',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '500',
   },
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#D5E8FF',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
   },
   dateRow: {
@@ -238,10 +238,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 13,
-    backgroundColor: '#EBF5FF',
+    backgroundColor: '#EAF4FF',
   },
   dateLabel: {
-    color: '#7081A2',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   timeValue: {
-    color: '#425776',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: 1,
     marginHorizontal: 6,
-    backgroundColor: '#D5E8FF',
+    backgroundColor: '#D6E8FF',
   },
   searchButton: {
     minHeight: 48,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   searchButtonPressed: {
-    backgroundColor: '#095BE2',
+    backgroundColor: '#075BC8',
   },
   searchButtonText: {
     color: '#FFFFFF',

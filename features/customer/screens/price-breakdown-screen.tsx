@@ -154,16 +154,16 @@ const styles = StyleSheet.create({
   notice: {
     gap: 5,
     borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
     padding: 14,
   },
   noticeTitle: {
-    color: '#1E40AF',
+    color: '#075BC8',
     fontSize: 15,
     fontWeight: '900',
   },
   noticeBody: {
-    color: '#1D4ED8',
+    color: '#075BC8',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   disabledButton: {
-    backgroundColor: '#6B7280',
+    backgroundColor: '#536B91',
   },
   errorBox: {
     backgroundColor: '#FEF2F2',

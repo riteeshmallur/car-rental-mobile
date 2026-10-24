@@ -46,12 +46,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
-    backgroundColor: '#0757F8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
     ...shadows.card,
   },
   buttonDisabled: {
-    backgroundColor: '#0757F8',
+    backgroundColor: '#0B6FE8',
     opacity: 0.52,
   },
   buttonPressed: {

@@ -196,7 +196,7 @@ export function VehicleDetailsScreen() {
               onPress={goBack}
               style={styles.heroButton}
             >
-              <ArrowLeft color="#111827" size={21} />
+              <ArrowLeft color="#102550" size={21} />
             </Pressable>
           </View>
         ) : null}
@@ -248,7 +248,7 @@ export function VehicleDetailsScreen() {
 
               <InfoSection title="Pickup location">
                 <View style={styles.locationBlock}>
-                  <MapPin color="#111827" size={20} />
+                  <MapPin color="#102550" size={20} />
                   <View style={styles.locationCopy}>
                     <Text style={styles.locationTitle}>
                       {detailsQuery.data.pickupLocation.name ?? 'Pickup location'}
@@ -437,7 +437,7 @@ function VehicleHero({
                 />
               ) : (
                 <View style={styles.heroFallback}>
-                  <CarFront color="#0F172A" size={56} />
+                  <CarFront color="#102550" size={56} />
                 </View>
               )}
             </View>
@@ -499,7 +499,7 @@ function VehicleSummary({
       </View>
 
       <View style={styles.tripWindow}>
-        <CalendarClock color="#111827" size={19} />
+        <CalendarClock color="#102550" size={19} />
         <View style={styles.tripCopy}>
           <Text style={styles.tripTitle}>Selected rental window</Text>
           <Text style={styles.mutedText}>{formatDateTime(pickupDateTime)}</Text>
@@ -521,7 +521,7 @@ function Spec({
 }) {
   return (
     <View style={styles.spec}>
-      <Icon color="#111827" size={20} />
+      <Icon color="#102550" size={20} />
       <Text style={styles.specValue}>{value}</Text>
       <Text style={styles.specLabel}>{label}</Text>
     </View>
@@ -570,7 +570,7 @@ function HostCard({ vehicle }: { vehicle: VehicleDetail }) {
             style={styles.hostImage}
           />
         ) : (
-          <UserRound color="#111827" size={24} />
+          <UserRound color="#102550" size={24} />
         )}
       </View>
       <View style={styles.hostCopy}>
@@ -680,7 +680,7 @@ function DetailsSkeleton() {
       <View style={styles.skeletonLineWide} />
       <View style={styles.skeletonLine} />
       <View style={styles.skeletonBlock} />
-      <ActivityIndicator color="#111827" />
+      <ActivityIndicator color="#102550" />
     </View>
   );
 }
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
     height: 7,
     width: 7,
     borderRadius: 4,
-    backgroundColor: '#C7D2E5',
+    backgroundColor: '#D6E8FF',
   },
   galleryDotActive: {
     width: 20,
@@ -1101,7 +1101,7 @@ const styles = StyleSheet.create({
   },
   reviewName: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
   },
@@ -1119,19 +1119,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 14,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 16,
   },
   stickyDaily: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '900',
   },
   stickyTotal: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -1144,11 +1144,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
   },
   continueButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: '#536B91',
   },
   continueText: {
     textAlign: 'center',
@@ -1172,24 +1172,24 @@ const styles = StyleSheet.create({
   skeletonHero: {
     height: 270,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLineWide: {
     height: 24,
     width: '72%',
     borderRadius: 5,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLine: {
     height: 16,
     width: '48%',
     borderRadius: 5,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonBlock: {
     height: 130,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   stateMessage: {
     flex: 1,
@@ -1199,13 +1199,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   stateTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
   },
   stateBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,
@@ -1215,7 +1215,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
     marginTop: 6,
   },

@@ -17,14 +17,14 @@ export function HostVehicleStartScreen() {
           onPress={goBack}
           style={styles.iconButton}
         >
-          <ArrowLeft color="#111827" size={22} />
+          <ArrowLeft color="#102550" size={22} />
         </Pressable>
         <Text style={styles.title}>Add vehicle</Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.heroIcon}>
-          <CarFront color="#0F172A" size={42} />
+          <CarFront color="#102550" size={42} />
         </View>
         <Text style={styles.heading}>Start your first listing</Text>
         <Text style={styles.body}>
@@ -34,15 +34,15 @@ export function HostVehicleStartScreen() {
 
         <View style={styles.checklist}>
           <View style={styles.checkRow}>
-            <ClipboardList color="#111827" size={18} />
+            <ClipboardList color="#102550" size={18} />
             <Text style={styles.checkText}>Keep RC, insurance, and car photos handy.</Text>
           </View>
           <View style={styles.checkRow}>
-            <ClipboardList color="#111827" size={18} />
+            <ClipboardList color="#102550" size={18} />
             <Text style={styles.checkText}>Set pickup location and rental rules.</Text>
           </View>
           <View style={styles.checkRow}>
-            <ClipboardList color="#111827" size={18} />
+            <ClipboardList color="#102550" size={18} />
             <Text style={styles.checkText}>Publish only after availability is correct.</Text>
           </View>
         </View>
@@ -62,7 +62,7 @@ export function HostVehicleStartScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   header: {
     minHeight: 76,
@@ -77,12 +77,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 24,
     fontWeight: '900',
   },
@@ -98,15 +98,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
   },
   heading: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 28,
     fontWeight: '900',
   },
   body: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 23,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   checklist: {
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   checkText: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '800',
     lineHeight: 20,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',

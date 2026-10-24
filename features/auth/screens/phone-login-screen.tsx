@@ -110,7 +110,7 @@ export function PhoneLoginScreen() {
                 onBlur={onBlur}
                 onChangeText={(nextValue) => onChange(nextValue.replace(/\D/g, ''))}
                 placeholder="Mobile number"
-                placeholderTextColor="#77839A"
+                placeholderTextColor="#536B91"
                 style={[
                   styles.phoneInput,
                   errors.phoneNumber && styles.inputError,
@@ -151,10 +151,10 @@ const styles = StyleSheet.create({
     minHeight: 52,
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D9E1EF',
+    borderColor: '#D6E8FF',
     borderRadius: radii.md,
     backgroundColor: colors.surface,
-    color: '#081630',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '600',
     paddingHorizontal: 16,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   terms: {
-    color: '#68758C',
+    color: '#536B91',
     fontSize: 13,
     lineHeight: 20,
     paddingHorizontal: 10,

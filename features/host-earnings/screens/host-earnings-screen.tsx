@@ -92,7 +92,7 @@ export function HostEarningsScreen() {
               onPress={goBack}
               style={styles.iconButton}
             >
-              <ArrowLeft color="#111827" size={20} />
+              <ArrowLeft color="#102550" size={20} />
             </Pressable>
             <View>
               <Text style={styles.eyebrow}>Host</Text>
@@ -100,7 +100,7 @@ export function HostEarningsScreen() {
             </View>
           </View>
           {earningsQuery.isFetching ? (
-            <ActivityIndicator color="#111827" />
+            <ActivityIndicator color="#102550" />
           ) : (
             <Pressable
               accessibilityLabel="Refresh earnings"
@@ -108,7 +108,7 @@ export function HostEarningsScreen() {
               onPress={() => void earningsQuery.refetch()}
               style={styles.iconButton}
             >
-              <RefreshCw color="#111827" size={20} />
+              <RefreshCw color="#102550" size={20} />
             </Pressable>
           )}
         </View>
@@ -133,7 +133,7 @@ export function HostEarningsScreen() {
                     value={formatMoney(earnings.totalEarnings)}
                   />
                   <SummaryTile
-                    icon={<CalendarDays color="#1D4ED8" size={20} />}
+                    icon={<CalendarDays color="#075BC8" size={20} />}
                     label="This month"
                     value={formatMoney(earnings.thisMonthEarnings)}
                   />
@@ -264,7 +264,7 @@ function EarningCard({ entry }: { entry: HostEarningEntry }) {
           <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
         ) : (
           <View style={styles.imageFallback}>
-            <CarFront color="#0F172A" size={28} />
+            <CarFront color="#102550" size={28} />
           </View>
         )}
         <View style={styles.cardCopy}>
@@ -374,7 +374,7 @@ function getPayoutStatusStyle(status: HostEarningEntry['payoutStatus']) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   container: {
     flex: 1,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 28,
     fontWeight: '900',
   },
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
   },
   listContent: {
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 13,
   },
@@ -448,15 +448,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F9FF',
   },
   summaryLabel: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '900',
   },
   summaryValue: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 22,
     fontWeight: '900',
   },
@@ -466,12 +466,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
   historyCount: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
   },
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCFBF1',
   },
   filterText: {
-    color: '#4B5563',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 12,
     marginBottom: 12,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     height: 82,
     width: 94,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   imageFallback: {
     height: 82,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
   },
   cardCopy: {
     flex: 1,
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   },
   vehicleName: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -563,19 +563,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   reference: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '800',
   },
   dateText: {
-    color: '#374151',
+    color: '#536B91',
     fontSize: 12,
     fontWeight: '900',
   },
   breakdown: {
     gap: 9,
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F3F9FF',
     padding: 12,
   },
   moneyRow: {
@@ -585,21 +585,21 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   moneyLabel: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '800',
   },
   moneyLabelStrong: {
-    color: '#111827',
+    color: '#102550',
     fontWeight: '900',
   },
   moneyValue: {
-    color: '#374151',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '900',
   },
   moneyValueStrong: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 16,
   },
   paginationRow: {
@@ -616,16 +616,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
   },
   pageButtonText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '900',
   },
   pageText: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -639,17 +639,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     padding: 18,
   },
   stateTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 18,
     fontWeight: '900',
   },
   stateBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 16,
   },
   stateButtonText: {
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     flexBasis: '48%',
     flexGrow: 1,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonCard: {
     minHeight: 106,
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
     height: 82,
     width: 94,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLines: {
     flex: 1,
@@ -701,18 +701,18 @@ const styles = StyleSheet.create({
     height: 16,
     width: '80%',
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLine: {
     height: 13,
     width: '58%',
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   skeletonLineShort: {
     height: 13,
     width: '38%',
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
 });

@@ -125,7 +125,7 @@ describe('customer home, search, filters, vehicle details, and quote components'
     global.__testPathname.mockReturnValue('/home');
     const screen = render(React.createElement(BottomNavigation));
 
-    fireEvent.press(screen.getByLabelText('Trips'));
+    fireEvent.press(screen.getByLabelText('My Bookings'));
 
     expect(global.__testRouter.replace).toHaveBeenCalledWith('/(customer)/trips');
   });

@@ -114,7 +114,7 @@ export function BookingSummaryScreen() {
     <BookingShell fallback={backFallback} title="Booking summary">
       {quoteMutation.isPending && !currentQuote ? (
         <View style={styles.centerState}>
-          <ActivityIndicator color="#111827" />
+          <ActivityIndicator color="#102550" />
           <Text style={styles.mutedText}>Preparing your quote</Text>
         </View>
       ) : quoteMutation.isError ? (
@@ -144,7 +144,7 @@ export function BookingSummaryScreen() {
                 {currentQuote.vehicle.make} {currentQuote.vehicle.model}
               </Text>
               <View style={styles.inlineRow}>
-                <MapPin color="#6B7280" size={15} />
+                <MapPin color="#536B91" size={15} />
                 <Text style={[styles.mutedText, { flex: 1 }]}>
                   {currentQuote.vehicle.locationName ?? 'Pickup location'}
                 </Text>
@@ -155,7 +155,7 @@ export function BookingSummaryScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rental window</Text>
             <View style={styles.tripRow}>
-              <CalendarClock color="#111827" size={18} />
+              <CalendarClock color="#102550" size={18} />
               <View style={styles.tripCopy}>
                 <Text style={styles.bodyText}>{formatDateTime(pickupDateTime)}</Text>
                 <Text style={styles.bodyText}>{formatDateTime(returnDateTime)}</Text>
@@ -226,7 +226,7 @@ export function BookingShell({
           onPress={goBack}
           style={styles.backButton}
         >
-          <ArrowLeft color="#111827" size={22} />
+          <ArrowLeft color="#102550" size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
@@ -290,7 +290,7 @@ export function StateMessage({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   body: {
     flex: 1,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 18,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   backButton: {
     height: 44,
@@ -313,13 +313,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 24,
     fontWeight: '900',
   },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 12,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     height: 82,
     width: 96,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#D6E8FF',
   },
   vehicleImageFallback: {
     height: 82,
@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#EAF4FF',
   },
   vehicleInitial: {
-    color: '#0F172A',
+    color: '#102550',
     fontSize: 34,
     fontWeight: '900',
   },
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   vehicleTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '900',
   },
@@ -381,13 +381,13 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
   },
   sectionTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '900',
   },
@@ -411,27 +411,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#D6E8FF',
     paddingTop: 12,
   },
   bodyText: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 14,
     fontWeight: '800',
   },
   mutedText: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
   },
   totalLabel: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
   totalAmount: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 17,
     fontWeight: '900',
   },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#0B4FE8',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 18,
     marginTop: 4,
   },
@@ -461,13 +461,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   stateTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
   },
   stateBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,

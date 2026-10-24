@@ -388,7 +388,7 @@ function PaymentAction({
   return (
     <View style={[styles.paymentCard, tone === 'error' && styles.paymentCardError]}>
       <View style={[styles.iconFrame, tone === 'error' && styles.iconFrameError]}>
-        {tone === 'error' ? <CircleAlert color="#B91C1C" size={28} /> : <CreditCard color="#111827" size={28} />}
+        {tone === 'error' ? <CircleAlert color="#B91C1C" size={28} /> : <CreditCard color="#102550" size={28} />}
       </View>
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       <Text style={styles.body}>{description}</Text>
@@ -424,7 +424,7 @@ function PaymentProcessingState({
   return (
     <View style={styles.paymentCard}>
       <View style={styles.iconFrame}>
-        <LoaderCircle color="#0B4FE8" size={28} />
+        <LoaderCircle color="#0B6FE8" size={28} />
       </View>
       <Text accessibilityLiveRegion="polite" accessibilityRole="header" style={styles.title}>Payment Processing</Text>
       <Text style={styles.body}>We are waiting for confirmation of {amount} from the payment provider.</Text>
@@ -436,7 +436,7 @@ function PaymentProcessingState({
         onPress={onRefresh}
         style={[styles.secondaryButton, isRefreshing && styles.disabledSecondaryButton]}
       >
-        {isRefreshing ? <ActivityIndicator accessibilityLabel="Checking payment status" color="#0B4FE8" /> : <><RefreshCw color="#0B4FE8" size={18} /><Text style={styles.secondaryButtonText}>Check status</Text></>}
+        {isRefreshing ? <ActivityIndicator accessibilityLabel="Checking payment status" color="#0B6FE8" /> : <><RefreshCw color="#0B6FE8" size={18} /><Text style={styles.secondaryButtonText}>Check status</Text></>}
       </Pressable>
     </View>
   );
@@ -445,33 +445,33 @@ function PaymentProcessingState({
 function LoadingPaymentState({ label = 'Checking booking and payment status.' }: { label?: string }) {
   return (
     <View style={styles.loadingState}>
-      <ActivityIndicator color="#0B4FE8" />
+      <ActivityIndicator color="#0B6FE8" />
       <Text style={styles.body}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  amount: { color: '#111827', fontSize: 28, fontWeight: '900' },
-  body: { color: '#6B7280', fontSize: 14, fontWeight: '700', lineHeight: 21, textAlign: 'center' },
+  amount: { color: '#102550', fontSize: 28, fontWeight: '900' },
+  body: { color: '#536B91', fontSize: 14, fontWeight: '700', lineHeight: 21, textAlign: 'center' },
   content: { gap: 16, padding: 18 },
-  disabledButton: { backgroundColor: '#6B7280' },
+  disabledButton: { backgroundColor: '#536B91' },
   disabledSecondaryButton: { opacity: 0.6 },
   errorBox: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderRadius: 8, borderWidth: 1, padding: 12, width: '100%' },
   errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', lineHeight: 19 },
-  iconFrame: { alignItems: 'center', backgroundColor: '#EAF2FF', borderRadius: 8, height: 58, justifyContent: 'center', width: 58 },
+  iconFrame: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 8, height: 58, justifyContent: 'center', width: 58 },
   iconFrameError: { backgroundColor: '#FEE2E2' },
   loadingState: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
-  paymentCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
+  paymentCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
   paymentCardError: { borderColor: '#FECACA' },
-  primaryButton: { alignItems: 'center', backgroundColor: '#0B4FE8', borderRadius: 8, justifyContent: 'center', minHeight: 52, width: '100%' },
+  primaryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 8, justifyContent: 'center', minHeight: 52, width: '100%' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   scroll: { flex: 1, minHeight: 0 },
   secondaryButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
-  secondaryButtonText: { color: '#0B4FE8', fontSize: 14, fontWeight: '900' },
+  secondaryButtonText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' },
   secureRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   secureText: { color: '#047857', fontSize: 13, fontWeight: '800' },
-  summary: { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: 12, borderWidth: 1, gap: 6, padding: 14 },
-  summaryLabel: { color: '#6B7280', fontSize: 13, fontWeight: '800' },
-  title: { color: '#111827', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  summary: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 6, padding: 14 },
+  summaryLabel: { color: '#536B91', fontSize: 13, fontWeight: '800' },
+  title: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' },
 });

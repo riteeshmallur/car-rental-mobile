@@ -47,7 +47,7 @@ export function AddVehicleFooter({ busy, busyLabel, isSubmit, onPress }: AddVehi
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
-    borderTopColor: '#E3E9F2',
+    borderTopColor: '#D6E8FF',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 13,
-    backgroundColor: '#1769F5',
+    backgroundColor: '#0B6FE8',
     paddingHorizontal: 16,
   },
   buttonText: {

@@ -103,7 +103,7 @@ export function HomeIntentCarousel({ cars, intents, onIntentPress }: HomeIntentC
                 />
               ) : (
                 <View accessibilityElementsHidden style={styles.fallbackImage}>
-                  <CarFront color="#8CB9EF" size={64} />
+                  <CarFront color="#D6E8FF" size={64} />
                 </View>
               )}
               <View accessibilityElementsHidden style={styles.copyBackdrop} />
@@ -112,7 +112,7 @@ export function HomeIntentCarousel({ cars, intents, onIntentPress }: HomeIntentC
                 <Text numberOfLines={3} style={styles.description}>{item.description}</Text>
                 <View style={styles.actionRow}>
                   <Text style={styles.action}>{item.action}</Text>
-                  <ArrowRight color="#FF705B" size={22} />
+                  <ArrowRight color="#FF644F" size={22} />
                 </View>
               </View>
 
@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     borderRadius: 24,
-    backgroundColor: '#F7FBFF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D5E8FF',
+    borderColor: '#D6E8FF',
     padding: 18,
-    shadowColor: '#87B8ED',
+    shadowColor: '#0B6FE8',
     shadowOffset: { height: 7, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 14,
@@ -163,17 +163,17 @@ const styles = StyleSheet.create({
     left: 0,
     width: '58%',
     zIndex: 1,
-    backgroundColor: '#F9FCFF',
+    backgroundColor: '#FFFFFF',
   },
   title: {
-    color: '#0D275F',
+    color: '#102550',
     fontFamily: 'Georgia',
     fontSize: 20,
     fontWeight: '700',
     lineHeight: 23,
   },
   description: {
-    color: '#526885',
+    color: '#536B91',
     fontSize: 11,
     fontWeight: '500',
     lineHeight: 15,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   action: {
-    color: '#FF705B',
+    color: '#FF644F',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF5FF',
+    backgroundColor: '#EAF4FF',
   },
   dots: {
     position: 'absolute',
@@ -221,11 +221,11 @@ const styles = StyleSheet.create({
     height: 7,
     width: 7,
     borderRadius: 4,
-    backgroundColor: '#B7CBE4',
+    backgroundColor: '#D6E8FF',
   },
   activeDot: {
     width: 21,
-    backgroundColor: '#FF705B',
+    backgroundColor: '#FF644F',
   },
   pressed: {
     opacity: 0.86,

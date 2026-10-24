@@ -74,12 +74,12 @@ export function LocationSelectionScreen() {
             onPress={goBack}
             style={styles.closeButton}
           >
-            <X color="#111827" size={20} />
+            <X color="#102550" size={20} />
           </Pressable>
         </View>
 
         <View style={styles.searchBox}>
-          <Search color="#6B7280" size={20} />
+          <Search color="#536B91" size={20} />
           <TextInput
             accessibilityHint="Enter at least two characters to search cities and pickup areas."
             accessibilityLabel="Search pickup locations"
@@ -88,7 +88,7 @@ export function LocationSelectionScreen() {
             autoFocus
             onChangeText={setQuery}
             placeholder="Search Bangalore, Indiranagar..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#536B91"
             style={styles.searchInput}
             value={query}
           />
@@ -101,7 +101,7 @@ export function LocationSelectionScreen() {
           />
         ) : locationsQuery.isLoading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator color="#111827" />
+            <ActivityIndicator color="#102550" />
             <Text style={styles.loadingText}>Searching locations</Text>
           </View>
         ) : locationsQuery.isError ? (
@@ -158,7 +158,7 @@ function EmptyState({ body, title }: { body: string; title: string }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#F3F9FF',
   },
   container: {
     flex: 1,
@@ -173,12 +173,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   title: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 26,
     fontWeight: '900',
   },
   subtitle: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
     marginTop: 3,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
   },
   searchBox: {
     minHeight: 54,
@@ -199,14 +199,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
   },
   searchInput: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -229,13 +229,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyTitle: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
   },
   emptyBody: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 22,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   resultItem: {
     gap: 5,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D6E8FF',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     padding: 14,
@@ -261,12 +261,12 @@ const styles = StyleSheet.create({
     opacity: 0.76,
   },
   resultName: {
-    color: '#111827',
+    color: '#102550',
     fontSize: 16,
     fontWeight: '900',
   },
   resultMeta: {
-    color: '#6B7280',
+    color: '#536B91',
     fontSize: 13,
     fontWeight: '700',
   },

@@ -80,18 +80,18 @@ export function VehicleSelectionSheet({
               onPress={onClose}
               style={styles.closeButton}
             >
-              <X color="#111827" size={20} />
+              <X color="#102550" size={20} />
             </Pressable>
           </View>
           <View style={styles.searchBox}>
-            <Search color="#72809A" size={18} />
+            <Search color="#536B91" size={18} />
             <TextInput
               accessibilityHint={`Filter ${title.toLowerCase()} options.`}
               accessibilityLabel={`Search ${title}`}
               autoFocus
               onChangeText={setSearch}
               placeholder="Search"
-              placeholderTextColor="#8B96AA"
+              placeholderTextColor="#536B91"
               style={styles.searchInput}
               value={search}
             />
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     height: 4,
     width: 42,
     borderRadius: 999,
-    backgroundColor: '#D7DEE9',
+    backgroundColor: '#D6E8FF',
     marginBottom: 12,
   },
   header: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    color: '#101A35',
+    color: '#102550',
     fontSize: 19,
     fontWeight: '900',
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#F3F9FF',
   },
   searchBox: {
     minHeight: 48,
@@ -188,14 +188,14 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE4EF',
-    backgroundColor: '#F9FBFD',
+    borderColor: '#D6E8FF',
+    backgroundColor: '#F3F9FF',
     paddingHorizontal: 12,
     marginTop: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#111827',
+    color: '#102550',
     fontSize: 15,
     paddingVertical: 0,
   },
@@ -208,14 +208,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F7',
+    borderBottomColor: '#D6E8FF',
     paddingHorizontal: 8,
   },
   optionSelected: {
     backgroundColor: '#ECFDF5',
   },
   optionText: {
-    color: '#17213B',
+    color: '#102550',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   emptyText: {
-    color: '#6B7892',
+    color: '#536B91',
     fontSize: 14,
     paddingVertical: 24,
     textAlign: 'center',

@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#D9E1EF',
+    borderColor: '#D6E8FF',
     borderRadius: radii.md,
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
