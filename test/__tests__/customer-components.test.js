@@ -64,6 +64,8 @@ describe('customer home, search, filters, vehicle details, and quote components'
     expect(onLocationPress).toHaveBeenCalledTimes(1);
     expect(onDateTimeFieldPress).toHaveBeenCalledWith('pickupTime');
     expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Indiranagar')).toBeTruthy();
+    expect(screen.getByText('Bengaluru')).toBeTruthy();
   });
 
   it('opens a vehicle detail action from a real vehicle card', () => {

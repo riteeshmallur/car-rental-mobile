@@ -8,6 +8,7 @@ import { carsApi } from '@/services/cars/cars-api';
 import { locationsApi } from '@/services/locations/locations-api';
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
 import { CustomerHeader } from '@/features/customer/components/customer-header';
+import { FeaturedCarList } from '@/features/customer/components/featured-car-list';
 import {
   DateTimePickerSheet,
   type DateTimeField,
@@ -117,6 +118,7 @@ export function HomeScreen() {
   });
 
   const availableCars = carsQuery.data ?? [];
+  const popularCars = availableCars.slice(0, 3);
   const isRefreshing = defaultLocationQuery.isFetching || carsQuery.isFetching;
 
   const refreshHome = () => {
@@ -173,6 +175,30 @@ export function HomeScreen() {
     openSearchResults(category.filters, category.sort);
   };
 
+  const openVehicleDetails = (vehicleId: string) => {
+    if (!location) {
+      setValidationError('Select a pickup location.');
+      return;
+    }
+
+    router.push({
+      pathname: '/(customer)/vehicles/[id]',
+      params: {
+        id: vehicleId,
+        origin: 'home',
+        ...toSearchRouteParams({
+          locationId: location.id,
+          locationName: location.name,
+          locationCity: location.city,
+          pickupDateTime: rentalWindow.pickupAt.toISOString(),
+          returnDateTime: rentalWindow.returnAt.toISOString(),
+          filters: {},
+          sort: 'recommended',
+        }),
+      },
+    });
+  };
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
@@ -227,6 +253,15 @@ export function HomeScreen() {
             cars={availableCars}
             onCategoryPress={handleCategoryPress}
             onSeeAll={searchCars}
+          />
+
+          <FeaturedCarList
+            cars={popularCars}
+            isLoading={carsQuery.isLoading}
+            onCarPress={openVehicleDetails}
+            onViewAll={searchCars}
+            title="Popular cars"
+            variant="popular"
           />
         </View>
       </ScrollView>

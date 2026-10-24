@@ -36,8 +36,10 @@ export function RentalSearchCard({
   rentalWindow,
   validationError,
 }: RentalSearchCardProps) {
-  const locationName = location?.city || location?.name || 'Bengaluru';
-  const locationCity = location?.city || 'Bengaluru';
+  const locationName = location?.name || location?.city || 'Bengaluru';
+  const locationHint = location
+    ? [location.city, location.state].filter(Boolean).join(', ')
+    : 'Pick up anywhere in Bengaluru';
 
   return (
     <View style={styles.container}>
@@ -52,7 +54,7 @@ export function RentalSearchCard({
         <View style={styles.locationCopy}>
           <Text numberOfLines={1} style={styles.locationText}>{locationName}</Text>
           <Text numberOfLines={1} style={styles.locationHint}>
-            Pick up anywhere in {locationCity}
+            {locationHint}
           </Text>
         </View>
         <ChevronDown color={HOME_NAVY} size={24} />
