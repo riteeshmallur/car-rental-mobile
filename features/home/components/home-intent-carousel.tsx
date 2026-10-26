@@ -1,8 +1,9 @@
-import { ArrowRight, CarFront } from 'lucide-react-native';
+import { ArrowRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,14 +12,24 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewStyle,
 } from 'react-native';
 
-import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
-import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { type SearchFilters } from '@/features/customer/utils/search-route-state';
-import { type Car, type VehicleSearchSort } from '@/types/car';
+import { type VehicleSearchSort } from '@/types/car';
 
-const weekendEscapesArtwork = require('@/assets/images/hopin-weekend-escapes.png');
+const carouselArtwork = {
+  city: require('@/assets/images/hopin-carousel-city-drives.png'),
+  space: require('@/assets/images/hopin-carousel-spacious-cars.png'),
+  weekend: require('@/assets/images/hopin-carousel-weekend-escapes.png'),
+} as const;
+
+const carouselGradient =
+  'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.99) 27%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0.72) 39%, rgba(255,255,255,0.30) 44%, rgba(255,255,255,0) 50%)';
+
+const webGradientStyle = Platform.OS === 'web'
+  ? ({ backgroundImage: carouselGradient } as unknown as ViewStyle)
+  : undefined;
 
 export type HomeIntent = {
   id: string;
@@ -31,26 +42,21 @@ export type HomeIntent = {
 };
 
 type HomeIntentCarouselProps = {
-  cars: Car[];
   intents: HomeIntent[];
   onIntentPress: (intent: HomeIntent) => void;
 };
 
-function matchingCar(cars: Car[], intent: HomeIntent) {
-  if (!intent.vehicleType) {
-    return cars.find((car) => Boolean(car.imageUrl)) ?? null;
-  }
-
-  return cars.find(
-    (car) => car.vehicleType.toLowerCase() === intent.vehicleType && Boolean(car.imageUrl),
-  ) ?? cars.find((car) => Boolean(car.imageUrl)) ?? null;
+function artworkFor(intent: HomeIntent) {
+  return carouselArtwork[intent.id as keyof typeof carouselArtwork] ?? carouselArtwork.weekend;
 }
 
-export function HomeIntentCarousel({ cars, intents, onIntentPress }: HomeIntentCarouselProps) {
+export function HomeIntentCarousel({ intents, onIntentPress }: HomeIntentCarouselProps) {
   const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const cardWidth = Math.max(1, containerWidth || Math.min(width - 36, 560));
+  const textScale = Math.min(1, Math.max(0.68, cardWidth / 560));
+  const copyPadding = Math.round(27 * textScale);
 
   const handleLayout = (event: LayoutChangeEvent) => {
     const nextWidth = Math.round(event.nativeEvent.layout.width);
@@ -72,12 +78,6 @@ export function HomeIntentCarousel({ cars, intents, onIntentPress }: HomeIntentC
         onMomentumScrollEnd={handleMomentumEnd}
         pagingEnabled
         renderItem={({ item }) => {
-          const car = matchingCar(cars, item);
-          const imageUrl = car?.imageUrl
-            ? getVehicleImageVariantUrl(car.imageUrl, 'thumbnail')
-            : null;
-          const usesWeekendArtwork = item.id === 'weekend';
-
           return (
             <Pressable
               accessibilityHint="Applies this search idea and opens available cars."
@@ -86,33 +86,27 @@ export function HomeIntentCarousel({ cars, intents, onIntentPress }: HomeIntentC
               onPress={() => onIntentPress(item)}
               style={({ pressed }) => [styles.card, { width: cardWidth }, pressed && styles.pressed]}
             >
-              {usesWeekendArtwork ? (
+              <View accessibilityElementsHidden style={styles.imageStage}>
                 <Image
                   accessible={false}
                   contentFit="cover"
-                  contentPosition="center"
-                  source={weekendEscapesArtwork}
-                  style={styles.image}
+                  contentPosition="right center"
+                  source={artworkFor(item)}
+                  style={styles.backgroundImage}
                   transition={120}
                 />
-              ) : imageUrl ? (
-                <CachedVehicleImage
-                  accessibilityLabel={`${car?.make} ${car?.model}`}
-                  style={styles.image}
-                  uri={imageUrl}
-                />
-              ) : (
-                <View accessibilityElementsHidden style={styles.fallbackImage}>
-                  <CarFront color="#D6E8FF" size={64} />
-                </View>
-              )}
-              <View accessibilityElementsHidden style={styles.copyBackdrop} />
-              <View style={styles.copy}>
-                <Text numberOfLines={2} style={styles.title}>{item.title}</Text>
-                <Text numberOfLines={3} style={styles.description}>{item.description}</Text>
+              </View>
+              <View
+                accessibilityElementsHidden
+                pointerEvents="none"
+                style={[styles.gradientOverlay, webGradientStyle]}
+              />
+              <View style={[styles.copy, { paddingLeft: copyPadding, paddingRight: Math.round(9 * textScale) }]}>
+                <Text numberOfLines={2} style={[styles.title, { fontSize: Math.round(30 * textScale), lineHeight: Math.round(32 * textScale) }]}>{item.title}</Text>
+                <Text numberOfLines={3} style={[styles.description, { fontSize: Math.round(16 * textScale), lineHeight: Math.round(22 * textScale) }]}>{item.description}</Text>
                 <View style={styles.actionRow}>
-                  <Text style={styles.action}>{item.action}</Text>
-                  <ArrowRight color="#FF644F" size={22} />
+                  <Text style={[styles.action, { fontSize: Math.round(20 * textScale) }]}>{item.action}</Text>
+                  <ArrowRight color="#FF644F" size={Math.round(28 * textScale)} />
                 </View>
               </View>
 
@@ -140,11 +134,10 @@ const styles = StyleSheet.create({
     minHeight: 166,
     overflow: 'hidden',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D6E8FF',
-    padding: 18,
     shadowColor: '#0B6FE8',
     shadowOffset: { height: 7, width: 0 },
     shadowOpacity: 0.16,
@@ -153,17 +146,8 @@ const styles = StyleSheet.create({
   },
   copy: {
     zIndex: 2,
-    maxWidth: '57%',
-    gap: 8,
-  },
-  copyBackdrop: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: '58%',
-    zIndex: 1,
-    backgroundColor: '#FFFFFF',
+    width: '53%',
+    gap: 9,
   },
   title: {
     color: '#102550',
@@ -189,42 +173,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  image: {
+  imageStage: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
+    overflow: 'hidden',
   },
-  fallbackImage: {
+  backgroundImage: {
+    position: 'absolute',
+    top: '-30%',
+    right: '-4%',
+    height: '160%',
+    width: '160%',
+  },
+  gradientOverlay: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EAF4FF',
+    zIndex: 1,
+    experimental_backgroundImage: carouselGradient,
   },
   dots: {
     position: 'absolute',
-    bottom: 10,
+    bottom: 14,
     left: 0,
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 8,
     zIndex: 4,
   },
   dot: {
-    height: 7,
-    width: 7,
-    borderRadius: 4,
+    height: 10,
+    width: 10,
+    borderRadius: 5,
     backgroundColor: '#D6E8FF',
   },
   activeDot: {
-    width: 21,
+    width: 25,
     backgroundColor: '#FF644F',
   },
   pressed: {

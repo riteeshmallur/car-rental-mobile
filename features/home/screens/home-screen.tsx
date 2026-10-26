@@ -38,7 +38,7 @@ import { type VehicleSearchSort } from '@/types/car';
 const homeIntents: HomeIntent[] = [
   {
     id: 'weekend',
-    title: 'Drive More\nOut of Bengaluru',
+    title: 'Drive More Out of Bengaluru',
     description: 'Premium cars for city drives, weekend escapes and everything in between.',
     action: 'Explore Now',
     filters: { minSeats: 5 },
@@ -244,7 +244,6 @@ export function HomeScreen() {
           ) : null}
 
           <HomeIntentCarousel
-            cars={availableCars}
             intents={homeIntents}
             onIntentPress={handleIntentPress}
           />
