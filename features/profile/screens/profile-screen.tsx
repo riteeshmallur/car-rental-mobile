@@ -3,14 +3,11 @@ import { router } from 'expo-router';
 import {
   ArrowRight,
   Bell,
-  Banknote,
-  CalendarClock,
   CarFront,
   ChevronRight,
   CreditCard,
   FileText,
   Headphones,
-  LayoutDashboard,
   LogOut,
   Mail,
   Pencil,
@@ -134,40 +131,6 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
 
   const sections = useMemo<SectionItem[]>(
     () => [
-      ...(mode === 'host'
-        ? [
-            {
-              label: 'Dashboard',
-              description: 'View listing, booking, and payout activity',
-              icon: <LayoutDashboard color={colors.ink} size={20} />,
-              onPress: () => router.push('/(host)/dashboard' as never),
-            },
-            {
-              label: 'My Cars',
-              description: 'Manage your vehicle listings',
-              icon: <CarFront color={colors.ink} size={20} />,
-              onPress: () => router.push('/(host)/cars'),
-            },
-            {
-              label: 'Bookings',
-              description: 'Review customer reservations',
-              icon: <CalendarClock color={colors.ink} size={20} />,
-              onPress: () => router.push('/(host)/bookings'),
-            },
-            {
-              label: 'Earnings',
-              description: 'Track your host payouts',
-              icon: <Banknote color={colors.ink} size={20} />,
-              onPress: () => router.push('/(host)/earnings'),
-            },
-            {
-              label: 'Payouts',
-              description: 'View processed and pending payouts',
-              icon: <Banknote color={colors.ink} size={20} />,
-              onPress: () => router.push('/(host)/payouts' as never),
-            },
-          ]
-        : []),
       {
         label: 'Payment methods',
         description: 'Manage your cards and wallets',
@@ -278,36 +241,27 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                   />
                 ) : null}
 
-                {mode === 'host' ? <SectionHeading title="Host workspace" /> : null}
-                {mode === 'host' ? (
-                  <View style={styles.section}>
-                    {sections.slice(0, 5).map((item) => (
-                      <SectionRow key={item.label} item={item} />
-                    ))}
-                  </View>
-                ) : null}
-
                 <SectionHeading title="Account" />
                 <View style={styles.section}>
-                  {sections.slice(mode === 'host' ? 5 : 0, mode === 'host' ? 7 : 2).map((item) => (
+                  {sections.slice(0, 2).map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
 
                 <SectionHeading title="Preferences" />
                 <View style={styles.section}>
-                  <SectionRow item={sections[mode === 'host' ? 7 : 2]} />
+                  <SectionRow item={sections[2]} />
                 </View>
 
                 <SectionHeading title="Support & Security" />
                 <View style={styles.section}>
-                  {sections.slice(mode === 'host' ? 8 : 3, mode === 'host' ? 10 : 5).map((item) => (
+                  {sections.slice(3, 5).map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
 
                 <View style={styles.logoutSection}>
-                  <SectionRow item={sections[mode === 'host' ? 10 : 5]} />
+                  <SectionRow item={sections[5]} />
                 </View>
               </>
             ) : null}
