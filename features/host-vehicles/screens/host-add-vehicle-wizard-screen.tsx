@@ -60,6 +60,7 @@ import {
   VehicleSelectionSheet,
   type VehicleSelectionOption,
 } from '@/features/host-vehicles/components/vehicle-selection-sheet';
+import { type VehicleSetupSection as SetupSection } from '@/features/host-vehicles/utils/vehicle-setup-progress';
 import { type LocationSearchResult } from '@/types/location';
 
 type StepKey =
@@ -67,15 +68,6 @@ type StepKey =
   | 'vehicleLocation'
   | 'features'
   | 'photos'
-  | 'documents'
-  | 'pricing'
-  | 'availability'
-  | 'review';
-
-type SetupSection =
-  | 'details'
-  | 'photos'
-  | 'location'
   | 'documents'
   | 'pricing'
   | 'availability'
@@ -171,16 +163,29 @@ const setupSections: Array<{
   { key: 'review', title: 'Review & submit', helper: 'Check each requirement before approval.' },
 ];
 
+const guidedSetupSections: SetupSection[] = [
+  'details',
+  'photos',
+  'location',
+  'documents',
+  'pricing',
+  'availability',
+  'review',
+];
+
 const emptyDocumentUrls: VehicleDocumentUrls = { rc: null, insurance: null, puc: null };
 
 export function HostAddVehicleWizardScreen() {
   const params = useLocalSearchParams<{
     vehicleId?: string | string[];
     section?: string | string[];
+    flow?: string | string[];
   }>();
   const requestedVehicleId = Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId;
   const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
+  const requestedFlow = Array.isArray(params.flow) ? params.flow[0] : params.flow;
   const activeSection = isSetupSection(requestedSection) ? requestedSection : null;
+  const isGuidedFlow = requestedFlow === 'guided';
   const queryClient = useQueryClient();
   const [draftId, setDraftId] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
@@ -200,7 +205,7 @@ export function HostAddVehicleWizardScreen() {
     resolver: zodResolver(hostVehicleFormSchema),
     mode: 'onTouched',
   });
-  const { control, formState: { errors }, getValues, reset, setValue, trigger, watch } = form;
+  const { control, formState: { dirtyFields, errors }, getValues, reset, setValue, trigger, watch } = form;
 
   const hostVehiclesQuery = useQuery({
     queryKey: ['host', 'vehicles'],
@@ -323,21 +328,68 @@ export function HostAddVehicleWizardScreen() {
     return error ? normalizeApiError(error) : null;
   }, [saveMutation.error, submitMutation.error, uploadDocumentMutation.error, uploadPhotosMutation.error]);
 
+  const hasUnsavedLocationChanges = Boolean(
+    dirtyFields.locationId ||
+      dirtyFields.address ||
+      dirtyFields.city ||
+      dirtyFields.state ||
+      dirtyFields.country ||
+      dirtyFields.latitude ||
+      dirtyFields.longitude,
+  );
+
   const goToChecklist = () => {
     if (draftId) {
-      router.replace({ pathname: '/(host)/vehicles/new', params: { vehicleId: draftId } });
+      router.setParams({ vehicleId: draftId, section: '', flow: '' });
     }
   };
   const goToSection = (section: SetupSection) => {
     if (draftId) {
-      router.push({ pathname: '/(host)/vehicles/new', params: { vehicleId: draftId, section } });
+      router.setParams({ vehicleId: draftId, section, flow: '' });
     }
   };
+  const goToGuidedSection = (section: SetupSection, vehicleId = draftId) => {
+    if (vehicleId) {
+      router.setParams({ vehicleId, section, flow: 'guided' });
+    }
+  };
+
+  const savePickupLocation = async ({ exitAfterSave = false } = {}) => {
+    if (!draftId || actionInFlightRef.current) return false;
+    actionInFlightRef.current = true;
+    setValidationMessage(null);
+
+    try {
+      const valid = await trigger(getSectionFields('location'));
+      if (!valid) {
+        if (exitAfterSave) {
+          setValidationMessage('Select a complete pickup location before leaving this step.');
+        }
+        return false;
+      }
+
+      await saveMutation.mutateAsync(buildSectionPayload('location', getValues()));
+      if (exitAfterSave) {
+        goToChecklist();
+      }
+      return true;
+    } catch {
+      setValidationMessage('Pickup location could not be saved. Check your connection and try again.');
+      return false;
+    } finally {
+      actionInFlightRef.current = false;
+    }
+  };
+
   const goBack = useSafeBack({
     fallback: '/(host)/cars',
     onBeforeBack: () => {
       if (activeSection && draftId) {
-        goToChecklist();
+        if (activeSection === 'location' && hasUnsavedLocationChanges) {
+          void savePickupLocation({ exitAfterSave: true });
+        } else {
+          goToChecklist();
+        }
         return true;
       }
       return false;
@@ -456,7 +508,7 @@ export function HostAddVehicleWizardScreen() {
     }
     try {
       const vehicle = await saveMutation.mutateAsync(buildStepPayload('vehicleDetails', getValues(), 'setup'));
-      router.replace({ pathname: '/(host)/vehicles/new', params: { vehicleId: vehicle.id } });
+      goToGuidedSection('details', vehicle.id);
     } catch {
       // The mutation state renders the API error.
     } finally {
@@ -492,7 +544,12 @@ export function HostAddVehicleWizardScreen() {
         }
       }
       await saveMutation.mutateAsync(buildSectionPayload(activeSection, nextValues));
-      goToChecklist();
+      const nextSection = isGuidedFlow ? getNextSetupSection(activeSection) : null;
+      if (nextSection) {
+        goToGuidedSection(nextSection);
+      } else {
+        goToChecklist();
+      }
     } catch {
       // The mutation state renders the API error.
     } finally {
@@ -523,7 +580,7 @@ export function HostAddVehicleWizardScreen() {
             <View pointerEvents={isBusy ? 'none' : 'auto'} style={styles.stepContent}>
               <View style={styles.stepHeader}><Text style={styles.stepTitle}>{sectionDefinition?.title}</Text><Text style={styles.stepHelper}>{sectionDefinition?.helper}</Text></View>
               {activeSection === 'details' ? <><VehicleDetailsStep control={control} errors={errors} make={make} onOpenSelection={setSelectionField} optionalDescription /><ExpandableVehicleExtras control={control} error={errors.features?.message} featureInput={featureInput} features={features} onAddFeature={addFeature} onChangeFeatureInput={setFeatureInput} onRemoveFeature={removeFeature} onTogglePopularFeature={togglePopularFeature} /></> : null}
-              {activeSection === 'location' ? <VehicleLocationStep control={control} errors={errors} setValue={setValue} /> : null}
+              {activeSection === 'location' ? <VehicleLocationStep control={control} errors={errors} onLocationSelected={() => void savePickupLocation()} setValue={setValue} /> : null}
               {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} imageUrls={imageUrls} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onSetCoverPhoto={setCoverPhoto} /> : null}
               {activeSection === 'documents' ? <DocumentsStep control={control} documentUpload={documentUpload} documentUrls={documentUrls} errors={errors} onPickDocument={pickVehicleDocument} /> : null}
               {activeSection === 'pricing' ? <PricingStep control={control} errors={errors} /> : null}
@@ -533,7 +590,7 @@ export function HostAddVehicleWizardScreen() {
             </View>
           )}
         </ScrollView>
-        {!isRestoringDraft && (!draftId || activeSection) ? <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : 'Save changes'} onPress={!draftId ? createDraft : saveSection} /> : null}
+        {!isRestoringDraft && (!draftId || activeSection) ? <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : isGuidedFlow ? 'Save & continue' : 'Save changes'} onPress={!draftId ? createDraft : saveSection} /> : null}
       </KeyboardAvoidingView>
       {selectionField ? <VehicleSelectionSheet onClose={() => setSelectionField(null)} onSelect={(value) => { if (selectionField === 'make') { setValue('make', value, { shouldDirty: true, shouldValidate: true }); setValue('model', '', { shouldDirty: true, shouldValidate: false }); } else { setValue(selectionField, value, { shouldDirty: true, shouldValidate: true }); } }} options={selectionOptions} title={selectionField === 'manufacturingYear' ? 'Select year' : selectionField === 'colour' ? 'Select colour' : `Select ${selectionField}`} value={selectedValue} visible /> : null}
     </SafeAreaView>
@@ -542,6 +599,11 @@ export function HostAddVehicleWizardScreen() {
 
 function isSetupSection(value: string | undefined): value is SetupSection {
   return Boolean(value && setupSections.some((section) => section.key === value));
+}
+
+function getNextSetupSection(section: SetupSection): SetupSection | null {
+  const currentIndex = guidedSetupSections.indexOf(section);
+  return currentIndex >= 0 ? guidedSetupSections[currentIndex + 1] ?? null : null;
 }
 
 function getSectionFields(section: SetupSection): FieldPath<HostVehicleFormValues>[] {
@@ -876,9 +938,11 @@ function ExpandableVehicleExtras({
 function VehicleLocationStep({
   control,
   errors,
+  onLocationSelected,
   setValue,
 }: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
   errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  onLocationSelected: () => void;
   setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
 }) {
   return (
@@ -886,6 +950,7 @@ function VehicleLocationStep({
       <LocationSearchField
         control={control}
         error={errors.address?.message ?? errors.locationId?.message}
+        onLocationSelected={onLocationSelected}
         setValue={setValue}
       />
       <TextField
@@ -922,10 +987,12 @@ function VehicleLocationStep({
 function LocationSearchField({
   control,
   error,
+  onLocationSelected,
   setValue,
 }: {
   control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
   error?: string;
+  onLocationSelected: () => void;
   setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
 }) {
   const [focused, setFocused] = useState(false);
@@ -979,6 +1046,7 @@ function LocationSearchField({
             setValue('latitude', String(location.latitude), { shouldDirty: true, shouldValidate: false });
             setValue('longitude', String(location.longitude), { shouldDirty: true, shouldValidate: false });
             setFocused(false);
+            onLocationSelected();
           }}
           value={typeof value === 'string' ? value : ''}
         />

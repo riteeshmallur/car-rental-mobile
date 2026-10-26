@@ -6,12 +6,14 @@ import {
   CalendarCheck2,
   CarFront,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   FileSearch,
   Landmark,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react-native';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,8 +27,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMoney } from '@/features/customer/utils/car-formatters';
 import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
+import {
+  getVehicleDraftName,
+  getVehicleSetupProgress,
+  getVehicleSetupSectionLabel,
+} from '@/features/host-vehicles/utils/vehicle-setup-progress';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { hostsApi, type HostSetupStatus, type HostSetupTaskKey } from '@/services/hosts/hosts-api';
+import { type HostVehicleListing } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 
 export function HostDashboardScreen() {
@@ -39,12 +47,25 @@ export function HostDashboardScreen() {
     queryKey: ['host', 'setup-status'],
     queryFn: hostsApi.setupStatus,
   });
+  const vehiclesQuery = useQuery({
+    queryKey: ['host', 'vehicles'],
+    queryFn: hostsApi.listVehicles,
+  });
+  const resumableDraft = useMemo(
+    () =>
+      (vehiclesQuery.data ?? [])
+        .filter((vehicle) => vehicle.status === 'DRAFT' || vehicle.status === 'CHANGES_REQUIRED')
+        .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null,
+    [vehiclesQuery.data],
+  );
   const isRefreshing =
     (dashboardQuery.isRefetching && !dashboardQuery.isLoading) ||
-    (setupQuery.isRefetching && !setupQuery.isLoading);
+    (setupQuery.isRefetching && !setupQuery.isLoading) ||
+    (vehiclesQuery.isRefetching && !vehiclesQuery.isLoading);
   const refreshDashboard = () => {
     void dashboardQuery.refetch();
     void setupQuery.refetch();
+    void vehiclesQuery.refetch();
   };
 
   return (
@@ -65,7 +86,7 @@ export function HostDashboardScreen() {
               <Text style={styles.title}>Dashboard</Text>
             </View>
           </View>
-          {dashboardQuery.isFetching || setupQuery.isFetching ? (
+          {dashboardQuery.isFetching || setupQuery.isFetching || vehiclesQuery.isFetching ? (
             <ActivityIndicator color="#0B6FE8" />
           ) : (
             <Pressable
@@ -100,8 +121,9 @@ export function HostDashboardScreen() {
             showsVerticalScrollIndicator={false}
           >
             {setupQuery.data?.status !== 'complete' ? (
-              <HostSetupChecklist setup={setupQuery.data} isLoading={setupQuery.isLoading} onRetry={() => void setupQuery.refetch()} />
+              <HostSetupChecklist draft={resumableDraft} setup={setupQuery.data} isLoading={setupQuery.isLoading} onRetry={() => void setupQuery.refetch()} />
             ) : null}
+            {resumableDraft ? <VehicleDraftResumeCard vehicle={resumableDraft} /> : null}
             <Text style={styles.intro}>A live view of your listing and booking activity.</Text>
             <View style={styles.metrics}>
               <MetricCard
@@ -170,11 +192,61 @@ export function HostDashboardScreen() {
   );
 }
 
+function VehicleDraftResumeCard({ vehicle }: { vehicle: HostVehicleListing }) {
+  const progress = getVehicleSetupProgress(vehicle);
+  const nextSectionLabel = getVehicleSetupSectionLabel(progress.nextSection);
+  const vehicleName = getVehicleDraftName(vehicle);
+
+  const resumeDraft = () => {
+    router.push({
+      pathname: '/(host)/vehicles/new',
+      params: {
+        flow: 'guided',
+        section: progress.nextSection,
+        vehicleId: vehicle.id,
+      },
+    });
+  };
+
+  return (
+    <View style={styles.draftCard}>
+      <View style={styles.draftHeader}>
+        <View style={styles.draftIcon}>
+          <CarFront color="#0B6FE8" size={21} />
+        </View>
+        <View style={styles.draftCopy}>
+          <Text style={styles.draftEyebrow}>Vehicle setup in progress</Text>
+          <Text numberOfLines={1} style={styles.draftTitle}>{vehicleName}</Text>
+        </View>
+        <Text style={styles.draftPercentage}>{progress.percentage}%</Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${Math.max(5, progress.percentage)}%` }]} />
+      </View>
+      <Text style={styles.draftBody}>
+        {progress.completed} of {progress.total} sections completed. Next: {nextSectionLabel}.
+      </Text>
+      <Pressable
+        accessibilityHint={`Resumes at ${nextSectionLabel}`}
+        accessibilityLabel={`Continue setup for ${vehicleName}`}
+        accessibilityRole="button"
+        onPress={resumeDraft}
+        style={({ pressed }) => [styles.draftAction, pressed && styles.pressed]}
+      >
+        <Text style={styles.draftActionText}>Continue vehicle setup</Text>
+        <ChevronRight color="#FFFFFF" size={18} />
+      </Pressable>
+    </View>
+  );
+}
+
 function HostSetupChecklist({
+  draft,
   isLoading,
   onRetry,
   setup,
 }: {
+  draft: HostVehicleListing | null;
   isLoading: boolean;
   onRetry: () => void;
   setup: HostSetupStatus | undefined;
@@ -216,14 +288,22 @@ function HostSetupChecklist({
         <View style={[styles.progressFill, { width: `${Math.max(8, (setup.completedTasks / setup.totalTasks) * 100)}%` }]} />
       </View>
       <View style={styles.checklist}>
-        {setup.tasks.map((task) => <SetupTask key={task.key} status={task.status} taskKey={task.key} />)}
+        {setup.tasks.map((task) => <SetupTask draft={draft} key={task.key} status={task.status} taskKey={task.key} />)}
       </View>
     </View>
   );
 }
 
-function SetupTask({ status, taskKey }: { status: HostSetupStatus['tasks'][number]['status']; taskKey: HostSetupTaskKey }) {
-  const definition = setupTaskDefinition(taskKey, status);
+function SetupTask({
+  draft,
+  status,
+  taskKey,
+}: {
+  draft: HostVehicleListing | null;
+  status: HostSetupStatus['tasks'][number]['status'];
+  taskKey: HostSetupTaskKey;
+}) {
+  const definition = setupTaskDefinition(taskKey, status, draft);
   const Icon = definition.icon;
   const complete = status === 'completed';
   const pendingReview = status === 'under_review';
@@ -246,14 +326,25 @@ function SetupTask({ status, taskKey }: { status: HostSetupStatus['tasks'][numbe
   );
 }
 
-function setupTaskDefinition(key: HostSetupTaskKey, status: HostSetupStatus['tasks'][number]['status']) {
+function setupTaskDefinition(
+  key: HostSetupTaskKey,
+  status: HostSetupStatus['tasks'][number]['status'],
+  draft: HostVehicleListing | null,
+) {
   if (key === 'host_profile') return { icon: CheckCircle2, title: 'Create Host Profile' };
   if (key === 'first_car') {
+    const progress = draft ? getVehicleSetupProgress(draft) : null;
     return {
       icon: CarFront,
       title: 'Add Your First Car',
-      action: status === 'under_review' ? undefined : 'Add Car',
-      onPress: () => router.push('/(host)/vehicles/new'),
+      action: status === 'under_review' ? undefined : draft ? 'Continue' : 'Add Car',
+      onPress: () =>
+        draft && progress
+          ? router.push({
+              pathname: '/(host)/vehicles/new',
+              params: { flow: 'guided', section: progress.nextSection, vehicleId: draft.id },
+            })
+          : router.push('/(host)/vehicles/new'),
     };
   }
   if (key === 'identity_verification') {
@@ -359,6 +450,16 @@ const styles = StyleSheet.create({
   setupLoadingText: { color: '#536B91', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   setupRetryButton: { alignSelf: 'flex-start', backgroundColor: '#EAF4FF', borderRadius: 9, minHeight: 38, justifyContent: 'center', paddingHorizontal: 12 },
   setupRetryText: { color: '#0B6FE8', fontSize: 13, fontWeight: '900' },
+  draftCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 11, padding: 14 },
+  draftHeader: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  draftIcon: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 10, height: 40, justifyContent: 'center', width: 40 },
+  draftCopy: { flex: 1, minWidth: 0 },
+  draftEyebrow: { color: '#0B6FE8', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  draftTitle: { color: '#102550', fontSize: 17, fontWeight: '900', marginTop: 2 },
+  draftPercentage: { color: '#075BC8', fontSize: 14, fontWeight: '900' },
+  draftBody: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18 },
+  draftAction: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: '#0B6FE8', borderRadius: 11, flexDirection: 'row', justifyContent: 'center', minHeight: 46, paddingHorizontal: 14 },
+  draftActionText: { color: '#FFFFFF', flex: 1, fontSize: 14, fontWeight: '900', textAlign: 'center' },
   progressBadge: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 999, justifyContent: 'center', minHeight: 30, minWidth: 38, paddingHorizontal: 8 },
   progressText: { color: '#075BC8', fontSize: 12, fontWeight: '900' },
   progressTrack: { backgroundColor: '#D6E8FF', borderRadius: 999, height: 6, overflow: 'hidden' },
