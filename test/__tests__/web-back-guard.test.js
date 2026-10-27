@@ -28,6 +28,9 @@ function createWindowHistory() {
         index += 1;
       },
     },
+    get historyIndex() {
+      return index;
+    },
     location: { href: 'http://localhost:8081/vehicles/new' },
     removeEventListener: (_event, listener) => listeners.delete(listener),
   };
@@ -82,5 +85,16 @@ describe('useWebBackGuard', () => {
 
     overlay.unmount();
     parent.unmount();
+  });
+
+  it('keeps the updated overlay route instead of returning to its prior URL', () => {
+    const overlay = renderHook(() =>
+      useWebBackGuard({ active: true, onBack: jest.fn() }),
+    );
+
+    overlay.result.current();
+    overlay.unmount();
+
+    expect(global.window.historyIndex).toBe(1);
   });
 });

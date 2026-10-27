@@ -183,7 +183,7 @@ export function SearchResultsScreen() {
     fallback: '/(customer)/home',
     onBeforeBack: closeOverlayBeforeBack,
   });
-  useWebBackGuard({
+  const preserveOverlayRoute = useWebBackGuard({
     active: isFilterSheetOpen || isSortSheetOpen || activeDateTimeField !== null,
     onBack: closeOverlayBeforeBack,
   });
@@ -501,7 +501,11 @@ export function SearchResultsScreen() {
         isVisible={isFilterSheetOpen}
         resultCount={total}
         onApply={(nextFilters) => {
-          router.setParams(toSearchRouteParams({ ...routeState, filters: nextFilters }));
+          preserveOverlayRoute();
+          router.replace({
+            pathname: '/(customer)/results',
+            params: toSearchRouteParams({ ...routeState, filters: nextFilters }),
+          });
           setFilterSheetOpen(false);
         }}
         onClose={() => setFilterSheetOpen(false)}
@@ -513,7 +517,11 @@ export function SearchResultsScreen() {
         selectedSort={sort}
         onClose={() => setSortSheetOpen(false)}
         onSelect={(nextSort) => {
-          router.setParams(toSearchRouteParams({ ...routeState, sort: nextSort }));
+          preserveOverlayRoute();
+          router.replace({
+            pathname: '/(customer)/results',
+            params: toSearchRouteParams({ ...routeState, sort: nextSort }),
+          });
           setSortSheetOpen(false);
         }}
       />

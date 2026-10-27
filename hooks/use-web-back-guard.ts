@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 type WebBackGuardOptions = {
@@ -42,7 +42,15 @@ export function useWebBackGuard({
 }: WebBackGuardOptions) {
   const markerRef = useRef<string | null>(null);
   const onBackRef = useRef(onBack);
+  const preserveCurrentEntryRef = useRef(false);
   onBackRef.current = onBack;
+
+  // Route mutations made while an overlay is open replace its temporary
+  // history entry. Consumers can retain that updated entry instead of having
+  // cleanup navigate back to the pre-overlay URL.
+  const preserveCurrentEntry = useCallback(() => {
+    preserveCurrentEntryRef.current = true;
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !active || typeof window === 'undefined') {
@@ -90,17 +98,25 @@ export function useWebBackGuard({
         guardStack.splice(markerIndex, 1);
       }
 
+      const shouldPreserveCurrentEntry = preserveCurrentEntryRef.current;
+      preserveCurrentEntryRef.current = false;
+
       if (
         pushEntry &&
         window.history.state?.[historyMarkerKey] === markerRef.current
       ) {
-        // Closing an overlay removes its own history entry. Suppress the resulting
-        // popstate so an underlying wizard/page guard does not interpret it as Back.
-        (window as GuardWindow)[suppressNextPopKey] = true;
-        window.history.back();
+        if (!shouldPreserveCurrentEntry) {
+          // Closing an overlay removes its own history entry. Suppress the
+          // resulting popstate so an underlying wizard/page guard does not
+          // interpret it as Back.
+          (window as GuardWindow)[suppressNextPopKey] = true;
+          window.history.back();
+        }
       }
 
       markerRef.current = null;
     };
   }, [active, block, pushEntry]);
+
+  return preserveCurrentEntry;
 }
