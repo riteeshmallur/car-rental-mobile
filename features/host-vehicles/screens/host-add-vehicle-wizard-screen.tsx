@@ -71,6 +71,7 @@ type StepKey =
   | 'documents'
   | 'pricing'
   | 'availability'
+  | 'rentalSettings'
   | 'review';
 
 type VehicleDocumentType = 'rc' | 'insurance' | 'puc';
@@ -158,8 +159,7 @@ const setupSections: Array<{
   { key: 'photos', title: 'Photos', helper: 'Add clear exterior and interior photos.' },
   { key: 'location', title: 'Pickup location', helper: 'Set the renter pickup address.' },
   { key: 'documents', title: 'Vehicle documents', helper: 'Add RC, insurance and PUC details.' },
-  { key: 'pricing', title: 'Pricing', helper: 'Set your daily price and rental rules.' },
-  { key: 'availability', title: 'Availability', helper: 'Choose when bookings can be accepted.' },
+  { key: 'rental_settings', title: 'Rental settings', helper: 'Set pricing, booking rules and availability.' },
   { key: 'review', title: 'Review & submit', helper: 'Check each requirement before approval.' },
 ];
 
@@ -168,8 +168,7 @@ const guidedSetupSections: SetupSection[] = [
   'photos',
   'location',
   'documents',
-  'pricing',
-  'availability',
+  'rental_settings',
   'review',
 ];
 
@@ -184,7 +183,7 @@ export function HostAddVehicleWizardScreen() {
   const requestedVehicleId = Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId;
   const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
   const requestedFlow = Array.isArray(params.flow) ? params.flow[0] : params.flow;
-  const activeSection = isSetupSection(requestedSection) ? requestedSection : null;
+  const activeSection = normalizeSetupSection(requestedSection);
   const isGuidedFlow = requestedFlow === 'guided';
   const queryClient = useQueryClient();
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -238,6 +237,7 @@ export function HostAddVehicleWizardScreen() {
     onSuccess: (vehicle) => {
       setDraftId(vehicle.id);
       reset(mapListingToFormValues(vehicle));
+      setDocumentUrls(getVehicleDocumentUrls(vehicle.listingDocuments));
       queryClient.setQueryData<HostVehicleListing[]>(['host', 'vehicles'], (current = []) => {
         const existingIndex = current.findIndex((listing) => listing.id === vehicle.id);
 
@@ -583,8 +583,7 @@ export function HostAddVehicleWizardScreen() {
               {activeSection === 'location' ? <VehicleLocationStep control={control} errors={errors} onLocationSelected={() => void savePickupLocation()} setValue={setValue} /> : null}
               {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} imageUrls={imageUrls} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onSetCoverPhoto={setCoverPhoto} /> : null}
               {activeSection === 'documents' ? <DocumentsStep control={control} documentUpload={documentUpload} documentUrls={documentUrls} errors={errors} onPickDocument={pickVehicleDocument} /> : null}
-              {activeSection === 'pricing' ? <PricingStep control={control} errors={errors} /> : null}
-              {activeSection === 'availability' ? <AvailabilityStep control={control} errors={errors} setValue={setValue} /> : null}
+              {activeSection === 'rental_settings' ? <RentalSettingsStep control={control} errors={errors} setValue={setValue} /> : null}
               {activeSection === 'review' ? <ReviewStep onEdit={goToSection} values={getValues()} /> : null}
               {serverError || validationMessage ? <View style={styles.errorBox}><Text style={styles.errorBoxText}>{serverError?.message ?? validationMessage}</Text></View> : null}
             </View>
@@ -599,6 +598,13 @@ export function HostAddVehicleWizardScreen() {
 
 function isSetupSection(value: string | undefined): value is SetupSection {
   return Boolean(value && setupSections.some((section) => section.key === value));
+}
+
+function normalizeSetupSection(value: string | undefined): SetupSection | null {
+  if (value === 'pricing' || value === 'availability') {
+    return 'rental_settings';
+  }
+  return isSetupSection(value) ? value : null;
 }
 
 function getNextSetupSection(section: SetupSection): SetupSection | null {
@@ -616,10 +622,8 @@ function getSectionFields(section: SetupSection): FieldPath<HostVehicleFormValue
       return ['locationId', 'address', 'city', 'state', 'country'];
     case 'documents':
       return ['registrationCertificateNumber', 'insurancePolicyNumber'];
-    case 'pricing':
-      return ['pricePerDay', 'securityDeposit', 'mileageLimitPerDay', 'minimumRentalDays', 'maximumRentalDays'];
-    case 'availability':
-      return ['availableFrom', 'availableTo', 'advanceNoticeHours'];
+    case 'rental_settings':
+      return ['pricePerDay', 'securityDeposit', 'mileageLimitPerDay', 'minimumRentalDays', 'maximumRentalDays', 'availableFrom', 'availableTo', 'advanceNoticeHours'];
     default:
       return [];
   }
@@ -637,8 +641,7 @@ function buildSectionPayload(section: SetupSection, values: HostVehicleFormValue
     photos: 'photos',
     location: 'vehicleLocation',
     documents: 'documents',
-    pricing: 'pricing',
-    availability: 'availability',
+    rental_settings: 'rentalSettings',
   };
   const step = stepBySection[section];
   return step ? buildStepPayload(step, values, section) : { draftStep: section };
@@ -668,13 +671,9 @@ function getSetupStatus(
       ),
       started: Boolean(values.registrationCertificateNumber || values.insurancePolicyNumber || values.pollutionCertificateNumber || documentUrls.rc || documentUrls.insurance || documentUrls.puc),
     },
-    pricing: {
-      complete: Boolean(values.pricePerDay && values.minimumRentalDays),
-      started: Boolean(values.pricePerDay || values.securityDeposit || values.mileageLimitPerDay),
-    },
-    availability: {
-      complete: Boolean(values.availableFrom),
-      started: Boolean(values.availableFrom || values.availableTo),
+    rental_settings: {
+      complete: Boolean(values.pricePerDay && values.minimumRentalDays && values.availableFrom),
+      started: Boolean(values.pricePerDay || values.securityDeposit || values.mileageLimitPerDay || values.availableFrom || values.availableTo),
     },
   };
   const check = checks[section];
@@ -1086,7 +1085,7 @@ function LocationSearchInput({
   const locations = locationsQuery.data ?? [];
 
   return (
-    <View style={styles.inputGroup}>
+    <View style={[styles.inputGroup, styles.locationSearchGroup]}>
       <Text style={styles.label}>Pickup address</Text>
       <View style={[styles.locationSearchBox, error && styles.inputError]}>
         <MapPin color="#536B91" size={18} />
@@ -1476,6 +1475,31 @@ function PricingStep({
           </View>
         </View> : null}
       </View>
+    </View>
+  );
+}
+
+function RentalSettingsStep({
+  control,
+  errors,
+  setValue,
+}: Pick<ReturnType<typeof useForm<HostVehicleFormValues>>, 'control'> & {
+  errors: ReturnType<typeof useForm<HostVehicleFormValues>>['formState']['errors'];
+  setValue: ReturnType<typeof useForm<HostVehicleFormValues>>['setValue'];
+}) {
+  return (
+    <View style={styles.rentalSettings}>
+      <View style={styles.rentalSettingsHeading}>
+        <Text style={styles.rentalSettingsTitle}>Pricing</Text>
+        <Text style={styles.rentalSettingsHelper}>Set your daily rate and rental rules.</Text>
+      </View>
+      <PricingStep control={control} errors={errors} />
+      <View style={styles.rentalSettingsDivider} />
+      <View style={styles.rentalSettingsHeading}>
+        <Text style={styles.rentalSettingsTitle}>Availability</Text>
+        <Text style={styles.rentalSettingsHelper}>Choose when renters can book this vehicle.</Text>
+      </View>
+      <AvailabilityStep control={control} errors={errors} setValue={setValue} />
     </View>
   );
 }
@@ -1876,16 +1900,12 @@ function ReviewStep({
       value: getDocumentSummary(values),
     },
     {
-      icon: <Text style={styles.reviewCurrencyIcon}>₹</Text>,
-      label: 'Price',
-      section: 'pricing' as const,
-      value: values.pricePerDay ? `₹${formatIndianCurrency(values.pricePerDay)} / day` : 'Add daily price',
-    },
-    {
       icon: <CalendarDays color="#0B6FE8" size={19} />,
-      label: 'Availability',
-      section: 'availability' as const,
-      value: values.availableFrom ? `From ${formatListingDate(values.availableFrom)}` : 'Set availability',
+      label: 'Rental settings',
+      section: 'rental_settings' as const,
+      value: values.pricePerDay && values.availableFrom
+        ? `₹${formatIndianCurrency(values.pricePerDay)} / day · From ${formatListingDate(values.availableFrom)}`
+        : 'Set pricing and availability',
     },
   ];
 
@@ -2233,6 +2253,23 @@ function buildStepPayload(
     };
   }
 
+  if (stepKey === 'rentalSettings') {
+    return {
+      ...payload,
+      pricePerDay: toNumber(values.pricePerDay),
+      securityDeposit: toNumber(values.securityDeposit),
+      mileageLimitPerDay: toNumber(values.mileageLimitPerDay),
+      minimumRentalDays: toNumber(values.minimumRentalDays),
+      maximumRentalDays: toNumber(values.maximumRentalDays),
+      available: values.available,
+      availabilitySettings: {
+        availableFrom: cleanString(values.availableFrom),
+        availableTo: cleanString(values.availableTo),
+        advanceNoticeHours: toNumber(values.advanceNoticeHours),
+      },
+    };
+  }
+
   if (stepKey === 'availability') {
     return {
       ...payload,
@@ -2278,7 +2315,7 @@ function mapListingToFormValues(vehicle: HostVehicleListing): HostVehicleFormVal
     insurancePolicyNumber: stringFromRecord(documents, 'insurancePolicyNumber'),
     pollutionCertificateNumber: stringFromRecord(documents, 'pollutionCertificateNumber'),
     pricePerDay: vehicle.pricePerDay ?? '',
-    securityDeposit: vehicle.securityDeposit ?? '',
+    securityDeposit: optionalMoneyString(vehicle.securityDeposit),
     mileageLimitPerDay: toStringValue(vehicle.mileageLimitPerDay),
     minimumRentalDays: toStringValue(vehicle.minimumRentalDays) || '1',
     maximumRentalDays: toStringValue(vehicle.maximumRentalDays),
@@ -2316,6 +2353,11 @@ function toStringValue(value: unknown) {
   }
 
   return String(value);
+}
+
+function optionalMoneyString(value: unknown) {
+  const normalized = toStringValue(value);
+  return Number(normalized) === 0 ? '' : normalized;
 }
 
 function formatIndianCurrency(value: string) {
@@ -2491,6 +2533,13 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 8,
+  },
+  locationSearchGroup: {
+    flexBasis: 'auto',
+    flexGrow: 0,
+    flexShrink: 0,
+    position: 'relative',
+    width: '100%',
   },
   label: {
     color: '#102550',
@@ -3213,6 +3262,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
+  rentalSettings: { gap: 18 },
+  rentalSettingsHeading: { gap: 3 },
+  rentalSettingsTitle: { color: '#102550', fontSize: 17, fontWeight: '900' },
+  rentalSettingsHelper: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  rentalSettingsDivider: { backgroundColor: '#D6E8FF', height: 1 },
   submissionComplete: {
     flex: 1,
     alignItems: 'center',

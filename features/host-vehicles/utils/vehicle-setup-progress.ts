@@ -5,8 +5,7 @@ export type VehicleSetupSection =
   | 'photos'
   | 'location'
   | 'documents'
-  | 'pricing'
-  | 'availability'
+  | 'rental_settings'
   | 'review';
 
 export const vehicleSetupSections: Exclude<VehicleSetupSection, 'review'>[] = [
@@ -14,8 +13,7 @@ export const vehicleSetupSections: Exclude<VehicleSetupSection, 'review'>[] = [
   'photos',
   'location',
   'documents',
-  'pricing',
-  'availability',
+  'rental_settings',
 ];
 
 const sectionLabels: Record<VehicleSetupSection, string> = {
@@ -23,8 +21,7 @@ const sectionLabels: Record<VehicleSetupSection, string> = {
   photos: 'Photos',
   location: 'Pickup location',
   documents: 'Vehicle documents',
-  pricing: 'Pricing',
-  availability: 'Availability',
+  rental_settings: 'Rental settings',
   review: 'Review & submit',
 };
 
@@ -87,11 +84,15 @@ function isVehicleSetupSectionComplete(
     );
   }
 
-  if (section === 'pricing') {
-    return Boolean(vehicle.pricePerDay && vehicle.minimumRentalDays);
+  if (section === 'rental_settings') {
+    return Boolean(
+      vehicle.pricePerDay &&
+        vehicle.minimumRentalDays &&
+        readDocumentValue(vehicle.availabilitySettings, 'availableFrom'),
+    );
   }
 
-  return Boolean(readDocumentValue(vehicle.availabilitySettings, 'availableFrom'));
+  return false;
 }
 
 function readDocumentValue(record: Record<string, unknown>, key: string) {

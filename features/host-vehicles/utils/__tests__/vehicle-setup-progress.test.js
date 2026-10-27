@@ -53,8 +53,8 @@ describe('vehicle setup progress', () => {
     expect(progress).toEqual({
       completed: 2,
       nextSection: 'location',
-      percentage: 33,
-      total: 6,
+      percentage: 40,
+      total: 5,
     });
     expect(getVehicleSetupSectionLabel(progress.nextSection)).toBe('Pickup location');
   });
@@ -81,6 +81,29 @@ describe('vehicle setup progress', () => {
 
     expect(progress.nextSection).toBe('review');
     expect(progress.percentage).toBe(100);
+  });
+
+  it('requires both pricing and availability before rental settings are complete', () => {
+    const progress = getVehicleSetupProgress(
+      listing({
+        address: '12 MG Road',
+        city: 'Bengaluru',
+        country: 'India',
+        imageUrls: ['https://cdn.example.com/vehicle.jpg'],
+        listingDocuments: {
+          insuranceImageUrl: '/uploads/insurance.jpg',
+          insurancePolicyNumber: 'INS123',
+          registrationCertificateImageUrl: '/uploads/rc.jpg',
+          registrationCertificateNumber: 'RC123',
+        },
+        locationId: 'location-1',
+        pricePerDay: '2499',
+        state: 'Karnataka',
+      }),
+    );
+
+    expect(progress.nextSection).toBe('rental_settings');
+    expect(getVehicleSetupSectionLabel('rental_settings')).toBe('Rental settings');
   });
 
   it('uses a friendly draft name when vehicle fields are missing', () => {
