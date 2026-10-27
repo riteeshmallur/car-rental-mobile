@@ -190,6 +190,8 @@ export function HostAddVehicleWizardScreen() {
   const [featureInput, setFeatureInput] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [photosSaved, setPhotosSaved] = useState(false);
+  const [pendingPhotoUris, setPendingPhotoUris] = useState<string[]>([]);
   const [documentUpload, setDocumentUpload] = useState<{ type: VehicleDocumentType; progress: number } | null>(null);
   const [documentUrls, setDocumentUrls] = useState<VehicleDocumentUrls>(emptyDocumentUrls);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -226,6 +228,7 @@ export function HostAddVehicleWizardScreen() {
       setDraftId(draft.id);
       reset(mapListingToFormValues(draft));
       setDocumentUrls(getVehicleDocumentUrls(draft.listingDocuments));
+      setPhotosSaved(draft.imageUrls.length > 0);
     }
 
     setResumeChecked(true);
@@ -272,9 +275,24 @@ export function HostAddVehicleWizardScreen() {
       let listing: HostVehicleListing | null = null;
       setUploadProgress(0);
       for (const [index, imageUri] of imageUris.entries()) {
-        listing = await vehiclesApi.uploadImage(draftId, imageUri, (progress) => {
-          setUploadProgress((index + progress) / imageUris.length);
-        });
+        try {
+          listing = await vehiclesApi.uploadImage(draftId, imageUri, (progress) => {
+            setUploadProgress((index + progress) / imageUris.length);
+          });
+          setValue('imageUrls', listing.imageUrls, { shouldDirty: false, shouldValidate: false });
+          setPhotosSaved(true);
+          queryClient.setQueryData<HostVehicleListing[]>(['host', 'vehicles'], (current = []) => {
+            const existingIndex = current.findIndex((vehicle) => vehicle.id === listing?.id);
+            return existingIndex < 0
+              ? [listing!, ...current]
+              : current.map((vehicle) => (vehicle.id === listing?.id ? listing! : vehicle));
+          });
+          queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
+        } catch (error) {
+          const uploadError = new Error(normalizeApiError(error).message) as Error & { pendingPhotoUris?: string[] };
+          uploadError.pendingPhotoUris = imageUris.slice(index);
+          throw uploadError;
+        }
       }
       if (!listing) {
         throw new Error('No photos were selected for upload.');
@@ -424,17 +442,17 @@ export function HostAddVehicleWizardScreen() {
     const invalidDimensions = assets.some((asset) => !asset.width || !asset.height || asset.width < minimumPhotoWidth || asset.height < minimumPhotoHeight);
     if (invalidType || invalidSize || invalidDimensions) {
       setPhotoError(invalidType ? 'Choose JPG, PNG, or WebP images only.' : invalidDimensions ? `Each photo must be at least ${minimumPhotoWidth} x ${minimumPhotoHeight} pixels.` : 'Each photo must be 10 MB or smaller.');
-      return;
+      return [];
     }
     const nextImages = await Promise.all(assets.map(async (asset) => {
       const scale = Math.min(1, maximumPhotoDimension / Math.max(asset.width, asset.height));
       return ImageManipulator.manipulateAsync(asset.uri, [{ resize: { width: Math.round(asset.width * scale), height: Math.round(asset.height * scale) } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
     }));
     setPhotoError(null);
-    setValue('imageUrls', [...imageUrls, ...nextImages.map((image) => image.uri)].slice(0, maximumPhotoCount), { shouldDirty: true, shouldValidate: false });
+    return nextImages.map((image) => image.uri);
   };
   const pickPhotos = async (source: 'camera' | 'library') => {
-    if (photoPickerOpenRef.current) return;
+    if (photoPickerOpenRef.current || uploadPhotosMutation.isPending) return;
     photoPickerOpenRef.current = true;
     try {
       const remaining = maximumPhotoCount - imageUrls.length;
@@ -452,7 +470,21 @@ export function HostAddVehicleWizardScreen() {
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
         : await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ['images'], quality: 1, selectionLimit: remaining });
-      if (!result.canceled) await addPhotoAssets(result.assets);
+      if (!result.canceled) {
+        const imageUris = await addPhotoAssets(result.assets.slice(0, remaining));
+        if (imageUris.length) {
+          setPhotosSaved(false);
+          setPendingPhotoUris(imageUris);
+          try {
+            await uploadPhotosMutation.mutateAsync(imageUris);
+            setPendingPhotoUris([]);
+          } catch (error) {
+            const pendingUris = (error as Error & { pendingPhotoUris?: string[] }).pendingPhotoUris ?? imageUris;
+            setPendingPhotoUris(pendingUris);
+            setPhotoError('Some photos could not be uploaded. Retry to finish uploading them.');
+          }
+        }
+      }
     } catch {
       setPhotoError('Could not add your photos. Please try again.');
     } finally {
@@ -461,9 +493,11 @@ export function HostAddVehicleWizardScreen() {
   };
   const removePhoto = (uri: string) => {
     setPhotoError(null);
+    setPhotosSaved(false);
     setValue('imageUrls', imageUrls.filter((item) => item !== uri), { shouldDirty: true, shouldValidate: false });
   };
   const setCoverPhoto = (uri: string) => {
+    setPhotosSaved(false);
     setValue('imageUrls', [uri, ...imageUrls.filter((item) => item !== uri)], { shouldDirty: true, shouldValidate: false });
   };
   const movePhoto = (uri: string, direction: 'earlier' | 'later') => {
@@ -474,7 +508,22 @@ export function HostAddVehicleWizardScreen() {
     }
     const nextImages = [...imageUrls];
     [nextImages[currentIndex], nextImages[targetIndex]] = [nextImages[targetIndex], nextImages[currentIndex]];
+    setPhotosSaved(false);
     setValue('imageUrls', nextImages, { shouldDirty: true, shouldValidate: false });
+  };
+
+  const retryPhotoUpload = async () => {
+    if (!pendingPhotoUris.length || uploadPhotosMutation.isPending) return;
+    setPhotoError(null);
+    setPhotosSaved(false);
+    try {
+      await uploadPhotosMutation.mutateAsync(pendingPhotoUris);
+      setPendingPhotoUris([]);
+    } catch (error) {
+      const pendingUris = (error as Error & { pendingPhotoUris?: string[] }).pendingPhotoUris ?? pendingPhotoUris;
+      setPendingPhotoUris(pendingUris);
+      setPhotoError('Some photos could not be uploaded. Check your connection and retry.');
+    }
   };
 
   const pickVehicleDocument = (type: VehicleDocumentType, source: 'camera' | 'library') => {
@@ -516,7 +565,7 @@ export function HostAddVehicleWizardScreen() {
     }
   };
 
-  const saveSection = async () => {
+  const saveSection = async (destination: 'checklist' | 'next' = isGuidedFlow ? 'next' : 'checklist') => {
     if (!activeSection || !draftId || actionInFlightRef.current) return;
     actionInFlightRef.current = true;
     setValidationMessage(null);
@@ -531,6 +580,10 @@ export function HostAddVehicleWizardScreen() {
         return;
       }
 
+      if (activeSection === 'photos' && pendingPhotoUris.length) {
+        setValidationMessage('Finish uploading or retry the remaining photos before continuing.');
+        return;
+      }
       const fields = getSectionFields(activeSection);
       const valid = fields.length ? await trigger(fields) : true;
       if (!valid) return;
@@ -544,7 +597,10 @@ export function HostAddVehicleWizardScreen() {
         }
       }
       await saveMutation.mutateAsync(buildSectionPayload(activeSection, nextValues));
-      const nextSection = isGuidedFlow ? getNextSetupSection(activeSection) : null;
+      if (activeSection === 'photos') {
+        setPhotosSaved(true);
+      }
+      const nextSection = destination === 'next' ? getNextSetupSection(activeSection) : null;
       if (nextSection) {
         goToGuidedSection(nextSection);
       } else {
@@ -578,10 +634,13 @@ export function HostAddVehicleWizardScreen() {
             <VehicleSetupChecklist documentUrls={documentUrls} onOpenSection={goToSection} progress={setupProgress} values={values} />
           ) : (
             <View pointerEvents={isBusy ? 'none' : 'auto'} style={styles.stepContent}>
-              <View style={styles.stepHeader}><Text style={styles.stepTitle}>{sectionDefinition?.title}</Text><Text style={styles.stepHelper}>{sectionDefinition?.helper}</Text></View>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>{activeSection === 'photos' ? 'Add photos of your vehicle' : sectionDefinition?.title}</Text>
+                <Text style={styles.stepHelper}>{activeSection === 'photos' ? 'Clear, recent photos help renters understand your vehicle and make your listing feel trustworthy.' : sectionDefinition?.helper}</Text>
+              </View>
               {activeSection === 'details' ? <><VehicleDetailsStep control={control} errors={errors} make={make} onOpenSelection={setSelectionField} optionalDescription /><ExpandableVehicleExtras control={control} error={errors.features?.message} featureInput={featureInput} features={features} onAddFeature={addFeature} onChangeFeatureInput={setFeatureInput} onRemoveFeature={removeFeature} onTogglePopularFeature={togglePopularFeature} /></> : null}
               {activeSection === 'location' ? <VehicleLocationStep control={control} errors={errors} onLocationSelected={() => void savePickupLocation()} setValue={setValue} /> : null}
-              {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} imageUrls={imageUrls} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onSetCoverPhoto={setCoverPhoto} /> : null}
+              {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} hasPendingUploads={pendingPhotoUris.length > 0} imageUrls={imageUrls} isSaved={photosSaved} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onRetryUpload={() => void retryPhotoUpload()} onSetCoverPhoto={setCoverPhoto} /> : null}
               {activeSection === 'documents' ? <DocumentsStep control={control} documentUpload={documentUpload} documentUrls={documentUrls} errors={errors} onPickDocument={pickVehicleDocument} /> : null}
               {activeSection === 'rental_settings' ? <RentalSettingsStep control={control} errors={errors} setValue={setValue} /> : null}
               {activeSection === 'review' ? <ReviewStep onEdit={goToSection} values={getValues()} /> : null}
@@ -589,7 +648,19 @@ export function HostAddVehicleWizardScreen() {
             </View>
           )}
         </ScrollView>
-        {!isRestoringDraft && (!draftId || activeSection) ? <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : isGuidedFlow ? 'Save & continue' : 'Save changes'} onPress={!draftId ? createDraft : saveSection} /> : null}
+        {!isRestoringDraft && (!draftId || activeSection) ? (
+          activeSection === 'photos' ? (
+            <VehicleSetupFooter
+              busy={isBusy}
+              label="Continue"
+              onPress={() => void saveSection(isGuidedFlow ? 'next' : 'checklist')}
+              secondaryLabel="Save draft"
+              onSecondaryPress={() => void saveSection('checklist')}
+            />
+          ) : (
+            <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : isGuidedFlow ? 'Save & continue' : 'Save changes'} onPress={!draftId ? createDraft : () => void saveSection()} />
+          )
+        ) : null}
       </KeyboardAvoidingView>
       {selectionField ? <VehicleSelectionSheet onClose={() => setSelectionField(null)} onSelect={(value) => { if (selectionField === 'make') { setValue('make', value, { shouldDirty: true, shouldValidate: true }); setValue('model', '', { shouldDirty: true, shouldValidate: false }); } else { setValue(selectionField, value, { shouldDirty: true, shouldValidate: true }); } }} options={selectionOptions} title={selectionField === 'manufacturingYear' ? 'Select year' : selectionField === 'colour' ? 'Select colour' : `Select ${selectionField}`} value={selectedValue} visible /> : null}
     </SafeAreaView>
@@ -705,12 +776,31 @@ function VehicleSetupHeader({
   );
 }
 
-function VehicleSetupFooter({ busy, label, onPress }: { busy: boolean; label: string; onPress: () => void }) {
+function VehicleSetupFooter({
+  busy,
+  label,
+  onPress,
+  onSecondaryPress,
+  secondaryLabel,
+}: {
+  busy: boolean;
+  label: string;
+  onPress: () => void;
+  onSecondaryPress?: () => void;
+  secondaryLabel?: string;
+}) {
   return (
     <View style={styles.setupFooter}>
-      <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={onPress} style={[styles.setupPrimaryButton, busy && styles.setupPrimaryButtonDisabled]}>
-        {busy ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.setupPrimaryButtonText}>{label}</Text><ChevronRight color="#FFFFFF" size={20} /></>}
-      </Pressable>
+      <View style={[styles.setupFooterActions, secondaryLabel && styles.setupFooterActionsSplit]}>
+        {secondaryLabel ? (
+          <Pressable accessibilityLabel={secondaryLabel} accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={onSecondaryPress} style={[styles.setupSecondaryButton, busy && styles.setupPrimaryButtonDisabled]}>
+            <Text style={styles.setupSecondaryButtonText}>{secondaryLabel}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={onPress} style={[styles.setupPrimaryButton, secondaryLabel && styles.setupPrimaryButtonSplit, busy && styles.setupPrimaryButtonDisabled]}>
+          {busy ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.setupPrimaryButtonText}>{label}</Text><ChevronRight color="#FFFFFF" size={20} /></>}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -1252,36 +1342,88 @@ function FeaturesStep({
 
 function PhotosStep({
   error,
+  hasPendingUploads,
   imageUrls,
+  isSaved,
   isUploading,
   onMovePhoto,
   uploadProgress,
   onPickPhotos,
   onRemovePhoto,
+  onRetryUpload,
   onSetCoverPhoto,
 }: {
   error?: string;
+  hasPendingUploads: boolean;
   imageUrls: string[];
+  isSaved: boolean;
   isUploading: boolean;
   onMovePhoto: (uri: string, direction: 'earlier' | 'later') => void;
   uploadProgress: number | null;
   onPickPhotos: (source: 'camera' | 'library') => void;
   onRemovePhoto: (uri: string) => void;
+  onRetryUpload: () => void;
   onSetCoverPhoto: (uri: string) => void;
 }) {
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [tipsExpanded, setTipsExpanded] = useState(false);
+  const guidance = [
+    { label: 'Front view', detail: 'Start here', rotation: '0deg' },
+    { label: 'Rear view', detail: 'Show boot', rotation: '180deg' },
+    { label: 'Left side', detail: 'Full profile', rotation: '-12deg' },
+    { label: 'Right side', detail: 'Full profile', rotation: '12deg' },
+    { label: 'Interior', detail: 'Cabin & seats', rotation: '0deg' },
+  ];
+  const requestRemovePhoto = (uri: string) => {
+    Alert.alert('Remove this photo?', 'It will be removed from this vehicle listing when you save your changes.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => onRemovePhoto(uri) },
+    ]);
+  };
+
   return (
     <View style={styles.form}>
-      {imageUrls.length === 0 ? (
-        <View style={styles.photoSourceWrap}>
-          <Pressable accessibilityHint="Take a vehicle photo with your camera." accessibilityLabel="Take vehicle photos" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('camera')} style={({ pressed }) => [styles.photoPickerButton, pressed && !isUploading && styles.photoPickerButtonPressed]}>
-            <Camera color="#0B6FE8" size={30} /><Text style={styles.photoPickerText}>Use camera</Text><Text style={styles.photoPickerSubtext}>Capture exterior or interior</Text>
-          </Pressable>
-          <Pressable accessibilityHint="Open your photo library to select vehicle photos." accessibilityLabel="Choose vehicle photos" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('library')} style={({ pressed }) => [styles.photoPickerButton, pressed && !isUploading && styles.photoPickerButtonPressed]}>
-            <Plus color="#0B6FE8" size={30} /><Text style={styles.photoPickerText}>Choose photos</Text><Text style={styles.photoPickerSubtext}>JPG, PNG, WebP • Max 10 MB</Text>
-          </Pressable>
+      <View style={styles.photoRequirementNotice}>
+        <Camera color="#0B6FE8" size={18} />
+        <View style={styles.photoRequirementCopy}>
+          <Text style={styles.photoRequirementTitle}>At least one clear photo is required</Text>
+          <Text style={styles.photoRequirementText}>The views below are recommended to give renters a complete picture.</Text>
         </View>
-      ) : null}
-      <View style={styles.photoGuidance}><Text style={styles.photoGuidanceTitle}>Recommended coverage</Text><Text style={styles.photoGuidanceText}>Front, rear, both sides and interior. Add clear photos in good light.</Text></View>
+      </View>
+      <View style={styles.photoGuidance}>
+        <Text style={styles.photoGuidanceTitle}>Recommended photo checklist</Text>
+        <Text style={styles.photoGuidanceText}>These are helpful examples, not additional required uploads.</Text>
+        <ScrollView contentContainerStyle={styles.photoGuidanceList} horizontal showsHorizontalScrollIndicator={false}>
+          {guidance.map((item) => (
+            <View key={item.label} style={styles.photoGuidanceTile}>
+              <View style={styles.photoGuidanceThumbnail}>
+                <CarFront color="#0B6FE8" size={26} style={{ transform: [{ rotate: item.rotation }] }} />
+              </View>
+              <Text numberOfLines={1} style={styles.photoGuidanceLabel}>{item.label}</Text>
+              <Text numberOfLines={1} style={styles.photoGuidanceDetail}>{item.detail}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+      <Pressable
+        accessibilityLabel={tipsExpanded ? 'Hide photo tips' : 'Show photo tips'}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: tipsExpanded }}
+        onPress={() => setTipsExpanded((value) => !value)}
+        style={({ pressed }) => [styles.photoTipsButton, pressed && styles.photoTipsButtonPressed]}
+      >
+        <Text style={styles.photoTipsButtonText}>{tipsExpanded ? 'Hide photo tips' : 'Photo tips'}</Text>
+        <ChevronRight color="#536B91" size={18} style={tipsExpanded ? styles.photoTipsChevronExpanded : undefined} />
+      </Pressable>
+      {tipsExpanded ? <View style={styles.photoTipsContent}><Text style={styles.photoTipsText}>Use daylight where possible, keep the vehicle clean, avoid heavy filters, and make sure each photo accurately represents the car you are listing.</Text></View> : null}
+      <View style={styles.photoUploadActions}>
+        <Pressable accessibilityHint="Take a vehicle photo with your camera." accessibilityLabel="Use camera" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('camera')} style={({ pressed }) => [styles.photoPickerButton, styles.photoPickerButtonCompact, pressed && !isUploading && styles.photoPickerButtonPressed]}>
+          <Camera color="#0B6FE8" size={24} /><Text style={styles.photoPickerText}>Use Camera</Text><Text style={styles.photoPickerSubtext}>Take a new photo</Text>
+        </Pressable>
+        <Pressable accessibilityHint="Open your photo library to select multiple vehicle photos." accessibilityLabel="Choose photos" accessibilityRole="button" accessibilityState={{ busy: isUploading, disabled: isUploading }} disabled={isUploading} onPress={() => onPickPhotos('library')} style={({ pressed }) => [styles.photoPickerButton, styles.photoPickerButtonCompact, pressed && !isUploading && styles.photoPickerButtonPressed]}>
+          <Plus color="#0B6FE8" size={24} /><Text style={styles.photoPickerText}>Choose Photos</Text><Text style={styles.photoPickerSubtext}>JPG, PNG, WebP</Text>
+        </Pressable>
+      </View>
       {error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {isUploading ? (
         <View style={styles.photoUploadStatus}>
@@ -1291,7 +1433,11 @@ function PhotosStep({
           </Text>
         </View>
       ) : null}
-      {imageUrls.length ? <Text style={styles.photoCount}>Photos ({imageUrls.length}/10)</Text> : null}
+      {hasPendingUploads && !isUploading ? <Pressable accessibilityLabel="Retry failed photo uploads" accessibilityRole="button" onPress={onRetryUpload} style={styles.photoRetryButton}><Text style={styles.photoRetryButtonText}>Retry failed uploads</Text></Pressable> : null}
+      <View style={styles.photoCountRow}>
+        <Text style={styles.photoCount}>{imageUrls.length}/10 Photos</Text>
+        {isSaved && !isUploading ? <View accessibilityLabel="Photos saved" accessibilityRole="text" style={styles.photosSavedBadge}><Check color="#16805C" size={14} /><Text style={styles.photosSavedText}>Saved</Text></View> : null}
+      </View>
       {imageUrls.length ? (
         <View style={styles.photoGrid}>
           {imageUrls.map((uri, index) => {
@@ -1299,11 +1445,9 @@ function PhotosStep({
 
             return (
             <View key={uri} style={styles.photoTile}>
-            <CachedVehicleImage
-              accessibilityLabel="Vehicle photo"
-              style={styles.photo}
-              uri={imageUrl}
-            />
+            <Pressable accessibilityHint="Preview this vehicle photo" accessibilityLabel={`Preview vehicle photo ${index + 1}`} accessibilityRole="button" onPress={() => setPreviewUri(imageUrl)} style={styles.photoPreviewHitArea}>
+              <CachedVehicleImage accessibilityLabel="Vehicle photo" style={styles.photo} uri={imageUrl} />
+            </Pressable>
             {imageUrls[0] === uri ? (
               <View style={styles.coverBadge}>
                 <Text style={styles.coverBadgeText}>Cover</Text>
@@ -1321,7 +1465,7 @@ function PhotosStep({
             <Pressable
               accessibilityLabel="Remove photo"
               accessibilityRole="button"
-              onPress={() => onRemovePhoto(uri)}
+              onPress={() => requestRemovePhoto(uri)}
               style={styles.photoRemoveButton}
             >
               <Trash2 color="#FFFFFF" size={15} />
@@ -1370,6 +1514,14 @@ function PhotosStep({
           ) : null}
         </View>
       ) : null}
+      <Modal animationType="fade" onRequestClose={() => setPreviewUri(null)} transparent visible={Boolean(previewUri)}>
+        <Pressable accessibilityLabel="Close photo preview" accessibilityRole="button" onPress={() => setPreviewUri(null)} style={styles.photoPreviewBackdrop}>
+          <View style={styles.photoPreviewCard}>
+            {previewUri ? <CachedVehicleImage accessibilityLabel="Vehicle photo preview" style={styles.photoPreviewImage} uri={previewUri} /> : null}
+            <Text style={styles.photoPreviewHint}>Tap outside to close</Text>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -2820,7 +2972,8 @@ const styles = StyleSheet.create({
     color: '#08765B',
   },
   photoPickerButton: {
-    minHeight: 154,
+    minHeight: 132,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
@@ -2833,6 +2986,11 @@ const styles = StyleSheet.create({
   },
   photoPickerButtonPressed: {
     backgroundColor: '#EAF4FF',
+  },
+  photoPickerButtonCompact: {
+    minHeight: 116,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
   },
   photoPickerText: {
     color: '#102550',
@@ -2863,6 +3021,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  photoCountRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2876,6 +3039,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F9FF',
   },
   photo: {
+    height: '100%',
+    width: '100%',
+  },
+  photoPreviewHitArea: {
     height: '100%',
     width: '100%',
   },
@@ -3352,7 +3519,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
+  setupFooterActions: {
+    flexDirection: 'row',
+  },
+  setupFooterActionsSplit: {
+    gap: 10,
+  },
   setupPrimaryButton: {
+    flex: 1,
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3361,8 +3535,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#0B6FE8',
   },
+  setupPrimaryButtonSplit: {
+    flex: 1.2,
+  },
   setupPrimaryButtonDisabled: { opacity: 0.6 },
   setupPrimaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  setupSecondaryButton: {
+    minHeight: 52,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0B6FE8',
+    backgroundColor: '#FFFFFF',
+  },
+  setupSecondaryButtonText: { color: '#0B6FE8', fontSize: 15, fontWeight: '800' },
   setupIntroCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3412,10 +3600,33 @@ const styles = StyleSheet.create({
   extrasHelper: { color: '#536B91', fontSize: 12, fontWeight: '600', marginTop: 3 },
   extrasChevronExpanded: { transform: [{ rotate: '90deg' }] },
   extrasContent: { gap: 14, borderTopWidth: 1, borderTopColor: '#D6E8FF', padding: 14 },
-  photoSourceWrap: { flexDirection: 'row', gap: 10 },
-  photoGuidance: { borderRadius: 10, backgroundColor: '#EAF4FF', padding: 12 },
-  photoGuidanceTitle: { color: '#102550', fontSize: 12, fontWeight: '800' },
+  photoUploadActions: { flexDirection: 'row', gap: 10 },
+  photoRequirementNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 12, backgroundColor: '#EAF4FF', padding: 12 },
+  photoRequirementCopy: { flex: 1, gap: 2 },
+  photoRequirementTitle: { color: '#102550', fontSize: 13, fontWeight: '800' },
+  photoRequirementText: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 17 },
+  photoGuidance: { borderRadius: 12, borderWidth: 1, borderColor: '#D6E8FF', backgroundColor: '#FFFFFF', padding: 12 },
+  photoGuidanceTitle: { color: '#102550', fontSize: 13, fontWeight: '800' },
   photoGuidanceText: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18, marginTop: 3 },
+  photoGuidanceList: { gap: 8, paddingTop: 12, paddingRight: 2 },
+  photoGuidanceTile: { width: 86, gap: 3 },
+  photoGuidanceThumbnail: { height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#EAF4FF' },
+  photoGuidanceLabel: { color: '#102550', fontSize: 11, fontWeight: '800' },
+  photoGuidanceDetail: { color: '#536B91', fontSize: 10, fontWeight: '600' },
+  photoTipsButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 10, borderWidth: 1, borderColor: '#D6E8FF', backgroundColor: '#FFFFFF', paddingHorizontal: 12 },
+  photoTipsButtonPressed: { backgroundColor: '#F3F9FF' },
+  photoTipsButtonText: { color: '#102550', fontSize: 13, fontWeight: '800' },
+  photoTipsChevronExpanded: { transform: [{ rotate: '90deg' }] },
+  photoTipsContent: { marginTop: -8, borderBottomLeftRadius: 10, borderBottomRightRadius: 10, backgroundColor: '#EAF4FF', paddingHorizontal: 12, paddingVertical: 10 },
+  photoTipsText: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18 },
+  photoRetryButton: { minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#FF644F', backgroundColor: '#FFF0ED' },
+  photoRetryButtonText: { color: '#D84534', fontSize: 13, fontWeight: '800' },
+  photosSavedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: '#E7F5EE', paddingHorizontal: 8, paddingVertical: 4 },
+  photosSavedText: { color: '#16805C', fontSize: 11, fontWeight: '800' },
+  photoPreviewBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 37, 80, 0.72)', padding: 24 },
+  photoPreviewCard: { width: '100%', overflow: 'hidden', borderRadius: 16, backgroundColor: '#FFFFFF' },
+  photoPreviewImage: { width: '100%', aspectRatio: 0.9 },
+  photoPreviewHint: { color: '#536B91', fontSize: 12, fontWeight: '600', textAlign: 'center', padding: 12 },
   photoReorderActions: { position: 'absolute', right: 8, bottom: 8, flexDirection: 'row', gap: 4 },
   photoReorderButton: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: 'rgba(37, 40, 43, 0.78)' },
   documentUploadCard: {
