@@ -53,6 +53,7 @@ import {
   toSearchRouteParams,
   type SearchFilters,
 } from '@/features/customer/utils/search-route-state';
+import { getSearchErrorState } from '@/features/customer/utils/search-error-state';
 import { carsApi } from '@/services/cars/cars-api';
 import { rentersApi } from '@/services/renters/renters-api';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
@@ -121,6 +122,11 @@ export function SearchResultsScreen() {
   const activeLocationId = routeState.locationId;
   const activePickupDateTime = routeState.pickupDateTime;
   const activeReturnDateTime = routeState.returnDateTime;
+  // TanStack Query pauses a new request while the browser is offline instead
+  // of transitioning it to `isError`. Read the browser state as well so a
+  // paused first search is still presented as an actionable connection error.
+  const isBrowserOffline =
+    typeof navigator !== 'undefined' && navigator.onLine === false;
   const rentalWindow = useMemo(() => {
     const pickupAt = activePickupDateTime ? new Date(activePickupDateTime) : null;
     const returnAt = activeReturnDateTime ? new Date(activeReturnDateTime) : null;
@@ -212,6 +218,10 @@ export function SearchResultsScreen() {
       }),
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+    // A search error needs to be actionable. Retrying in the background leaves
+    // a query with no data in an indeterminate state that previously rendered
+    // as an empty result instead of offering the user a Retry action.
+    retry: false,
   });
 
   useFocusEffect(
@@ -239,9 +249,17 @@ export function SearchResultsScreen() {
     [vehiclesQuery.data],
   );
   const vehicles = fetchedVehicles;
+  const hasSearchData = vehiclesQuery.data !== undefined;
   const total = vehiclesQuery.data?.pages[0]?.meta.total ?? 0;
   const isRefreshing =
     vehiclesQuery.isRefetching && !vehiclesQuery.isFetchingNextPage;
+  const shouldShowSearchError =
+    !hasSearchData && (isBrowserOffline || vehiclesQuery.isError);
+  const searchErrorState = shouldShowSearchError
+    ? getSearchErrorState(
+        isBrowserOffline ? new Error('Network Error') : vehiclesQuery.error,
+      )
+    : null;
   const activeFilterCount = Object.values(filters).filter(
     (value) => value !== undefined,
   ).length;
@@ -330,7 +348,9 @@ export function SearchResultsScreen() {
             <Text style={styles.title}>Available cars</Text>
             <Text numberOfLines={1} style={styles.subtitle}>
               {hasSearchCriteria
-                ? `${total} cars for your trip`
+                ? shouldShowSearchError
+                  ? 'Search unavailable'
+                  : `${total} cars for your trip`
                 : 'Search details missing'}
             </Text>
           </View>
@@ -419,15 +439,15 @@ export function SearchResultsScreen() {
             onAction={() => router.push('/(customer)/location')}
             title="Missing search details"
           />
-        ) : vehiclesQuery.isLoading ? (
-          <SearchSkeleton />
-        ) : vehiclesQuery.isError ? (
+        ) : shouldShowSearchError ? (
           <StateMessage
             actionLabel="Try again"
-            body="The backend could not load vehicles for this search."
+            body={searchErrorState?.body ?? 'We could not load cars for this search. Please try again.'}
             onAction={() => void vehiclesQuery.refetch()}
-            title="Search failed"
+            title={searchErrorState?.title ?? 'Unable to Load Cars'}
           />
+        ) : !hasSearchData ? (
+          <SearchSkeleton />
         ) : (
           <FlatList
             ListEmptyComponent={
@@ -938,11 +958,12 @@ function StateMessage({
   title: string;
 }) {
   return (
-    <View style={styles.stateMessage}>
+    <View accessibilityLiveRegion="polite" style={styles.stateMessage}>
       <Text style={styles.stateTitle}>{title}</Text>
       <Text style={styles.stateBody}>{body}</Text>
       {actionLabel && onAction ? (
         <Pressable
+          accessibilityLabel={actionLabel}
           accessibilityRole="button"
           onPress={onAction}
           style={styles.stateAction}
