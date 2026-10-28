@@ -1,6 +1,7 @@
 import { Bell, UserRound } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { HopInLogo } from '@/components/branding/hopin-logo';
 import { type SafeUser } from '@/types/auth';
 
 type CustomerHeaderProps = {
@@ -18,12 +19,7 @@ export function CustomerHeader({
 
   return (
     <View style={styles.container}>
-      <View style={styles.brandBlock}>
-        <Text numberOfLines={1} style={styles.brand}>
-          HopIn
-        </Text>
-        <View accessibilityElementsHidden style={styles.brandAccent} />
-      </View>
+      <View style={styles.brandBlock}><HopInLogo width={136} /></View>
 
       <View style={styles.actions}>
         <Pressable
@@ -68,21 +64,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flex: 1,
     minWidth: 68,
-  },
-  brand: {
-    color: HOME_NAVY,
-    fontFamily: 'Georgia',
-    fontSize: 39,
-    fontWeight: '700',
-    lineHeight: 45,
-  },
-  brandAccent: {
-    width: 34,
-    height: 4,
-    marginTop: -3,
-    marginLeft: 57,
-    borderRadius: 2,
-    backgroundColor: '#FF644F',
   },
   actions: {
     flexDirection: 'row',

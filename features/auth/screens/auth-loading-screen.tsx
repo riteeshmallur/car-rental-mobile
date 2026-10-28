@@ -1,13 +1,13 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HopInLogo } from '@/components/branding/hopin-logo';
+
 export function AuthLoadingScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoText}>H</Text>
-        </View>
+        <HopInLogo width={156} />
         <ActivityIndicator color="#102550" size="large" />
         <Text style={styles.text}>Restoring your HopIn session</Text>
       </View>
@@ -26,19 +26,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 18,
     padding: 24,
-  },
-  logoMark: {
-    height: 64,
-    width: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#0B6FE8',
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '900',
   },
   text: {
     color: '#536B91',

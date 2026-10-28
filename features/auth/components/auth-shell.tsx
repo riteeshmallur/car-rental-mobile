@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { HopInLogo } from '@/components/branding/hopin-logo';
 import { colors, radii } from '@/utils/theme';
 
 type AuthShellProps = PropsWithChildren<{
@@ -120,12 +122,7 @@ export function AuthShell({
             >
               <View style={styles.journeyScrim} />
               <View style={styles.journeyBrandRow}>
-                <View style={[styles.journeyLogoMark, layoutCompact && styles.journeyLogoMarkCompact]}>
-                  <Text style={[styles.journeyLogoText, layoutCompact && styles.journeyLogoTextCompact]}>
-                    H
-                  </Text>
-                </View>
-                <Text style={[styles.journeyBrand, layoutCompact && styles.journeyBrandCompact]}>HopIn</Text>
+                <HopInLogo width={layoutCompact ? 130 : 150} />
               </View>
               <View style={[styles.journeyCopy, layoutCompact && styles.journeyCopyCompact]}>
                 <Text
@@ -192,12 +189,7 @@ export function AuthShell({
           keyboardShouldPersistTaps="handled"
           style={styles.scroll}
         >
-          <View style={styles.header}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoText}>H</Text>
-            </View>
-            <Text style={styles.brand}>HopIn</Text>
-          </View>
+          <View style={styles.header}><HopInLogo width={132} /></View>
 
           <View style={styles.content}>
             <View style={styles.copy}>
@@ -233,27 +225,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logoMark: {
-    height: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.md,
-    backgroundColor: colors.brand,
-  },
-  logoText: {
-    color: colors.surface,
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  brand: {
-    color: colors.brand,
-    fontSize: 27,
-    fontWeight: '900',
+    alignItems: 'flex-start',
   },
   content: {
     gap: 28,
@@ -308,38 +280,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 250, 244, 0.18)',
   },
   journeyBrandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-  },
-  journeyLogoMark: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    backgroundColor: '#0B6FE8',
-  },
-  journeyLogoText: {
-    color: colors.surface,
-    fontSize: 27,
-    fontWeight: '900',
-  },
-  journeyLogoMarkCompact: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-  },
-  journeyLogoTextCompact: {
-    fontSize: 24,
-  },
-  journeyBrand: {
-    color: '#102550',
-    fontSize: 30,
-    fontWeight: '900',
-  },
-  journeyBrandCompact: {
-    fontSize: 27,
+    alignItems: 'flex-start',
   },
   journeyCopy: {
     gap: 12,
