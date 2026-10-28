@@ -40,6 +40,7 @@ import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterTrip } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
+import { getTripActionVisibility } from '@/utils/trip-action-visibility';
 
 type SheetName = 'extend' | 'return' | 'issue' | 'review' | null;
 type FuelLevel = 'empty' | 'quarter' | 'half' | 'three_quarters' | 'full';
@@ -347,10 +348,10 @@ function LifecycleDetails({ trip }: { trip: RenterTrip }) {
 }
 
 function TripActions({ isMutating, onCancel, onExtend, onIssue, onReturn, onReview, onViewReceipt, receiptLoading, trip }: { isMutating: boolean; onCancel: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; onViewReceipt: () => void; receiptLoading: boolean; trip: RenterTrip }) {
-  const capabilities = trip.capabilities;
-  const anyAction = capabilities.cancel || capabilities.requestExtension || capabilities.viewReturnInstructions || capabilities.reportIssue || capabilities.review || capabilities.viewReceipt;
+  const actions = getTripActionVisibility(trip);
+  const anyAction = actions.cancel || actions.requestExtension || actions.viewReturnInstructions || actions.reportIssue || actions.review || actions.viewReceipt;
   if (!anyAction) return null;
-  return <Section title="Trip actions"><View style={styles.actionStack}>{capabilities.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{capabilities.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{capabilities.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Report an issue" onPress={onIssue} variant="warning" /> : null}{capabilities.review ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Leave a review" onPress={onReview} /> : null}{capabilities.viewReceipt ? <ActionButton disabled={isMutating || receiptLoading} icon={<ReceiptText color="#0B6FE8" size={18} />} label={receiptLoading ? 'Loading receipt' : 'View receipt'} onPress={onViewReceipt} /> : null}{capabilities.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
+  return <Section title="Trip actions"><View style={styles.actionStack}>{actions.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{actions.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{actions.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Report an issue" onPress={onIssue} variant="warning" /> : null}{actions.review ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Leave a review" onPress={onReview} /> : null}{actions.viewReceipt ? <ActionButton disabled={isMutating || receiptLoading} icon={<ReceiptText color="#0B6FE8" size={18} />} label={receiptLoading ? 'Loading receipt' : 'View receipt'} onPress={onViewReceipt} /> : null}{actions.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
 }
 
 function ReceiptDetails({ receipt }: { receipt: Awaited<ReturnType<typeof bookingsApi.findReceipt>> }) {
