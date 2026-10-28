@@ -21,6 +21,7 @@ type RentalSearchCardProps = {
   location?: LocationSearchResult | null;
   rentalWindow: RentalWindow;
   validationError?: string | null;
+  isSearchEnabled: boolean;
   isSearching?: boolean;
   onDateTimeFieldPress: (field: DateTimeField) => void;
   onLocationPress: () => void;
@@ -28,6 +29,7 @@ type RentalSearchCardProps = {
 };
 
 export function RentalSearchCard({
+  isSearchEnabled,
   isSearching,
   location,
   onDateTimeFieldPress,
@@ -36,10 +38,11 @@ export function RentalSearchCard({
   rentalWindow,
   validationError,
 }: RentalSearchCardProps) {
-  const locationName = location?.name || location?.city || 'Bengaluru';
+  const isSearchDisabled = isSearching || !isSearchEnabled;
+  const locationName = location?.name || location?.city || 'Select pickup location';
   const locationHint = location
     ? [location.city, location.state].filter(Boolean).join(', ')
-    : 'Pick up anywhere in Bengaluru';
+    : 'Choose where you want to pick up';
 
   return (
     <View style={styles.container}>
@@ -92,14 +95,14 @@ export function RentalSearchCard({
       <Pressable
         accessibilityLabel="Search available cars"
         accessibilityRole="button"
-        accessibilityState={{ busy: Boolean(isSearching), disabled: Boolean(isSearching) }}
-        disabled={isSearching}
+        accessibilityState={{ busy: Boolean(isSearching), disabled: isSearchDisabled }}
+        disabled={isSearchDisabled}
         onPress={onSearch}
         testID="home-search-cars"
         style={({ pressed }) => [
           styles.searchButton,
-          isSearching && styles.searchButtonDisabled,
-          pressed && !isSearching && styles.searchButtonPressed,
+          isSearchDisabled && styles.searchButtonDisabled,
+          pressed && !isSearchDisabled && styles.searchButtonPressed,
         ]}
       >
         {isSearching ? (

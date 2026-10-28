@@ -99,6 +99,7 @@ export function HomeScreen() {
   }, [defaultLocationQuery.data, selectedLocation, setSelectedLocation]);
 
   const location = selectedLocation ?? defaultLocationQuery.data ?? null;
+  const isSearchReady = Boolean(location?.id) && getRentalWindowError(rentalWindow) === null;
 
   const carsQuery = useQuery({
     enabled: Boolean(location?.id),
@@ -224,6 +225,7 @@ export function HomeScreen() {
 
           <View style={styles.searchCardOffset}>
             <RentalSearchCard
+              isSearchEnabled={isSearchReady}
               isSearching={carsQuery.isFetching}
               location={location}
               onDateTimeFieldPress={setActiveDateTimeField}
@@ -249,7 +251,6 @@ export function HomeScreen() {
           />
 
           <HomeCategorySection
-            cars={availableCars}
             onCategoryPress={handleCategoryPress}
             onSeeAll={searchCars}
           />

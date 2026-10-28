@@ -1,14 +1,16 @@
 import { Image } from 'expo-image';
 import { ArrowRight } from 'lucide-react-native';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
-import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { type SearchFilters } from '@/features/customer/utils/search-route-state';
-import { type Car, type VehicleSearchSort } from '@/types/car';
+import { type VehicleSearchSort } from '@/types/car';
 
-const categoryFallbackArtwork = require('@/assets/images/hopin-weekend-escapes.png');
+const categoryArtwork = {
+  hatchback: require('@/assets/images/categories/hopin-hatchback-hd.png'),
+  luxury: require('@/assets/images/categories/hopin-luxury-hd.png'),
+  sedan: require('@/assets/images/categories/hopin-sedan-hd.png'),
+  suv: require('@/assets/images/categories/hopin-suv-hd.png'),
+} as const;
 
 export type HomeCategory = {
   id: string;
@@ -20,36 +22,16 @@ export type HomeCategory = {
 };
 
 type HomeCategorySectionProps = {
-  cars: Car[];
   onCategoryPress: (category: HomeCategory) => void;
   onSeeAll: () => void;
 };
 
-function findCategoryCar(
-  cars: Car[],
-  category: HomeCategory,
-  failedImageUrls: ReadonlySet<string>,
-) {
-  const hasUsableImage = (car: Car) =>
-    Boolean(car.imageUrl) && !failedImageUrls.has(car.imageUrl ?? '');
-
-  if (!category.vehicleType) {
-    return cars.find(hasUsableImage) ?? null;
-  }
-
-  return cars.find(
-    (car) => car.vehicleType.toLowerCase() === category.vehicleType && hasUsableImage(car),
-  ) ?? cars.find(hasUsableImage) ?? null;
-}
-
 export function HomeCategorySection({
-  cars,
   onCategoryPress,
   onSeeAll,
 }: HomeCategorySectionProps) {
   const { width } = useWindowDimensions();
   const usesCompactHeading = width < 410;
-  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(() => new Set());
   const categories: HomeCategory[] = [
     { id: 'suv', label: 'SUVs', subtitle: 'Adventure ready', filters: { vehicleType: 'suv' }, vehicleType: 'suv' },
     { id: 'sedan', label: 'Sedans', subtitle: 'For every journey', filters: { vehicleType: 'sedan' }, vehicleType: 'sedan' },
@@ -79,11 +61,6 @@ export function HomeCategorySection({
       </View>
       <View style={styles.cards}>
         {categories.map((category) => {
-          const car = findCategoryCar(cars, category, failedImageUrls);
-          const imageUrl = car?.imageUrl
-            ? getVehicleImageVariantUrl(car.imageUrl, 'thumbnail')
-            : null;
-
           return (
             <Pressable
               accessibilityLabel={`${category.label}, ${category.subtitle}`}
@@ -92,39 +69,16 @@ export function HomeCategorySection({
               onPress={() => onCategoryPress(category)}
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             >
-              {imageUrl ? (
-                <CachedVehicleImage
-                  accessibilityLabel={`${category.label} available vehicle`}
-                  onError={() => {
-                    if (!car?.imageUrl) {
-                      return;
-                    }
-
-                    setFailedImageUrls((current) => {
-                      if (current.has(car.imageUrl ?? '')) {
-                        return current;
-                      }
-
-                      const next = new Set(current);
-                      next.add(car.imageUrl ?? '');
-                      return next;
-                    });
-                  }}
-                  style={styles.image}
-                  uri={imageUrl}
-                />
-              ) : (
-                <Image
-                  accessibilityLabel={`${category.label} category illustration`}
-                  contentFit="cover"
-                  contentPosition="right center"
-                  source={categoryFallbackArtwork}
-                  style={styles.imageFallback}
-                />
-              )}
+              <Image
+                accessibilityLabel={`${category.label} category illustration`}
+                contentFit="cover"
+                contentPosition="center"
+                source={categoryArtwork[category.id as keyof typeof categoryArtwork]}
+                style={styles.image}
+              />
               <View style={styles.cardCopy}>
-                <Text numberOfLines={1} style={styles.cardTitle}>{category.label}</Text>
-                <Text numberOfLines={1} style={styles.cardSubtitle}>{category.subtitle}</Text>
+                <Text style={styles.cardTitle}>{category.label}</Text>
+                <Text style={styles.cardSubtitle}>{category.subtitle}</Text>
               </View>
             </Pressable>
           );
@@ -168,6 +122,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   cards: {
+    alignItems: 'stretch',
     flexDirection: 'row',
     gap: 12,
   },
@@ -189,24 +144,25 @@ const styles = StyleSheet.create({
     height: 70,
     width: '100%',
   },
-  imageFallback: {
-    height: 70,
-    width: '100%',
-  },
   cardCopy: {
     gap: 3,
+    minHeight: 58,
     paddingHorizontal: 6,
     paddingVertical: 8,
   },
   cardTitle: {
     color: '#102550',
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '800',
+    lineHeight: 16,
   },
   cardSubtitle: {
     color: '#536B91',
+    flexShrink: 1,
     fontSize: 9,
     fontWeight: '500',
+    lineHeight: 12,
   },
   pressed: {
     opacity: 0.78,

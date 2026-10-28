@@ -47,7 +47,7 @@ describe('Trips payment-required state', () => {
   beforeEach(() => {
     mockListRenterBookings.mockReset();
     mockListRenterBookings.mockResolvedValue([pendingBooking]);
-    global.__testRouteParams.mockReturnValue({ tab: 'payment_required' });
+    global.__testRouteParams.mockReturnValue({ tab: 'upcoming' });
   });
 
   it('shows the authoritative total and resumes payment instead of classifying the booking as upcoming', async () => {
@@ -55,11 +55,14 @@ describe('Trips payment-required state', () => {
 
     await waitFor(() => expect(screen.getByText('Amount due')).toBeTruthy());
 
+    expect(screen.getByRole('tab', { name: /upcoming/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /past/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /cancelled/i })).toBeTruthy();
     expect(screen.getAllByText('Payment required').length).toBeGreaterThan(0);
     expect(screen.getByText('₹5,354')).toBeTruthy();
     expect(screen.queryByText('₹0')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Complete payment for Maruti Swift'));
+    fireEvent.press(screen.getByLabelText('Pay now for Maruti Swift'));
 
     expect(global.__testRouter.push).toHaveBeenCalledWith({
       pathname: '/(customer)/booking/payment',

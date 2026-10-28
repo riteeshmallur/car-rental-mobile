@@ -1,13 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CalendarClock, CarFront, RefreshCw } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -21,25 +20,27 @@ import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterBooking, type RenterTripPhase } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
-import { getBookingTotal, getRenterTripStatusLabel } from '@/utils/booking-presentation';
+import {
+  getBookingTotal,
+  getCustomerTripsPrimaryTab,
+  getRenterTripStatusLabel,
+  KOLKATA_TIME_ZONE,
+  type CustomerTripsPrimaryTab,
+} from '@/utils/booking-presentation';
 
-type TripTab = { label: string; value: RenterTripPhase };
+type TripTab = { label: string; value: CustomerTripsPrimaryTab };
 
 const tabs: TripTab[] = [
-  { label: 'Payment required', value: 'payment_required' },
-  { label: 'Awaiting host', value: 'awaiting_host_approval' },
   { label: 'Upcoming', value: 'upcoming' },
-  { label: 'Active', value: 'active' },
-  { label: 'Return pending', value: 'return_pending' },
-  { label: 'Completed', value: 'completed' },
+  { label: 'Past', value: 'past' },
   { label: 'Cancelled', value: 'cancelled' },
-  { label: 'Disputed', value: 'disputed' },
 ];
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: KOLKATA_TIME_ZONE,
   }).format(new Date(value));
 }
 
@@ -57,42 +58,52 @@ function locationLabel(booking: RenterBooking) {
     .join(', ');
 }
 
+function resolveTripsTab(value: string | undefined): CustomerTripsPrimaryTab {
+  if (value === 'past' || value === 'cancelled' || value === 'upcoming') {
+    return value;
+  }
+
+  // Keep existing deep links useful while transitioning away from lifecycle tabs.
+  if (value === 'completed' || value === 'disputed') {
+    return 'past';
+  }
+  return 'upcoming';
+}
+
 export function TripsScreen() {
   const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab = tabs.some((tab) => tab.value === requestedTab)
-    ? (requestedTab as RenterTripPhase)
-    : 'upcoming';
+  const activeTab = resolveTripsTab(requestedTab);
+  const [now, setNow] = useState(() => new Date());
   useSafeBack({ fallback: '/(customer)/home' });
+
+  useEffect(() => {
+    const clock = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(clock);
+  }, []);
 
   const bookingsQuery = useQuery({
     queryKey: ['renters', 'me', 'bookings'],
     queryFn: bookingsApi.listRenterBookings,
     refetchOnMount: 'always',
     refetchOnReconnect: true,
+    refetchInterval: 60_000,
     staleTime: 0,
   });
 
   const bookingsByTab = useMemo(() => {
-    const grouped: Record<RenterTripPhase, RenterBooking[]> = {
-      payment_required: [],
-      awaiting_host_approval: [],
+    const grouped: Record<CustomerTripsPrimaryTab, RenterBooking[]> = {
       upcoming: [],
-      active: [],
-      return_pending: [],
-      completed: [],
+      past: [],
       cancelled: [],
-      disputed: [],
     };
 
     for (const booking of bookingsQuery.data ?? []) {
-      if (booking.tripPhase in grouped) {
-        grouped[booking.tripPhase].push(booking);
-      }
+      grouped[getCustomerTripsPrimaryTab(booking, now)].push(booking);
     }
 
     return grouped;
-  }, [bookingsQuery.data]);
+  }, [bookingsQuery.data, now]);
 
   const isRefreshing = bookingsQuery.isRefetching && !bookingsQuery.isLoading;
 
@@ -119,12 +130,7 @@ export function TripsScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.tabsContent}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabs}
-        >
+        <View accessibilityRole="tablist" style={styles.tabs}>
           {tabs.map((tab) => {
             const active = tab.value === activeTab;
             return (
@@ -144,7 +150,7 @@ export function TripsScreen() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         {bookingsQuery.isLoading ? (
           <TripsSkeleton />
@@ -162,9 +168,7 @@ export function TripsScreen() {
             keyExtractor={(item) => item.id}
             ListEmptyComponent={
               <StateMessage
-                body={`You do not have ${tabs
-                  .find((tab) => tab.value === activeTab)
-                  ?.label.toLowerCase()} trips.`}
+                body={`You do not have any ${tabs.find((tab) => tab.value === activeTab)?.label.toLowerCase()} trips.`}
                 title="No trips here"
               />
             }
@@ -202,7 +206,7 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
         }
         style={({ pressed }) => [styles.cardDetails, pressed && styles.pressed]}
       >
-        <View style={styles.cardTop}>
+          <View style={styles.cardTop}>
           {imageUrl ? (
             <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
           ) : (
@@ -212,7 +216,7 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
           )}
           <View style={styles.cardCopy}>
             <View style={styles.titleRow}>
-              <Text numberOfLines={1} style={styles.vehicleName}>
+              <Text style={styles.vehicleName}>
                 {vehicleName}
               </Text>
               <StatusBadge booking={booking} />
@@ -220,7 +224,7 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
             <Text numberOfLines={1} selectable style={styles.reference}>
               Ref {booking.reference.slice(0, 8).toUpperCase()}
             </Text>
-            <Text numberOfLines={1} style={styles.location}>
+            <Text numberOfLines={2} style={styles.location}>
               {locationLabel(booking) || 'Pickup location'}
             </Text>
           </View>
@@ -230,13 +234,13 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
           <CalendarClock color="#536B91" size={17} />
           <View style={styles.dateCopy}>
             <Text style={styles.dateLabel}>Pickup</Text>
-            <Text numberOfLines={1} style={styles.dateValue}>
+            <Text style={styles.dateValue}>
               {formatDateTime(booking.pickupAt)}
             </Text>
           </View>
           <View style={styles.dateCopy}>
             <Text style={styles.dateLabel}>Return</Text>
-            <Text numberOfLines={1} style={styles.dateValue}>
+            <Text style={styles.dateValue}>
               {formatDateTime(booking.returnAt)}
             </Text>
           </View>
@@ -249,9 +253,9 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
           <Text style={styles.paymentAmount}>{formatMoney(getBookingTotal(booking))}</Text>
         </View>
       </Pressable>
-      {booking.tripPhase === 'payment_required' ? (
+      {getBookingCardAction(booking).kind === 'payment' ? (
         <Pressable
-          accessibilityLabel={`Complete payment for ${vehicleName}`}
+          accessibilityLabel={`Pay now for ${vehicleName}`}
           accessibilityRole="button"
           onPress={() =>
             router.push({
@@ -261,11 +265,35 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
           }
           style={({ pressed }) => [styles.completePaymentButton, pressed && styles.pressed]}
         >
-          <Text style={styles.completePaymentText}>Complete payment</Text>
+          <Text style={styles.completePaymentText}>Pay now</Text>
         </Pressable>
-      ) : null}
+      ) : (
+        <Pressable
+          accessibilityLabel={`${getBookingCardAction(booking).label} for ${vehicleName}`}
+          accessibilityRole="button"
+          onPress={() => openBooking(booking)}
+          style={({ pressed }) => [styles.viewBookingButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.viewBookingText}>{getBookingCardAction(booking).label}</Text>
+        </Pressable>
+      )}
     </View>
   );
+}
+
+function openBooking(booking: RenterBooking) {
+  router.push({
+    pathname: '/(customer)/booking/[id]',
+    params: { id: booking.id, origin: 'customer-trips' },
+  });
+}
+
+function getBookingCardAction(booking: RenterBooking) {
+  if (booking.status === 'pending_payment' && booking.paymentStatus === 'pending') return { kind: 'payment' as const, label: 'Pay now' };
+  if (booking.tripPhase === 'active' || booking.status === 'active') return { kind: 'details' as const, label: 'View trip' };
+  if (booking.tripPhase === 'return_pending' || booking.status === 'return_pending') return { kind: 'details' as const, label: 'View return details' };
+  if (getCustomerTripsPrimaryTab(booking) !== 'upcoming') return { kind: 'details' as const, label: 'View details' };
+  return { kind: 'details' as const, label: 'View booking' };
 }
 
 function StatusBadge({ booking }: { booking: RenterBooking }) {
@@ -350,9 +378,8 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
   title: { color: '#102550', fontSize: 26, fontWeight: '900' },
   iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  tabs: { flexGrow: 0, marginBottom: 12 },
-  tabsContent: { gap: 8, paddingRight: 16 },
-  tab: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 6, minHeight: 40, paddingHorizontal: 12 },
+  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tab: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 5, justifyContent: 'center', minHeight: 44, paddingHorizontal: 8 },
   activeTab: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' },
   tabText: { color: '#536B91', fontSize: 13, fontWeight: '800' },
   tabCount: { color: '#536B91', fontSize: 12, fontWeight: '900' },
@@ -362,21 +389,22 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 14, padding: 14 },
   cardDetails: { gap: 14 },
   cardTop: { flexDirection: 'row', gap: 12 },
-  vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 82, width: 100 },
-  imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 82, justifyContent: 'center', width: 100 },
+  vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 82, width: 92 },
+  imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 82, justifyContent: 'center', width: 92 },
   cardCopy: { flex: 1, gap: 5, minWidth: 0 },
   titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
-  vehicleName: { color: '#102550', flex: 1, fontSize: 17, fontWeight: '900' },
+  vehicleName: { color: '#102550', flex: 1, flexShrink: 1, fontSize: 17, fontWeight: '900', lineHeight: 22 },
   reference: { color: '#536B91', fontSize: 12, fontWeight: '700' },
-  location: { color: '#536B91', fontSize: 13, fontWeight: '700' },
-  statusBadge: { borderRadius: 12, maxWidth: 122, paddingHorizontal: 8, paddingVertical: 4 },
+  location: { color: '#536B91', fontSize: 13, fontWeight: '700', lineHeight: 18 },
+  statusBadge: { alignSelf: 'flex-start', borderRadius: 12, flexShrink: 1, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
   upcomingStatus: { backgroundColor: '#EAF4FF' }, paymentRequiredStatus: { backgroundColor: '#FFF7D6' }, awaitingHostStatus: { backgroundColor: '#EAF4FF' }, activeStatus: { backgroundColor: '#DCFCE7' }, returnStatus: { backgroundColor: '#FFF7D6' }, completedStatus: { backgroundColor: '#E6F8F2' }, cancelledStatus: { backgroundColor: '#FEECEC' }, disputedStatus: { backgroundColor: '#FFF0E5' },
   defaultStatusText: { color: '#0B6FE8' }, paymentRequiredStatusText: { color: '#A16207' }, awaitingHostStatusText: { color: '#0B6FE8' }, returnStatusText: { color: '#A16207' }, cancelledStatusText: { color: '#B91C1C' }, disputedStatusText: { color: '#C2410C' },
   dateRow: { alignItems: 'center', borderTopColor: '#D6E8FF', borderTopWidth: 1, flexDirection: 'row', gap: 10, paddingTop: 12 },
-  dateCopy: { flex: 1, minWidth: 0 }, dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#102550', fontSize: 12, fontWeight: '800', marginTop: 2 },
+  dateCopy: { flex: 1, minWidth: 0 }, dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#102550', fontSize: 12, fontWeight: '800', lineHeight: 17, marginTop: 2 },
   footerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, paymentLabel: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'capitalize' }, paymentAmount: { color: '#102550', fontSize: 16, fontWeight: '900' },
   completePaymentButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 10, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, completePaymentText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  viewBookingButton: { alignItems: 'center', borderColor: '#0B6FE8', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, viewBookingText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' },
   pressed: { opacity: 0.75 },
   skeletonList: { gap: 12, paddingTop: 4 }, skeletonCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, flexDirection: 'row', gap: 12, padding: 14 }, skeletonImage: { backgroundColor: '#E8EEF7', borderRadius: 12, height: 82, width: 100 }, skeletonCopy: { flex: 1, gap: 10 }, skeletonWide: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 14, width: '80%' }, skeletonMedium: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '65%' }, skeletonShort: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '42%' },
   state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },

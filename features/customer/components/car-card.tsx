@@ -43,14 +43,14 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
 
       <View style={styles.copy}>
         <View style={styles.titleRow}>
-          <Text numberOfLines={1} style={styles.name}>
+          <Text style={styles.name}>
             {car.make} {car.model}
           </Text>
           <View accessible={false}>
             <Heart color={colors.muted} size={21} />
           </View>
         </View>
-        <Text numberOfLines={1} style={styles.meta}>
+        <Text style={styles.meta}>
           {car.manufacturingYear} · {car.transmission} · {car.seats} seats
         </Text>
         <View style={styles.availableChip}>
@@ -117,20 +117,24 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   titleRow: {
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
   },
   name: {
     flex: 1,
+    flexShrink: 1,
     color: colors.ink,
     fontSize: 16,
     fontWeight: '900',
+    lineHeight: 21,
   },
   meta: {
     color: colors.text,
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 17,
     textTransform: 'capitalize',
   },
   availableChip: {

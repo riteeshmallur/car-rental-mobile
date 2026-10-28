@@ -44,6 +44,16 @@ export function getVehicleSetupProgress(vehicle: HostVehicleListing) {
   };
 }
 
+/**
+ * A listing is ready to be submitted only when every persisted requirement is
+ * complete. Keeping this check alongside the progress calculation prevents
+ * screens from treating the Review row as "completed" before submission.
+ */
+export function isVehicleSetupReadyForSubmission(vehicle: HostVehicleListing) {
+  const progress = getVehicleSetupProgress(vehicle);
+  return progress.completed === progress.total;
+}
+
 export function getVehicleDraftName(vehicle: HostVehicleListing) {
   return [vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Vehicle draft';
 }

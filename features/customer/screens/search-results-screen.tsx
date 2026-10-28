@@ -21,6 +21,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
+  type ImageSourcePropType,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -46,7 +48,11 @@ import {
   formatMoney,
   getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
-import { formatDate, formatTime } from '@/features/customer/utils/rental-window';
+import {
+  formatDate,
+  formatTime,
+  getRentalWindowError,
+} from '@/features/customer/utils/rental-window';
 import {
   readSearchRouteState,
   searchRouteKey,
@@ -65,6 +71,11 @@ import { colors, radii, shadows } from '@/utils/theme';
 
 const pageSize = 10;
 const searchScrollOffsets = new Map<string, number>();
+const searchStateIllustrations = {
+  noCars: require('@/assets/images/search-states/no-cars.png'),
+  noInternet: require('@/assets/images/search-states/no-internet.png'),
+  unableToLoad: require('@/assets/images/search-states/unable-to-load.png'),
+};
 
 const sortOptions: Array<{ label: string; value: VehicleSearchSort }> = [
   { label: 'Recommended', value: 'recommended' },
@@ -142,9 +153,20 @@ export function SearchResultsScreen() {
 
     return storedRentalWindow;
   }, [activePickupDateTime, activeReturnDateTime, storedRentalWindow]);
-  const hasSearchCriteria = Boolean(
-    activeLocationId && activePickupDateTime && activeReturnDateTime,
-  );
+  const hasSearchCriteria = useMemo(() => {
+    if (!activeLocationId || !activePickupDateTime || !activeReturnDateTime) {
+      return false;
+    }
+
+    const pickupAt = new Date(activePickupDateTime);
+    const returnAt = new Date(activeReturnDateTime);
+
+    if (Number.isNaN(pickupAt.getTime()) || Number.isNaN(returnAt.getTime())) {
+      return false;
+    }
+
+    return getRentalWindowError({ pickupAt, returnAt }) === null;
+  }, [activeLocationId, activePickupDateTime, activeReturnDateTime]);
   const filters = routeState.filters;
   const sort = routeState.sort;
   const [favoriteOverrides, setFavoriteOverrides] = useState<Map<string, boolean>>(
@@ -166,6 +188,14 @@ export function SearchResultsScreen() {
   useEffect(() => {
     restoredScrollKey.current = null;
   }, [searchStateKey]);
+
+  // Results are meaningful only for a complete, valid rental search. Guarding
+  // the route here also covers direct URLs and restored stale navigation state.
+  useEffect(() => {
+    if (!hasSearchCriteria) {
+      router.replace('/(customer)/home');
+    }
+  }, [hasSearchCriteria]);
 
   const closeOverlayBeforeBack = useCallback(() => {
     if (isSortSheetOpen) {
@@ -263,6 +293,8 @@ export function SearchResultsScreen() {
   const activeFilterCount = Object.values(filters).filter(
     (value) => value !== undefined,
   ).length;
+  const isEmptySearch = hasSearchData && vehicles.length === 0;
+  const areSearchControlsDisabled = shouldShowSearchError || isEmptySearch;
 
   const favouritesQuery = useQuery({
     queryKey: ['renter', 'favourites'],
@@ -346,13 +378,11 @@ export function SearchResultsScreen() {
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Available cars</Text>
-            <Text numberOfLines={1} style={styles.subtitle}>
-              {hasSearchCriteria
-                ? shouldShowSearchError
-                  ? 'Search unavailable'
-                  : `${total} cars for your trip`
-                : 'Search details missing'}
-            </Text>
+            {!areSearchControlsDisabled && hasSearchCriteria ? (
+              <Text numberOfLines={1} style={styles.subtitle}>
+                {`${total} cars for your trip`}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -404,24 +434,42 @@ export function SearchResultsScreen() {
             <Pressable
               accessibilityLabel="Sort cars"
               accessibilityRole="button"
+              accessibilityState={{ disabled: areSearchControlsDisabled }}
+              disabled={areSearchControlsDisabled}
               onPress={() => setSortSheetOpen(true)}
-              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                areSearchControlsDisabled && styles.actionButtonDisabled,
+                pressed && !areSearchControlsDisabled && styles.pressed,
+              ]}
             >
-              <ArrowDownUp color={colors.ink} size={18} />
-              <Text style={styles.actionButtonText}>Sort</Text>
-              <ChevronDown color={colors.muted} size={16} />
+              <ArrowDownUp color={areSearchControlsDisabled ? '#9AB0CC' : colors.ink} size={18} />
+              <Text style={[
+                styles.actionButtonText,
+                areSearchControlsDisabled && styles.actionButtonTextDisabled,
+              ]}>Sort</Text>
+              <ChevronDown color={areSearchControlsDisabled ? '#9AB0CC' : colors.muted} size={16} />
             </Pressable>
             <Pressable
               accessibilityLabel="Filter cars"
               accessibilityRole="button"
+              accessibilityState={{ disabled: areSearchControlsDisabled }}
+              disabled={areSearchControlsDisabled}
               onPress={() => {
                 setDraftFilters(filters);
                 setFilterSheetOpen(true);
               }}
-              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                areSearchControlsDisabled && styles.actionButtonDisabled,
+                pressed && !areSearchControlsDisabled && styles.pressed,
+              ]}
             >
-              <SlidersHorizontal color={colors.ink} size={18} />
-              <Text style={styles.actionButtonText}>Filter</Text>
+              <SlidersHorizontal color={areSearchControlsDisabled ? '#9AB0CC' : colors.ink} size={18} />
+              <Text style={[
+                styles.actionButtonText,
+                areSearchControlsDisabled && styles.actionButtonTextDisabled,
+              ]}>Filter</Text>
               {activeFilterCount > 0 ? (
                 <View style={styles.filterCountBadge}>
                   <Text style={styles.filterCountText}>{activeFilterCount}</Text>
@@ -432,17 +480,20 @@ export function SearchResultsScreen() {
           </>
         ) : null}
 
-        {!hasSearchCriteria ? (
-          <StateMessage
-            actionLabel="Select location"
-            body="Choose a pickup location and rental window from Home."
-            onAction={() => router.push('/(customer)/location')}
-            title="Missing search details"
-          />
-        ) : shouldShowSearchError ? (
+        {!hasSearchCriteria ? null : shouldShowSearchError ? (
           <StateMessage
             actionLabel="Try again"
             body={searchErrorState?.body ?? 'We could not load cars for this search. Please try again.'}
+            illustration={
+              searchErrorState?.title === 'No Internet Connection'
+                ? searchStateIllustrations.noInternet
+                : searchStateIllustrations.unableToLoad
+            }
+            illustrationLabel={
+              searchErrorState?.title === 'No Internet Connection'
+                ? 'No internet connection'
+                : 'Unable to load cars'
+            }
             onAction={() => void vehiclesQuery.refetch()}
             title={searchErrorState?.title ?? 'Unable to Load Cars'}
           />
@@ -452,8 +503,22 @@ export function SearchResultsScreen() {
           <FlatList
             ListEmptyComponent={
               <StateMessage
-                body="Adjust filters, pickup time, or location."
-                title="No cars available"
+                actionLabel="Change dates"
+                body="We couldn't find any cars for your selected dates and location. Try changing your dates or exploring nearby locations."
+                illustration={searchStateIllustrations.noCars}
+                illustrationLabel="No cars found for the selected dates"
+                onAction={() => setActiveDateTimeField('pickupDate')}
+                onSecondaryAction={() =>
+                  router.push({
+                    pathname: '/(customer)/location',
+                    params: {
+                      ...toSearchRouteParams(routeState),
+                      returnTo: 'results',
+                    },
+                  })
+                }
+                secondaryActionLabel="Change location"
+                title="No cars available for your dates"
               />
             }
             ListFooterComponent={
@@ -519,7 +584,6 @@ export function SearchResultsScreen() {
       <FilterSheet
         draftFilters={draftFilters}
         isVisible={isFilterSheetOpen}
-        resultCount={total}
         onApply={(nextFilters) => {
           preserveOverlayRoute();
           router.replace({
@@ -567,7 +631,6 @@ type FilterOption<T extends string | number | undefined = string> = {
 export function FilterSheet({
   draftFilters,
   isVisible,
-  resultCount,
   onApply,
   onChange,
   onClose,
@@ -575,7 +638,6 @@ export function FilterSheet({
 }: {
   draftFilters: SearchFilters;
   isVisible: boolean;
-  resultCount: number;
   onApply: (filters: SearchFilters) => void;
   onChange: (filters: SearchFilters) => void;
   onClose: () => void;
@@ -686,12 +748,12 @@ export function FilterSheet({
               <Text style={styles.clearButtonText}>Clear all</Text>
             </Pressable>
             <Pressable
-              accessibilityLabel={`Show ${resultCount} cars`}
+              accessibilityLabel="Apply filters"
               accessibilityRole="button"
               onPress={() => onApply(draftFilters)}
               style={({ pressed }) => [styles.showButton, pressed && styles.showButtonPressed]}
             >
-              <Text style={styles.showButtonText}>Show {resultCount} cars</Text>
+              <Text style={styles.showButtonText}>Apply</Text>
             </Pressable>
           </View>
         </View>
@@ -946,30 +1008,63 @@ function SearchSkeleton() {
   );
 }
 
-function StateMessage({
+export function StateMessage({
   actionLabel,
   body,
+  illustration,
+  illustrationLabel,
   onAction,
+  onSecondaryAction,
+  secondaryActionLabel,
   title,
 }: {
   actionLabel?: string;
   body: string;
+  illustration?: ImageSourcePropType;
+  illustrationLabel?: string;
   onAction?: () => void;
+  onSecondaryAction?: () => void;
+  secondaryActionLabel?: string;
   title: string;
 }) {
   return (
     <View accessibilityLiveRegion="polite" style={styles.stateMessage}>
+      {illustration ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          accessibilityLabel={illustrationLabel}
+          accessible={Boolean(illustrationLabel)}
+          resizeMode="contain"
+          source={illustration}
+          style={styles.stateIllustration}
+        />
+      ) : null}
       <Text style={styles.stateTitle}>{title}</Text>
       <Text style={styles.stateBody}>{body}</Text>
       {actionLabel && onAction ? (
-        <Pressable
-          accessibilityLabel={actionLabel}
-          accessibilityRole="button"
-          onPress={onAction}
-          style={styles.stateAction}
-        >
-          <Text style={styles.stateActionText}>{actionLabel}</Text>
-        </Pressable>
+        <View style={styles.stateActions}>
+          <Pressable
+            accessibilityLabel={actionLabel}
+            accessibilityRole="button"
+            onPress={onAction}
+            style={({ pressed }) => [styles.stateAction, pressed && styles.stateActionPressed]}
+          >
+            <Text style={styles.stateActionText}>{actionLabel}</Text>
+          </Pressable>
+          {secondaryActionLabel && onSecondaryAction ? (
+            <Pressable
+              accessibilityLabel={secondaryActionLabel}
+              accessibilityRole="button"
+              onPress={onSecondaryAction}
+              style={({ pressed }) => [
+                styles.stateSecondaryAction,
+                pressed && styles.stateSecondaryActionPressed,
+              ]}
+            >
+              <Text style={styles.stateSecondaryActionText}>{secondaryActionLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -1076,6 +1171,14 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 15,
     fontWeight: '900',
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#EEF5FC',
+    borderColor: '#E2EDF9',
+    shadowOpacity: 0,
+  },
+  actionButtonTextDisabled: {
+    color: '#9AB0CC',
   },
   filterCountBadge: {
     minHeight: 20,
@@ -1483,8 +1586,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
+    gap: 10,
+    paddingHorizontal: 26,
+    paddingBottom: 14,
+  },
+  stateIllustration: {
+    height: 180,
+    maxWidth: 260,
+    width: '72%',
   },
   stateTitle: {
     color: '#102550',
@@ -1500,16 +1609,44 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   stateAction: {
-    minHeight: 42,
+    alignItems: 'center',
+    minHeight: 48,
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#0B6FE8',
-    paddingHorizontal: 18,
-    marginTop: 6,
+    paddingHorizontal: 20,
+  },
+  stateActionPressed: {
+    backgroundColor: '#075BC8',
   },
   stateActionText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '900',
+  },
+  stateActions: {
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 8,
+    maxWidth: 320,
+    width: '100%',
+  },
+  stateSecondaryAction: {
+    alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#0B6FE8',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+  },
+  stateSecondaryActionPressed: {
+    backgroundColor: '#EAF4FF',
+  },
+  stateSecondaryActionText: {
+    color: '#0B6FE8',
+    fontSize: 15,
     fontWeight: '900',
   },
 });

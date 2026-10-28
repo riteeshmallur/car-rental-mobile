@@ -2,6 +2,7 @@ const {
   getVehicleDraftName,
   getVehicleSetupProgress,
   getVehicleSetupSectionLabel,
+  isVehicleSetupReadyForSubmission,
 } = require('@/features/host-vehicles/utils/vehicle-setup-progress');
 
 function listing(overrides = {}) {
@@ -60,6 +61,34 @@ describe('vehicle setup progress', () => {
   });
 
   it('routes a complete draft to review and submit', () => {
+    const vehicle = listing({
+      address: '12 MG Road',
+      availabilitySettings: { availableFrom: '2026-11-01' },
+      city: 'Bengaluru',
+      country: 'India',
+      imageUrls: ['https://cdn.example.com/vehicle.jpg'],
+      listingDocuments: {
+        insuranceImageUrl: '/uploads/insurance.jpg',
+        insurancePolicyNumber: 'INS123',
+        registrationCertificateImageUrl: '/uploads/rc.jpg',
+        registrationCertificateNumber: 'RC123',
+      },
+      locationId: 'location-1',
+      pricePerDay: '2499',
+      state: 'Karnataka',
+    });
+    const progress = getVehicleSetupProgress(vehicle);
+
+    expect(progress.nextSection).toBe('review');
+    expect(progress.percentage).toBe(100);
+    expect(isVehicleSetupReadyForSubmission(vehicle)).toBe(true);
+  });
+
+  it('does not make an incomplete listing ready for submission', () => {
+    expect(isVehicleSetupReadyForSubmission(listing())).toBe(false);
+  });
+
+  it('does not treat document numbers as complete until RC and insurance uploads exist', () => {
     const progress = getVehicleSetupProgress(
       listing({
         address: '12 MG Road',
@@ -68,9 +97,7 @@ describe('vehicle setup progress', () => {
         country: 'India',
         imageUrls: ['https://cdn.example.com/vehicle.jpg'],
         listingDocuments: {
-          insuranceImageUrl: '/uploads/insurance.jpg',
           insurancePolicyNumber: 'INS123',
-          registrationCertificateImageUrl: '/uploads/rc.jpg',
           registrationCertificateNumber: 'RC123',
         },
         locationId: 'location-1',
@@ -79,8 +106,11 @@ describe('vehicle setup progress', () => {
       }),
     );
 
-    expect(progress.nextSection).toBe('review');
-    expect(progress.percentage).toBe(100);
+    expect(progress).toMatchObject({
+      completed: 4,
+      nextSection: 'documents',
+      total: 5,
+    });
   });
 
   it('requires both pricing and availability before rental settings are complete', () => {

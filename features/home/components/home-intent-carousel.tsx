@@ -25,7 +25,7 @@ const carouselArtwork = {
 } as const;
 
 const carouselGradient =
-  'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.99) 27%, rgba(255,255,255,0.94) 34%, rgba(255,255,255,0.72) 39%, rgba(255,255,255,0.30) 44%, rgba(255,255,255,0) 50%)';
+  'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.99) 33%, rgba(255,255,255,0.92) 44%, rgba(255,255,255,0.60) 54%, rgba(255,255,255,0.18) 61%, rgba(255,255,255,0) 67%)';
 
 const webGradientStyle = Platform.OS === 'web'
   ? ({ backgroundImage: carouselGradient } as unknown as ViewStyle)
@@ -55,6 +55,7 @@ export function HomeIntentCarousel({ intents, onIntentPress }: HomeIntentCarouse
   const [activeIndex, setActiveIndex] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const cardWidth = Math.max(1, containerWidth || Math.min(width - 36, 560));
+  const cardMinHeight = Math.max(166, Math.round(cardWidth / 2.3));
   const textScale = Math.min(1, Math.max(0.68, cardWidth / 560));
   const copyPadding = Math.round(27 * textScale);
 
@@ -84,7 +85,11 @@ export function HomeIntentCarousel({ intents, onIntentPress }: HomeIntentCarouse
               accessibilityLabel={`${item.title}. ${item.action}`}
               accessibilityRole="button"
               onPress={() => onIntentPress(item)}
-              style={({ pressed }) => [styles.card, { width: cardWidth }, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.card,
+                { minHeight: cardMinHeight, width: cardWidth },
+                pressed && styles.pressed,
+              ]}
             >
               <View accessibilityElementsHidden style={styles.imageStage}>
                 <Image
@@ -102,8 +107,8 @@ export function HomeIntentCarousel({ intents, onIntentPress }: HomeIntentCarouse
                 style={[styles.gradientOverlay, webGradientStyle]}
               />
               <View style={[styles.copy, { paddingLeft: copyPadding, paddingRight: Math.round(9 * textScale) }]}>
-                <Text numberOfLines={2} style={[styles.title, { fontSize: Math.round(30 * textScale), lineHeight: Math.round(32 * textScale) }]}>{item.title}</Text>
-                <Text numberOfLines={3} style={[styles.description, { fontSize: Math.round(16 * textScale), lineHeight: Math.round(22 * textScale) }]}>{item.description}</Text>
+                <Text style={[styles.title, { fontSize: Math.round(30 * textScale), lineHeight: Math.round(32 * textScale) }]}>{item.title}</Text>
+                <Text style={[styles.description, { fontSize: Math.round(16 * textScale), lineHeight: Math.round(22 * textScale) }]}>{item.description}</Text>
                 <View style={styles.actionRow}>
                   <Text style={[styles.action, { fontSize: Math.round(20 * textScale) }]}>{item.action}</Text>
                   <ArrowRight color="#FF644F" size={Math.round(28 * textScale)} />
@@ -130,7 +135,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   card: {
-    aspectRatio: 2.3,
     minHeight: 166,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -146,8 +150,10 @@ const styles = StyleSheet.create({
   },
   copy: {
     zIndex: 2,
-    width: '53%',
+    width: '50%',
     gap: 9,
+    paddingBottom: 34,
+    paddingTop: 18,
   },
   title: {
     color: '#102550',

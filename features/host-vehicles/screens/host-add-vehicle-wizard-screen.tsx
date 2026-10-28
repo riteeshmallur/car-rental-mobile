@@ -60,7 +60,10 @@ import {
   VehicleSelectionSheet,
   type VehicleSelectionOption,
 } from '@/features/host-vehicles/components/vehicle-selection-sheet';
-import { type VehicleSetupSection as SetupSection } from '@/features/host-vehicles/utils/vehicle-setup-progress';
+import {
+  isVehicleSetupReadyForSubmission,
+  type VehicleSetupSection as SetupSection,
+} from '@/features/host-vehicles/utils/vehicle-setup-progress';
 import { type LocationSearchResult } from '@/types/location';
 
 type StepKey =
@@ -372,6 +375,22 @@ export function HostAddVehicleWizardScreen() {
     }
   };
 
+  const submitReadyListing = async () => {
+    if (!draftId || setupProgress.completed < setupProgress.total || actionInFlightRef.current) {
+      return;
+    }
+
+    actionInFlightRef.current = true;
+    setValidationMessage(null);
+    try {
+      await submitMutation.mutateAsync();
+    } catch {
+      // The mutation state renders the API error and leaves the listing as a draft.
+    } finally {
+      actionInFlightRef.current = false;
+    }
+  };
+
   const savePickupLocation = async ({ exitAfterSave = false } = {}) => {
     if (!draftId || actionInFlightRef.current) return false;
     actionInFlightRef.current = true;
@@ -596,10 +615,16 @@ export function HostAddVehicleWizardScreen() {
           setValue('imageUrls', listing.imageUrls, { shouldDirty: false, shouldValidate: false });
         }
       }
-      await saveMutation.mutateAsync(buildSectionPayload(activeSection, nextValues));
+      const savedVehicle = await saveMutation.mutateAsync(buildSectionPayload(activeSection, nextValues));
       if (activeSection === 'photos') {
         setPhotosSaved(true);
       }
+
+      if (destination === 'next' && isVehicleSetupReadyForSubmission(savedVehicle)) {
+        goToGuidedSection('review', savedVehicle.id);
+        return;
+      }
+
       const nextSection = destination === 'next' ? getNextSetupSection(activeSection) : null;
       if (nextSection) {
         goToGuidedSection(nextSection);
@@ -631,7 +656,15 @@ export function HostAddVehicleWizardScreen() {
           ) : !draftId ? (
             <QuickVehicleSetup control={control} errors={errors} make={make} onOpenSelection={setSelectionField} />
           ) : !activeSection ? (
-            <VehicleSetupChecklist documentUrls={documentUrls} onOpenSection={goToSection} progress={setupProgress} values={values} />
+            <VehicleSetupChecklist
+              documentUrls={documentUrls}
+              errorMessage={serverError?.message ?? validationMessage}
+              isSubmitting={submitMutation.isPending}
+              onOpenSection={goToSection}
+              onSubmit={() => void submitReadyListing()}
+              progress={setupProgress}
+              values={values}
+            />
           ) : (
             <View pointerEvents={isBusy ? 'none' : 'auto'} style={styles.stepContent}>
               <View style={styles.stepHeader}>
@@ -643,7 +676,7 @@ export function HostAddVehicleWizardScreen() {
               {activeSection === 'photos' ? <PhotosStep error={photoError ?? errors.imageUrls?.message} hasPendingUploads={pendingPhotoUris.length > 0} imageUrls={imageUrls} isSaved={photosSaved} isUploading={uploadPhotosMutation.isPending} uploadProgress={uploadProgress} onMovePhoto={movePhoto} onPickPhotos={pickPhotos} onRemovePhoto={removePhoto} onRetryUpload={() => void retryPhotoUpload()} onSetCoverPhoto={setCoverPhoto} /> : null}
               {activeSection === 'documents' ? <DocumentsStep control={control} documentUpload={documentUpload} documentUrls={documentUrls} errors={errors} onPickDocument={pickVehicleDocument} /> : null}
               {activeSection === 'rental_settings' ? <RentalSettingsStep control={control} errors={errors} setValue={setValue} /> : null}
-              {activeSection === 'review' ? <ReviewStep onEdit={goToSection} values={getValues()} /> : null}
+              {activeSection === 'review' ? <ReviewStep documentUrls={documentUrls} onEdit={goToSection} values={getValues()} /> : null}
               {serverError || validationMessage ? <View style={styles.errorBox}><Text style={styles.errorBoxText}>{serverError?.message ?? validationMessage}</Text></View> : null}
             </View>
           )}
@@ -658,7 +691,12 @@ export function HostAddVehicleWizardScreen() {
               onSecondaryPress={() => void saveSection('checklist')}
             />
           ) : (
-            <VehicleSetupFooter busy={isBusy} label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : isGuidedFlow ? 'Save & continue' : 'Save changes'} onPress={!draftId ? createDraft : () => void saveSection()} />
+            <VehicleSetupFooter
+              busy={isBusy}
+              disabled={Boolean(activeSection === 'review' && setupProgress.completed < setupProgress.total)}
+              label={!draftId ? 'Continue' : activeSection === 'review' ? 'Submit for review' : isGuidedFlow ? 'Save & continue' : 'Save changes'}
+              onPress={!draftId ? createDraft : () => void saveSection()}
+            />
           )
         ) : null}
       </KeyboardAvoidingView>
@@ -778,12 +816,14 @@ function VehicleSetupHeader({
 
 function VehicleSetupFooter({
   busy,
+  disabled = false,
   label,
   onPress,
   onSecondaryPress,
   secondaryLabel,
 }: {
   busy: boolean;
+  disabled?: boolean;
   label: string;
   onPress: () => void;
   onSecondaryPress?: () => void;
@@ -797,7 +837,7 @@ function VehicleSetupFooter({
             <Text style={styles.setupSecondaryButtonText}>{secondaryLabel}</Text>
           </Pressable>
         ) : null}
-        <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={onPress} style={[styles.setupPrimaryButton, secondaryLabel && styles.setupPrimaryButtonSplit, busy && styles.setupPrimaryButtonDisabled]}>
+        <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ busy, disabled: busy || disabled }} disabled={busy || disabled} onPress={onPress} style={[styles.setupPrimaryButton, secondaryLabel && styles.setupPrimaryButtonSplit, (busy || disabled) && styles.setupPrimaryButtonDisabled]}>
           {busy ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.setupPrimaryButtonText}>{label}</Text><ChevronRight color="#FFFFFF" size={20} /></>}
         </Pressable>
       </View>
@@ -839,15 +879,22 @@ function QuickVehicleSetup({
 
 function VehicleSetupChecklist({
   documentUrls,
+  errorMessage,
+  isSubmitting,
   onOpenSection,
+  onSubmit,
   progress,
   values,
 }: {
   documentUrls: VehicleDocumentUrls;
+  errorMessage: string | null;
+  isSubmitting: boolean;
   onOpenSection: (section: SetupSection) => void;
+  onSubmit: () => void;
   progress: { completed: number; total: number };
   values: HostVehicleFormValues;
 }) {
+  const readyToSubmit = progress.completed === progress.total;
   return (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
@@ -859,9 +906,21 @@ function VehicleSetupChecklist({
         <Text style={styles.setupProgressCount}>{Math.round((progress.completed / progress.total) * 100)}%</Text>
         <View style={styles.setupProgressTrack}><View style={[styles.setupProgressFill, { width: `${(progress.completed / progress.total) * 100}%` }]} /></View>
       </View>
+      {readyToSubmit ? (
+        <View style={styles.setupReadyCard}>
+          <View style={styles.setupReadyCopy}>
+            <Text style={styles.setupReadyTitle}>Ready for review</Text>
+            <Text style={styles.setupReadyText}>All required listing details are saved. Submit when you are ready for HopIn to review your car.</Text>
+          </View>
+          {errorMessage ? <Text accessibilityLiveRegion="polite" style={styles.setupReadyError}>{errorMessage}</Text> : null}
+          <Pressable accessibilityLabel="Submit vehicle for review" accessibilityRole="button" accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }} disabled={isSubmitting} onPress={onSubmit} style={[styles.setupReadyButton, isSubmitting && styles.setupPrimaryButtonDisabled]}>
+            {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.setupReadyButtonText}>Submit for review</Text><ChevronRight color="#FFFFFF" size={20} /></>}
+          </Pressable>
+        </View>
+      ) : null}
       <View style={styles.setupChecklist}>
         {setupSections.map((section) => {
-          const status = section.key === 'review' ? (progress.completed === progress.total ? 'completed' : 'action_required') : getSetupStatus(section.key, values, documentUrls);
+          const status = section.key === 'review' ? (readyToSubmit ? 'ready_to_submit' : 'action_required') : getSetupStatus(section.key, values, documentUrls);
           return <ChecklistRow key={section.key} onPress={() => onOpenSection(section.key)} section={section} status={status} />;
         })}
       </View>
@@ -876,14 +935,15 @@ function ChecklistRow({
 }: {
   onPress: () => void;
   section: { key: SetupSection; title: string; helper: string };
-  status: 'completed' | 'in_progress' | 'not_started' | 'action_required';
+  status: 'completed' | 'in_progress' | 'not_started' | 'action_required' | 'ready_to_submit';
 }) {
-  const statusLabel = status === 'completed' ? 'Completed' : status === 'in_progress' ? 'In progress' : status === 'action_required' ? 'Action required' : 'Not started';
-  const Icon = status === 'completed' ? CircleCheck : status === 'action_required' ? CircleAlert : status === 'in_progress' ? Clock3 : Circle;
+  const statusLabel = status === 'completed' ? 'Completed' : status === 'ready_to_submit' ? 'Ready to submit' : status === 'in_progress' ? 'In progress' : status === 'action_required' ? 'Action required' : 'Not started';
+  const Icon = status === 'completed' ? CircleCheck : status === 'ready_to_submit' ? Check : status === 'action_required' ? CircleAlert : status === 'in_progress' ? Clock3 : Circle;
+  const statusColor = status === 'completed' ? '#16805C' : status === 'ready_to_submit' ? '#0B6FE8' : status === 'action_required' ? '#FF644F' : '#536B91';
   return (
     <Pressable accessibilityHint={`Open ${section.title}`} accessibilityLabel={`${section.title}, ${statusLabel}`} accessibilityRole="button" key={section.key} onPress={onPress} style={({ pressed }) => [styles.checklistRow, pressed && styles.checklistRowPressed]}>
-      <View style={[styles.checklistIcon, status === 'completed' && styles.checklistIconComplete]}><Icon color={status === 'completed' ? '#16805C' : status === 'action_required' ? '#FF644F' : '#536B91'} size={20} /></View>
-      <View style={styles.checklistCopy}><Text style={styles.checklistTitle}>{section.title}</Text><Text numberOfLines={1} style={styles.checklistHelper}>{section.helper}</Text><Text style={[styles.checklistStatus, status === 'completed' && styles.checklistStatusComplete, status === 'action_required' && styles.checklistStatusRequired]}>{statusLabel}</Text></View>
+      <View style={[styles.checklistIcon, status === 'completed' && styles.checklistIconComplete, status === 'ready_to_submit' && styles.checklistIconReady]}><Icon color={statusColor} size={20} /></View>
+      <View style={styles.checklistCopy}><Text style={styles.checklistTitle}>{section.title}</Text><Text numberOfLines={1} style={styles.checklistHelper}>{section.helper}</Text><Text style={[styles.checklistStatus, status === 'completed' && styles.checklistStatusComplete, status === 'ready_to_submit' && styles.checklistStatusReady, status === 'action_required' && styles.checklistStatusRequired]}>{statusLabel}</Text></View>
       <ChevronRight color="#536B91" size={20} />
     </Pressable>
   );
@@ -2017,13 +2077,19 @@ function WebDateCalendar({
 }
 
 function ReviewStep({
+  documentUrls,
   onEdit,
   values,
 }: {
+  documentUrls: VehicleDocumentUrls;
   onEdit: (section: SetupSection) => void;
   values: HostVehicleFormValues;
 }) {
   const coverImageUrl = getVehicleImageVariantUrl(values.imageUrls[0], 'thumbnail');
+  const missingRequiredDocuments = getMissingRequiredDocumentRequirements(
+    values,
+    documentUrls,
+  );
   const rows = [
     {
       icon: <MapPin color="#0B6FE8" size={19} />,
@@ -2049,7 +2115,7 @@ function ReviewStep({
       icon: <FileText color="#0B6FE8" size={19} />,
       label: 'Documents',
       section: 'documents' as const,
-      value: getDocumentSummary(values),
+      value: getDocumentSummary(values, documentUrls),
     },
     {
       icon: <CalendarDays color="#0B6FE8" size={19} />,
@@ -2094,6 +2160,21 @@ function ReviewStep({
         </View>
         <ChevronRight color="#536B91" size={19} />
       </Pressable>
+      {missingRequiredDocuments.length ? (
+        <View style={styles.reviewRequirementNotice}>
+          <Text style={styles.reviewRequirementText}>
+            Required before submission: {missingRequiredDocuments.join(', ')}.
+          </Text>
+          <Pressable
+            accessibilityLabel="Upload required vehicle documents"
+            accessibilityRole="button"
+            onPress={() => onEdit('documents')}
+            style={styles.reviewRequirementAction}
+          >
+            <Text style={styles.reviewRequirementActionText}>Upload documents</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {rows.map((row) => (
         <Pressable
           accessibilityRole="button"
@@ -2608,14 +2689,38 @@ function formatListingDate(value: string) {
   }).format(parseDateInput(value));
 }
 
-function getDocumentSummary(values: HostVehicleFormValues) {
-  const documents = [
-    values.registrationCertificateNumber && 'RC',
-    values.insurancePolicyNumber && 'Insurance',
-    values.pollutionCertificateNumber && 'PUC',
-  ].filter(Boolean);
+function getMissingRequiredDocumentRequirements(
+  values: HostVehicleFormValues,
+  documentUrls: VehicleDocumentUrls,
+) {
+  const missing: string[] = [];
 
-  return documents.length ? `${documents.join(', ')} added` : 'Add document references';
+  if (!values.registrationCertificateNumber.trim()) {
+    missing.push('RC number');
+  }
+  if (!documentUrls.rc) {
+    missing.push('RC image');
+  }
+  if (!values.insurancePolicyNumber.trim()) {
+    missing.push('insurance policy number');
+  }
+  if (!documentUrls.insurance) {
+    missing.push('insurance image');
+  }
+
+  return missing;
+}
+
+function getDocumentSummary(
+  values: HostVehicleFormValues,
+  documentUrls: VehicleDocumentUrls,
+) {
+  const missing = getMissingRequiredDocumentRequirements(values, documentUrls);
+  if (!missing.length) {
+    return 'RC and Insurance uploaded';
+  }
+
+  return `Missing: ${missing.join(', ')}`;
 }
 
 function stringFromRecord(record: Record<string, unknown>, key: string) {
@@ -3340,6 +3445,30 @@ const styles = StyleSheet.create({
   reviewList: {
     gap: 10,
   },
+  reviewRequirementNotice: {
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFD2CC',
+    backgroundColor: '#FFF5F3',
+    padding: 12,
+  },
+  reviewRequirementText: {
+    color: '#A7382A',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  reviewRequirementAction: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  reviewRequirementActionText: {
+    color: '#0B6FE8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   reviewVehicleCard: {
     minHeight: 100,
     flexDirection: 'row',
@@ -3573,6 +3702,29 @@ const styles = StyleSheet.create({
   setupProgressCount: { position: 'absolute', right: 16, top: 16, color: '#0B6FE8', fontSize: 16, fontWeight: '800' },
   setupProgressTrack: { height: 6, overflow: 'hidden', borderRadius: 999, backgroundColor: '#D6E8FF' },
   setupProgressFill: { height: '100%', borderRadius: 999, backgroundColor: '#0B6FE8' },
+  setupReadyCard: {
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  setupReadyCopy: { gap: 4 },
+  setupReadyTitle: { color: '#102550', fontSize: 16, fontWeight: '800' },
+  setupReadyText: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  setupReadyError: { color: '#C23B32', fontSize: 13, fontWeight: '700', lineHeight: 18 },
+  setupReadyButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: '#0B6FE8',
+    paddingHorizontal: 16,
+  },
+  setupReadyButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   setupChecklist: { gap: 10 },
   checklistRow: {
     minHeight: 88,
@@ -3588,11 +3740,13 @@ const styles = StyleSheet.create({
   checklistRowPressed: { backgroundColor: '#EAF4FF' },
   checklistIcon: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#EAF4FF' },
   checklistIconComplete: { backgroundColor: '#E7F5EE' },
+  checklistIconReady: { backgroundColor: '#EAF4FF' },
   checklistCopy: { flex: 1, minWidth: 0, gap: 2 },
   checklistTitle: { color: '#102550', fontSize: 15, fontWeight: '800' },
   checklistHelper: { color: '#536B91', fontSize: 12, fontWeight: '600' },
   checklistStatus: { color: '#536B91', fontSize: 11, fontWeight: '800', marginTop: 3, textTransform: 'uppercase' },
   checklistStatusComplete: { color: '#16805C' },
+  checklistStatusReady: { color: '#0B6FE8' },
   checklistStatusRequired: { color: '#FF644F' },
   extrasCard: { overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: '#D6E8FF', backgroundColor: '#FFFFFF' },
   extrasHeader: { minHeight: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
