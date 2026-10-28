@@ -22,4 +22,22 @@ describe('vehicle image URLs', () => {
       'blob:http://localhost:8081/vehicle',
     );
   });
+
+  it('does not return legacy third-party vehicle URLs to the UI', () => {
+    expect(
+      getVehicleImageVariantUrl(
+        'https://images.unsplash.com/photo-1571896849842-33c89424de2d',
+        'thumbnail',
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps backend and CDN object-storage vehicle media URLs', () => {
+    expect(
+      getVehicleImageVariantUrl(
+        'https://media.hopin.example/uploads/cars/vehicle-original.jpg',
+        'detail',
+      ),
+    ).toBe('https://media.hopin.example/uploads/cars/vehicle-detail.jpg');
+  });
 });

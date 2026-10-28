@@ -1,4 +1,5 @@
 import { Image as ExpoImage, type ImageContentFit } from 'expo-image';
+import { CarFront } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -7,7 +8,7 @@ type CachedVehicleImageProps = {
   contentFit?: ImageContentFit;
   onError?: () => void;
   style: StyleProp<ViewStyle>;
-  uri: string;
+  uri?: string | null;
 };
 
 export function CachedVehicleImage({
@@ -17,10 +18,12 @@ export function CachedVehicleImage({
   style,
   uri,
 }: CachedVehicleImageProps) {
-  const [isLoading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(Boolean(uri));
+  const [hasError, setHasError] = useState(!uri);
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(Boolean(uri));
+    setHasError(!uri);
   }, [uri]);
 
   return (
@@ -30,20 +33,34 @@ export function CachedVehicleImage({
       accessibilityRole={accessibilityLabel ? 'image' : undefined}
       style={[styles.frame, style]}
     >
-      {isLoading ? <View style={styles.placeholder} /> : null}
-      <ExpoImage
-        cachePolicy="memory-disk"
-        accessible={false}
-        contentFit={contentFit}
-        onError={() => {
-          setLoading(false);
-          onError?.();
-        }}
-        onLoadEnd={() => setLoading(false)}
-        source={{ uri }}
-        style={styles.image}
-        transition={120}
-      />
+      {hasError ? (
+        <View
+          accessibilityLabel="Vehicle image unavailable"
+          accessibilityRole="image"
+          style={styles.fallback}
+          testID="vehicle-image-fallback"
+        >
+          <CarFront color="#536B91" size={28} />
+        </View>
+      ) : (
+        <>
+          {isLoading ? <View style={styles.placeholder} /> : null}
+          <ExpoImage
+            cachePolicy="memory-disk"
+            accessible={false}
+            contentFit={contentFit}
+            onError={() => {
+              setLoading(false);
+              setHasError(true);
+              onError?.();
+            }}
+            onLoadEnd={() => setLoading(false)}
+            source={{ uri: uri ?? undefined }}
+            style={styles.image}
+            transition={120}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -51,6 +68,13 @@ export function CachedVehicleImage({
 const styles = StyleSheet.create({
   frame: {
     overflow: 'hidden',
+  },
+  fallback: {
+    alignItems: 'center',
+    backgroundColor: '#E8F3FF',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
   },
   image: {
     height: '100%',

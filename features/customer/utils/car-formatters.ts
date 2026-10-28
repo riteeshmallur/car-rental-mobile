@@ -1,6 +1,7 @@
 import { env } from '@/services/config/env';
 
 const apiOrigin = env.apiUrl.replace(/\/api\/v1\/?$/, '');
+const managedVehicleMediaPath = /\/uploads\/(cars|vehicles)\//i;
 
 export function formatMoney(value: number | string) {
   const amount = Number(value);
@@ -40,28 +41,41 @@ export function getVehicleImageVariantUrl(
     return null;
   }
 
+  // Image picker previews have not reached backend storage yet. Keep them
+  // intact while a host is arranging photos in a draft.
+  if (/^(file:|blob:|data:)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+
   const localVariantUrl = imageUrl.replace(
     /-(thumbnail|detail|original)\.jpg(?=([?#].*)?$)/,
     `-${variant}.jpg`,
   );
 
   if (localVariantUrl !== imageUrl) {
-    return getCarImageUrl(localVariantUrl);
+    return getManagedVehicleImageUrl(localVariantUrl);
+  }
+
+  return getManagedVehicleImageUrl(imageUrl);
+}
+
+/**
+ * Vehicle images must come from HopIn's backend/CDN upload path.  This also
+ * protects clients with stale API data from requesting legacy third-party
+ * assets that browsers may reject with ERR_BLOCKED_BY_ORB.
+ */
+function getManagedVehicleImageUrl(imageUrl: string) {
+  const resolvedUrl = getCarImageUrl(imageUrl);
+
+  if (!resolvedUrl) {
+    return null;
   }
 
   try {
-    const url = new URL(getCarImageUrl(imageUrl) ?? imageUrl);
-    if (url.hostname === 'images.unsplash.com') {
-      const width = variant === 'thumbnail' ? '480' : variant === 'detail' ? '1440' : '2560';
-      url.searchParams.set('auto', 'format');
-      url.searchParams.set('fit', 'crop');
-      url.searchParams.set('w', width);
-      url.searchParams.set('q', variant === 'thumbnail' ? '76' : '84');
-      return url.toString();
-    }
+    return managedVehicleMediaPath.test(new URL(resolvedUrl).pathname)
+      ? resolvedUrl
+      : null;
   } catch {
-    // Relative paths and malformed legacy URLs retain their original value.
+    return null;
   }
-
-  return getCarImageUrl(imageUrl);
 }

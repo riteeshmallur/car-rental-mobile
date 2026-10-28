@@ -3,6 +3,7 @@ const { fireEvent, render } = require('@testing-library/react-native');
 
 const { BottomNavigation } = require('@/features/customer/components/bottom-navigation');
 const { CarCard } = require('@/features/customer/components/car-card');
+const { CachedVehicleImage } = require('@/features/customer/components/cached-vehicle-image');
 const { RentalSearchCard } = require('@/features/customer/components/rental-search-card');
 const { FilterSheet, SortSheet } = require('@/features/customer/screens/search-results-screen');
 const { PriceRows } = require('@/features/customer/screens/booking-summary-screen');
@@ -130,5 +131,21 @@ describe('customer home, search, filters, vehicle details, and quote components'
     fireEvent.press(screen.getByLabelText('My Bookings'));
 
     expect(global.__testRouter.replace).toHaveBeenCalledWith('/(customer)/trips');
+  });
+
+  it('replaces a failed vehicle image with one stable fallback', () => {
+    const onError = jest.fn();
+    const screen = render(
+      React.createElement(CachedVehicleImage, {
+        onError,
+        style: { height: 80, width: 120 },
+        uri: 'http://localhost:3099/uploads/cars/missing-thumbnail.jpg',
+      }),
+    );
+
+    fireEvent(screen.UNSAFE_getByType('Image'), 'error');
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('vehicle-image-fallback')).toBeTruthy();
   });
 });
