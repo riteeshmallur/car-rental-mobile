@@ -38,6 +38,7 @@ export function OtpVerificationScreen() {
   const {
     control,
     formState: { errors, isValid },
+    clearErrors,
     handleSubmit,
     setError,
   } = useForm<VerifyOtpFormValues>({
@@ -71,7 +72,7 @@ export function OtpVerificationScreen() {
     mutationFn: authApi.verifyOtp,
     onError: (error) => {
       const normalizedError = normalizeApiError(error);
-      setError('otp', { message: normalizedError.message });
+      setError('otp', { type: 'server', message: normalizedError.message });
       setScreenError(normalizedError.message);
     },
     onSuccess: async (session) => {
@@ -116,7 +117,15 @@ export function OtpVerificationScreen() {
             <OtpInput
               disabled={verifyOtpMutation.isPending}
               error={errors.otp?.message}
-              onChange={onChange}
+              onChange={(nextValue) => {
+                if (errors.otp?.type === 'server') {
+                  clearErrors('otp');
+                  setScreenError(null);
+                  verifyOtpMutation.reset();
+                }
+
+                onChange(nextValue);
+              }}
               value={value}
             />
           )}
