@@ -1,5 +1,5 @@
 import { Bell, UserRound } from 'lucide-react-native';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { HopInLogo } from '@/components/branding/hopin-logo';
 import { type SafeUser } from '@/types/auth';
@@ -15,11 +15,14 @@ export function CustomerHeader({
   onNotificationsPress,
   onProfilePress,
 }: CustomerHeaderProps) {
+  const { width: screenWidth } = useWindowDimensions();
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` || 'H';
+  // Keep the Home wordmark prominent while leaving room for the two 44px actions.
+  const logoWidth = Math.max(138, Math.min(136, screenWidth * 0.44));
 
   return (
     <View style={styles.container}>
-      <View style={styles.brandBlock}><HopInLogo width={136} /></View>
+      <View style={styles.brandBlock}><HopInLogo width={logoWidth} /></View>
 
       <View style={styles.actions}>
         <Pressable
