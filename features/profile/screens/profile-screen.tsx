@@ -2,23 +2,21 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   ArrowRight,
-  Bell,
   CarFront,
   ChevronRight,
-  CreditCard,
   FileText,
   Headphones,
+  Info,
   LogOut,
-  Mail,
-  Pencil,
-  Phone,
   Settings,
   ShieldCheck,
+  Star,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -129,26 +127,14 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
     [mode],
   );
 
+  const openRating = useCallback(() => {
+    void Linking.openURL('mailto:support@hopin.app?subject=HopIn%20feedback').catch(() => {
+      router.push('/(customer)/help-support' as never);
+    });
+  }, []);
+
   const sections = useMemo<SectionItem[]>(
     () => [
-      {
-        label: 'Payment methods',
-        description: 'Manage your cards and wallets',
-        icon: <CreditCard color={colors.ink} size={20} />,
-        onPress: () => router.push('/(customer)/payment-methods' as never),
-      },
-      {
-        label: 'My Documents',
-        description: 'Licence, verification and vehicle records',
-        icon: <FileText color={colors.ink} size={20} />,
-        onPress: () => router.push(mode === 'host' ? '/(host)/documents' : '/(customer)/documents'),
-      },
-      {
-        label: 'Notifications',
-        description: 'Manage your alerts and updates',
-        icon: <Bell color={colors.ink} size={20} />,
-        onPress: () => router.push('/(customer)/notifications' as never),
-      },
       {
         label: 'Help & Support',
         description: 'Get help or contact us',
@@ -156,21 +142,40 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
         onPress: () => router.push('/(customer)/help-support' as never),
       },
       {
+        label: 'Terms & Policies',
+        description: 'Rental, cancellation and refund policies',
+        icon: <FileText color={colors.ink} size={20} />,
+        onPress: () => router.push({ pathname: '/(customer)/policy', params: { type: 'terms' } } as never),
+      },
+      {
         label: 'Privacy & Security',
-        description: 'Manage your data and security',
+        description: 'Manage your privacy and account security',
         icon: <ShieldCheck color={colors.ink} size={20} />,
         onPress: () => router.push('/(customer)/privacy-security' as never),
       },
       {
-        label: 'Logout',
-        description: '',
-        icon: <LogOut color={colors.error} size={20} />,
-        destructive: true,
-        onPress: () => setLogoutSheetOpen(true),
+        label: 'Rate HopIn',
+        description: 'Share your experience',
+        icon: <Star color={colors.ink} size={20} />,
+        onPress: openRating,
+      },
+      {
+        label: 'About HopIn',
+        description: 'App information and version',
+        icon: <Info color={colors.ink} size={20} />,
+        onPress: () => router.push({ pathname: '/(customer)/policy', params: { type: 'about' } } as never),
       },
     ],
-    [mode],
+    [openRating],
   );
+
+  const logoutItem = useMemo<SectionItem>(() => ({
+    label: 'Log out',
+    description: '',
+    icon: <LogOut color={colors.error} size={20} />,
+    destructive: true,
+    onPress: () => setLogoutSheetOpen(true),
+  }), []);
 
   const confirmLogout = async () => {
     if (isLoggingOut) {
@@ -241,27 +246,15 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
                   />
                 ) : null}
 
-                <SectionHeading title="Account" />
+                <SectionHeading title="Support & Information" />
                 <View style={styles.section}>
-                  {sections.slice(0, 2).map((item) => (
-                    <SectionRow key={item.label} item={item} />
-                  ))}
-                </View>
-
-                <SectionHeading title="Preferences" />
-                <View style={styles.section}>
-                  <SectionRow item={sections[2]} />
-                </View>
-
-                <SectionHeading title="Support & Security" />
-                <View style={styles.section}>
-                  {sections.slice(3, 5).map((item) => (
+                  {sections.map((item) => (
                     <SectionRow key={item.label} item={item} />
                   ))}
                 </View>
 
                 <View style={styles.logoutSection}>
-                  <SectionRow item={sections[5]} />
+                  <SectionRow item={logoutItem} />
                 </View>
               </>
             ) : null}
@@ -294,7 +287,13 @@ function openHostRoute(action: HostEntryAction) {
 
 function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser }) {
   return (
-    <View style={styles.summary}>
+    <Pressable
+      accessibilityHint="Opens personal information."
+      accessibilityLabel="Open profile"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
+    >
       {user.profileImageUrl ? (
         <Image source={{ uri: user.profileImageUrl }} style={styles.avatar} />
       ) : (
@@ -304,60 +303,12 @@ function ProfileSummary({ onPress, user }: { onPress: () => void; user: SafeUser
       )}
       <View style={styles.summaryCopy}>
         <Text style={styles.name}>{getDisplayName(user)}</Text>
-        <InfoLine
-          icon={<Phone color={colors.muted} size={16} />}
-          text={user.phoneNumber ?? 'Mobile number not added'}
-          trailing={user.phoneVerified ? <PhoneVerifiedBadge /> : undefined}
-        />
-        {user.email ? (
-          <InfoLine icon={<Mail color={colors.muted} size={16} />} text={user.email} />
-        ) : (
-          <Pressable
-            accessibilityHint="Opens personal information to add an email address."
-            accessibilityLabel="Add email address"
-            accessibilityRole="button"
-            hitSlop={6}
-            onPress={onPress}
-            style={({ pressed }) => [styles.addEmailAction, pressed && styles.pressed]}
-          >
-            <Mail color={colors.brand} size={16} />
-            <Text style={styles.addEmailText}>Add Email Address</Text>
-          </Pressable>
-        )}
+        <Text numberOfLines={1} style={[styles.email, !user.email && styles.addEmailText]}>
+          {user.email || 'Add Email Address'}
+        </Text>
       </View>
-      <Pressable
-        accessibilityHint="Opens personal information."
-        accessibilityLabel="Edit profile"
-        accessibilityRole="button"
-        hitSlop={6}
-        onPress={onPress}
-        style={({ pressed }) => [styles.editProfileButton, pressed && styles.pressed]}
-      >
-        <Pencil color={colors.brand} size={16} />
-        <Text style={styles.editProfileText}>Edit</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function PhoneVerifiedBadge() {
-  return (
-    <View accessibilityLabel="Phone verified" accessibilityRole="text" style={styles.verifiedBadge}>
-      <ShieldCheck color={colors.success} size={13} />
-      <Text style={styles.verifiedText}>Verified</Text>
-    </View>
-  );
-}
-
-function InfoLine({ icon, text, trailing }: { icon: React.ReactNode; text: string; trailing?: React.ReactNode }) {
-  return (
-    <View style={styles.infoLine}>
-      {icon}
-      <Text numberOfLines={1} style={styles.infoText}>
-        {text}
-      </Text>
-      {trailing}
-    </View>
+      <ChevronRight color={colors.muted} size={24} />
+    </Pressable>
   );
 }
 
@@ -602,6 +553,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   summary: {
+    minHeight: 112,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -671,17 +623,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(184, 146, 75, 0.16)',
   },
   avatar: {
-    height: 82,
-    width: 82,
-    borderRadius: 41,
+    height: 74,
+    width: 74,
+    borderRadius: 37,
     backgroundColor: colors.brandSoft,
   },
   avatarFallback: {
-    height: 82,
-    width: 82,
+    height: 74,
+    width: 74,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 41,
+    borderRadius: 37,
     backgroundColor: colors.brandSoft,
   },
   avatarText: {
@@ -690,6 +642,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   summaryCopy: {
+    minWidth: 0,
     flex: 1,
     justifyContent: 'center',
     gap: 6,
@@ -699,54 +652,14 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '800',
   },
-  infoLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoText: {
-    flex: 1,
+  email: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '500',
-  },
-  addEmailAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    minHeight: 24,
   },
   addEmailText: {
     color: colors.brand,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    borderRadius: radii.pill,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  verifiedText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  editProfileButton: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    paddingHorizontal: 4,
-  },
-  editProfileText: {
-    color: colors.brand,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   primaryButton: {
