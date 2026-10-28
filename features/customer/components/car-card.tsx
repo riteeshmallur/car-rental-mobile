@@ -153,13 +153,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   footer: {
-    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
   priceRow: {
+    minWidth: 0,
+    flex: 1,
     flexShrink: 1,
     flexWrap: 'wrap',
     flexDirection: 'row',
@@ -178,6 +179,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   bookButton: {
+    flexShrink: 0,
     minHeight: 38,
     alignItems: 'center',
     justifyContent: 'center',
