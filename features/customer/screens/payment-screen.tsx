@@ -81,7 +81,7 @@ export function PaymentScreen() {
 
     const refreshes: Array<Promise<unknown>> = [
       bookingQuery.refetch(),
-      queryClient.invalidateQueries({ queryKey: ['renter', 'bookings'] }),
+      queryClient.invalidateQueries({ queryKey: ['renters', 'me', 'bookings'] }),
     ];
 
     if (includePayment) {

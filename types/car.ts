@@ -307,6 +307,8 @@ export type Booking = {
 };
 
 export type RenterTripPhase =
+  | 'payment_required'
+  | 'awaiting_host_approval'
   | 'upcoming'
   | 'active'
   | 'return_pending'

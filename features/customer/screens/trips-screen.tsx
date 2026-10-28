@@ -21,10 +21,13 @@ import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterBooking, type RenterTripPhase } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
+import { getBookingTotal, getRenterTripStatusLabel } from '@/utils/booking-presentation';
 
 type TripTab = { label: string; value: RenterTripPhase };
 
 const tabs: TripTab[] = [
+  { label: 'Payment required', value: 'payment_required' },
+  { label: 'Awaiting host', value: 'awaiting_host_approval' },
   { label: 'Upcoming', value: 'upcoming' },
   { label: 'Active', value: 'active' },
   { label: 'Return pending', value: 'return_pending' },
@@ -65,10 +68,15 @@ export function TripsScreen() {
   const bookingsQuery = useQuery({
     queryKey: ['renters', 'me', 'bookings'],
     queryFn: bookingsApi.listRenterBookings,
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
+    staleTime: 0,
   });
 
   const bookingsByTab = useMemo(() => {
     const grouped: Record<RenterTripPhase, RenterBooking[]> = {
+      payment_required: [],
+      awaiting_host_approval: [],
       upcoming: [],
       active: [],
       return_pending: [],
@@ -182,69 +190,89 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
   const imageUrl = getVehicleImageVariantUrl(booking.vehicle.imageUrl, 'thumbnail');
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() =>
-        router.push({
-          pathname: '/(customer)/booking/[id]',
-          params: { id: booking.id, origin: 'customer-trips' },
-        })
-      }
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      <View style={styles.cardTop}>
-        {imageUrl ? (
-          <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
-        ) : (
-          <View style={styles.imageFallback}>
-            <CarFront color="#102550" size={30} />
-          </View>
-        )}
-        <View style={styles.cardCopy}>
-          <View style={styles.titleRow}>
-            <Text numberOfLines={1} style={styles.vehicleName}>
-              {vehicleName}
+    <View style={styles.card}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`View ${vehicleName} booking`}
+        onPress={() =>
+          router.push({
+            pathname: '/(customer)/booking/[id]',
+            params: { id: booking.id, origin: 'customer-trips' },
+          })
+        }
+        style={({ pressed }) => [styles.cardDetails, pressed && styles.pressed]}
+      >
+        <View style={styles.cardTop}>
+          {imageUrl ? (
+            <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
+          ) : (
+            <View style={styles.imageFallback}>
+              <CarFront color="#102550" size={30} />
+            </View>
+          )}
+          <View style={styles.cardCopy}>
+            <View style={styles.titleRow}>
+              <Text numberOfLines={1} style={styles.vehicleName}>
+                {vehicleName}
+              </Text>
+              <StatusBadge booking={booking} />
+            </View>
+            <Text numberOfLines={1} selectable style={styles.reference}>
+              Ref {booking.reference.slice(0, 8).toUpperCase()}
             </Text>
-            <StatusBadge phase={booking.tripPhase} />
+            <Text numberOfLines={1} style={styles.location}>
+              {locationLabel(booking) || 'Pickup location'}
+            </Text>
           </View>
-          <Text numberOfLines={1} selectable style={styles.reference}>
-            Ref {booking.reference.slice(0, 8).toUpperCase()}
-          </Text>
-          <Text numberOfLines={1} style={styles.location}>
-            {locationLabel(booking) || 'Pickup location'}
-          </Text>
         </View>
-      </View>
 
-      <View style={styles.dateRow}>
-        <CalendarClock color="#536B91" size={17} />
-        <View style={styles.dateCopy}>
-          <Text style={styles.dateLabel}>Pickup</Text>
-          <Text numberOfLines={1} style={styles.dateValue}>
-            {formatDateTime(booking.pickupAt)}
-          </Text>
+        <View style={styles.dateRow}>
+          <CalendarClock color="#536B91" size={17} />
+          <View style={styles.dateCopy}>
+            <Text style={styles.dateLabel}>Pickup</Text>
+            <Text numberOfLines={1} style={styles.dateValue}>
+              {formatDateTime(booking.pickupAt)}
+            </Text>
+          </View>
+          <View style={styles.dateCopy}>
+            <Text style={styles.dateLabel}>Return</Text>
+            <Text numberOfLines={1} style={styles.dateValue}>
+              {formatDateTime(booking.returnAt)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.dateCopy}>
-          <Text style={styles.dateLabel}>Return</Text>
-          <Text numberOfLines={1} style={styles.dateValue}>
-            {formatDateTime(booking.returnAt)}
-          </Text>
-        </View>
-      </View>
 
-      <View style={styles.footerRow}>
-        <Text style={styles.paymentLabel}>{titleCase(booking.paymentStatus)}</Text>
-        <Text style={styles.paymentAmount}>{formatMoney(booking.totalPaid)}</Text>
-      </View>
-    </Pressable>
+        <View style={styles.footerRow}>
+          <Text style={styles.paymentLabel}>
+            {booking.tripPhase === 'payment_required' ? 'Amount due' : titleCase(booking.paymentStatus)}
+          </Text>
+          <Text style={styles.paymentAmount}>{formatMoney(getBookingTotal(booking))}</Text>
+        </View>
+      </Pressable>
+      {booking.tripPhase === 'payment_required' ? (
+        <Pressable
+          accessibilityLabel={`Complete payment for ${vehicleName}`}
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({
+              pathname: '/(customer)/booking/payment',
+              params: { bookingId: booking.id, origin: 'customer-trips' },
+            })
+          }
+          style={({ pressed }) => [styles.completePaymentButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.completePaymentText}>Complete payment</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
-function StatusBadge({ phase }: { phase: RenterTripPhase }) {
+function StatusBadge({ booking }: { booking: RenterBooking }) {
   return (
-    <View style={[styles.statusBadge, statusStyle(phase)]}>
-      <Text style={[styles.statusText, statusTextStyle(phase)]}>
-        {titleCase(phase)}
+    <View style={[styles.statusBadge, statusStyle(booking.tripPhase)]}>
+      <Text style={[styles.statusText, statusTextStyle(booking.tripPhase)]}>
+        {getRenterTripStatusLabel(booking)}
       </Text>
     </View>
   );
@@ -293,6 +321,8 @@ function StateMessage({
 
 function statusStyle(phase: RenterTripPhase) {
   switch (phase) {
+    case 'payment_required': return styles.paymentRequiredStatus;
+    case 'awaiting_host_approval': return styles.awaitingHostStatus;
     case 'active': return styles.activeStatus;
     case 'return_pending': return styles.returnStatus;
     case 'completed': return styles.completedStatus;
@@ -304,6 +334,8 @@ function statusStyle(phase: RenterTripPhase) {
 
 function statusTextStyle(phase: RenterTripPhase) {
   switch (phase) {
+    case 'payment_required': return styles.paymentRequiredStatusText;
+    case 'awaiting_host_approval': return styles.awaitingHostStatusText;
     case 'cancelled': return styles.cancelledStatusText;
     case 'disputed': return styles.disputedStatusText;
     case 'return_pending': return styles.returnStatusText;
@@ -328,6 +360,7 @@ const styles = StyleSheet.create({
   list: { flex: 1, minHeight: 0 },
   listContent: { gap: 12, paddingBottom: 22 },
   card: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 14, padding: 14 },
+  cardDetails: { gap: 14 },
   cardTop: { flexDirection: 'row', gap: 12 },
   vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 82, width: 100 },
   imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 82, justifyContent: 'center', width: 100 },
@@ -338,11 +371,12 @@ const styles = StyleSheet.create({
   location: { color: '#536B91', fontSize: 13, fontWeight: '700' },
   statusBadge: { borderRadius: 12, maxWidth: 122, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
-  upcomingStatus: { backgroundColor: '#EAF4FF' }, activeStatus: { backgroundColor: '#DCFCE7' }, returnStatus: { backgroundColor: '#FFF7D6' }, completedStatus: { backgroundColor: '#E6F8F2' }, cancelledStatus: { backgroundColor: '#FEECEC' }, disputedStatus: { backgroundColor: '#FFF0E5' },
-  defaultStatusText: { color: '#0B6FE8' }, returnStatusText: { color: '#A16207' }, cancelledStatusText: { color: '#B91C1C' }, disputedStatusText: { color: '#C2410C' },
+  upcomingStatus: { backgroundColor: '#EAF4FF' }, paymentRequiredStatus: { backgroundColor: '#FFF7D6' }, awaitingHostStatus: { backgroundColor: '#EAF4FF' }, activeStatus: { backgroundColor: '#DCFCE7' }, returnStatus: { backgroundColor: '#FFF7D6' }, completedStatus: { backgroundColor: '#E6F8F2' }, cancelledStatus: { backgroundColor: '#FEECEC' }, disputedStatus: { backgroundColor: '#FFF0E5' },
+  defaultStatusText: { color: '#0B6FE8' }, paymentRequiredStatusText: { color: '#A16207' }, awaitingHostStatusText: { color: '#0B6FE8' }, returnStatusText: { color: '#A16207' }, cancelledStatusText: { color: '#B91C1C' }, disputedStatusText: { color: '#C2410C' },
   dateRow: { alignItems: 'center', borderTopColor: '#D6E8FF', borderTopWidth: 1, flexDirection: 'row', gap: 10, paddingTop: 12 },
   dateCopy: { flex: 1, minWidth: 0 }, dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#102550', fontSize: 12, fontWeight: '800', marginTop: 2 },
   footerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, paymentLabel: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'capitalize' }, paymentAmount: { color: '#102550', fontSize: 16, fontWeight: '900' },
+  completePaymentButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 10, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, completePaymentText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   pressed: { opacity: 0.75 },
   skeletonList: { gap: 12, paddingTop: 4 }, skeletonCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, flexDirection: 'row', gap: 12, padding: 14 }, skeletonImage: { backgroundColor: '#E8EEF7', borderRadius: 12, height: 82, width: 100 }, skeletonCopy: { flex: 1, gap: 10 }, skeletonWide: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 14, width: '80%' }, skeletonMedium: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '65%' }, skeletonShort: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '42%' },
   state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
