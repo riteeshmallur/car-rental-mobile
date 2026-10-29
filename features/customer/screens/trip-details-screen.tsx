@@ -15,6 +15,7 @@ import {
   RefreshCw,
   RotateCw,
   Star,
+  UserRound,
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
@@ -41,6 +42,8 @@ import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterTrip } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 import { getTripActionVisibility } from '@/utils/trip-action-visibility';
+import { canViewTripPickupInformation } from '@/utils/trip-pickup-visibility';
+import { isRenterTripPast } from '@/utils/booking-presentation';
 
 type SheetName = 'extend' | 'return' | 'issue' | 'review' | null;
 type FuelLevel = 'empty' | 'quarter' | 'half' | 'three_quarters' | 'full';
@@ -83,6 +86,11 @@ function tripTitle(stage: RenterTrip['stage']) {
   }
 }
 
+function shortBookingReference(reference: string) {
+  const compactReference = reference.replace(/[^a-zA-Z0-9]/g, '');
+  return compactReference.slice(0, 8).toUpperCase() || '—';
+}
+
 export function TripDetailsScreen() {
   const params = useLocalSearchParams<{ id?: string; origin?: string }>();
   const bookingId = getParam(params.id);
@@ -100,6 +108,7 @@ export function TripDetailsScreen() {
     queryFn: () => bookingsApi.findTrip(bookingId ?? ''),
   });
   const trip = tripQuery.data;
+  const isPastTrip = trip ? isRenterTripPast(trip) : false;
 
   const paymentQuery = useQuery({
     enabled: Boolean(bookingId && trip),
@@ -212,7 +221,7 @@ export function TripDetailsScreen() {
           <ArrowLeft color="#102550" size={22} />
         </Pressable>
         <View style={styles.headerCopy}>
-          <Text style={styles.eyebrow}>Trip</Text>
+          <Text style={styles.eyebrow}>{isPastTrip ? 'Trip history' : 'Trip'}</Text>
           <Text style={styles.title}>Booking details</Text>
         </View>
         <Pressable
@@ -243,21 +252,17 @@ export function TripDetailsScreen() {
         />
       ) : trip ? (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <VehicleSummary trip={trip} />
-          <StatusBanner trip={trip} />
-          <RentalWindow trip={trip} />
-          <PickupDetails trip={trip} onContactHost={contactHost} />
-          <PaymentDetails isLoading={paymentQuery.isLoading} trip={trip} payment={paymentQuery.data} />
-          <LifecycleDetails trip={trip} />
-          <TripActions
-            isMutating={isMutating}
-            onCancel={requestCancellation}
-            onExtend={() => setSheet('extend')}
-            onIssue={() => setSheet('issue')}
-            onReturn={() => setSheet('return')}
-            onReview={() => setSheet('review')}
+          <VehicleSummary isPastTrip={isPastTrip} trip={trip} />
+          <StatusBanner isPastTrip={isPastTrip} trip={trip} />
+          <TripSummary trip={trip} />
+          {canViewTripPickupInformation(trip) ? (
+            <PickupDetails trip={trip} onContactHost={contactHost} />
+          ) : null}
+          <PaymentDetails
+            isLoading={paymentQuery.isLoading}
             onViewReceipt={() => setReceiptRequested(true)}
-            receiptLoading={receiptQuery.isFetching}
+            payment={paymentQuery.data}
+            receiptAvailable={trip.capabilities.viewReceipt}
             trip={trip}
           />
           {receiptRequested ? (
@@ -274,6 +279,17 @@ export function TripDetailsScreen() {
               <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" /><Text style={styles.mutedText}>Loading receipt</Text></View>
             ) : null
           ) : null}
+          <LifecycleDetails trip={trip} />
+          <TripActions
+            isMutating={isMutating}
+            onCancel={requestCancellation}
+            onExtend={() => setSheet('extend')}
+            onIssue={() => setSheet('issue')}
+            onReturn={() => setSheet('return')}
+            onReview={() => setSheet('review')}
+            isPastTrip={isPastTrip}
+            trip={trip}
+          />
         </ScrollView>
       ) : null}
 
@@ -295,24 +311,25 @@ export function TripDetailsScreen() {
   );
 }
 
-function VehicleSummary({ trip }: { trip: RenterTrip }) {
+function VehicleSummary({ isPastTrip, trip }: { isPastTrip: boolean; trip: RenterTrip }) {
   const imageUrl = getVehicleImageVariantUrl(trip.vehicle.imageUrl, 'thumbnail');
   return (
     <View style={styles.vehicleCard}>
       {imageUrl ? <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} /> : <View style={styles.imageFallback}><CarFront color="#102550" size={34} /></View>}
       <View style={styles.vehicleCopy}>
         <Text style={styles.vehicleName}>{trip.vehicle.make} {trip.vehicle.model}</Text>
-        <Text selectable style={styles.reference}>Ref {trip.reference}</Text>
+        <Text selectable style={styles.reference}>Ref {shortBookingReference(trip.reference)}</Text>
         <Text style={styles.totalAmount}>{formatMoney(trip.pricing.totalPrice)}</Text>
+        {isPastTrip ? <View style={styles.historyBadge}><Text style={styles.historyBadgeText}>Past trip</Text></View> : null}
       </View>
     </View>
   );
 }
 
-function StatusBanner({ trip }: { trip: RenterTrip }) {
+function StatusBanner({ isPastTrip, trip }: { isPastTrip: boolean; trip: RenterTrip }) {
   const copy = useMemo(() => {
     switch (trip.stage) {
-      case 'upcoming': case 'confirmed': return 'Your booking is confirmed. Pickup details are available below.';
+      case 'upcoming': case 'confirmed': return isPastTrip ? 'The scheduled rental window has ended. Payment and trip history are available below.' : 'Your booking is confirmed. Pickup details are available below.';
       case 'active': return 'Your rental is active. Return the vehicle using the return flow when you are ready.';
       case 'return_pending': return 'The return has been recorded and is awaiting the host inspection.';
       case 'completed': return 'Your trip is complete. Review the vehicle or open your receipt.';
@@ -324,18 +341,26 @@ function StatusBanner({ trip }: { trip: RenterTrip }) {
   return <View style={[styles.statusBanner, statusBannerStyle(trip.stage)]}><CheckCircle2 color={statusColor(trip.stage)} size={20} /><View style={styles.statusCopy}><Text style={[styles.statusTitle, { color: statusColor(trip.stage) }]}>{tripTitle(trip.stage)}</Text><Text style={styles.statusBody}>{copy}</Text></View></View>;
 }
 
-function RentalWindow({ trip }: { trip: RenterTrip }) {
-  return <Section title="Rental window"><InfoRow icon={<CalendarClock color="#0B6FE8" size={18} />} label="Pickup" value={formatDateTime(trip.pickupAt)} /><InfoRow icon={<CalendarClock color="#0B6FE8" size={18} />} label="Return" value={formatDateTime(trip.returnAt)} /></Section>;
+function TripSummary({ trip }: { trip: RenterTrip }) {
+  const location = [
+    trip.pickup.location.name,
+    trip.pickup.location.city,
+    trip.pickup.location.state,
+  ].filter(Boolean).join(', ');
+
+  return <Section title="Trip summary"><View style={styles.rentalWindow}><View style={styles.rentalWindowColumn}><InfoRow icon={<CalendarClock color="#0B6FE8" size={18} />} label="Pickup" value={formatDateTime(trip.pickupAt)} /></View><View style={styles.rentalWindowColumn}><InfoRow icon={<CalendarClock color="#0B6FE8" size={18} />} label="Return" value={formatDateTime(trip.returnAt)} /></View></View><InfoRow icon={<MapPin color="#0B6FE8" size={18} />} label="Pickup location" value={location || 'Pickup location unavailable'} /><InfoRow icon={<UserRound color="#0B6FE8" size={18} />} label="Hosted by" value={trip.pickup.hostName || 'Host information unavailable'} /></Section>;
 }
 
 function PickupDetails({ trip, onContactHost }: { trip: RenterTrip; onContactHost: () => void }) {
-  if (!trip.capabilities.viewPickupInformation) return null;
-  const location = [trip.pickup.location.name, trip.pickup.location.address, trip.pickup.location.city, trip.pickup.location.state, trip.pickup.location.country].filter(Boolean).join(', ');
-  return <Section title="Pickup details"><InfoRow icon={<MapPin color="#0B6FE8" size={18} />} label="Pickup location" value={location || 'Pickup location will be shared before your trip.'} /><InfoRow icon={<CarFront color="#0B6FE8" size={18} />} label="Host" value={trip.pickup.hostName} />{trip.pickup.hostPhoneNumber ? <ActionButton icon={<Phone color="#0B6FE8" size={18} />} label="Contact host" onPress={onContactHost} /> : null}{trip.pickup.verifiedAt ? <InfoRow icon={<CheckCircle2 color="#15803D" size={18} />} label="Pickup verified" value={formatDateTime(trip.pickup.verifiedAt)} /> : <Text style={styles.helper}>The host will verify pickup before your trip begins.</Text>}</Section>;
+  return <Section title="Pickup details">{trip.pickup.hostPhoneNumber ? <ActionButton icon={<Phone color="#0B6FE8" size={18} />} label="Contact host" onPress={onContactHost} /> : null}{trip.pickup.verifiedAt ? <InfoRow icon={<CheckCircle2 color="#15803D" size={18} />} label="Pickup verified" value={formatDateTime(trip.pickup.verifiedAt)} /> : <Text style={styles.helper}>The host will verify pickup before your trip begins.</Text>}</Section>;
 }
 
-function PaymentDetails({ isLoading, payment, trip }: { isLoading: boolean; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; trip: RenterTrip }) {
-  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={titleCase(payment?.status ?? trip.paymentStatus)} /><InfoRow label="Trip total" value={formatMoney(trip.pricing.totalPrice)} />{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <InfoRow key={refund.id} label="Refund" value={`${formatMoney(refund.amount)} · ${titleCase(refund.status)}`} />)}</>}</Section>;
+function PaymentDetails({ isLoading, onViewReceipt, payment, receiptAvailable, trip }: { isLoading: boolean; onViewReceipt: () => void; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; receiptAvailable: boolean; trip: RenterTrip }) {
+  const paymentStatus = payment?.status ?? trip.paymentStatus;
+  const isPaid = ['paid', 'captured', 'succeeded'].includes(paymentStatus ?? '');
+  const totalPaid = isPaid ? payment?.amount ?? trip.pricing.totalPrice : null;
+
+  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={titleCase(paymentStatus)} /><InfoRow label={isPaid ? 'Total paid' : 'Booking total'} value={formatMoney(totalPaid ?? trip.pricing.totalPrice)} />{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <InfoRow key={refund.id} label="Refund" value={`${formatMoney(refund.amount)} · ${titleCase(refund.status)}`} />)}{receiptAvailable ? <ActionButton icon={<ReceiptText color="#0B6FE8" size={18} />} label="View payment receipt" onPress={onViewReceipt} /> : null}</>}</Section>;
 }
 
 function LifecycleDetails({ trip }: { trip: RenterTrip }) {
@@ -347,11 +372,12 @@ function LifecycleDetails({ trip }: { trip: RenterTrip }) {
   return null;
 }
 
-function TripActions({ isMutating, onCancel, onExtend, onIssue, onReturn, onReview, onViewReceipt, receiptLoading, trip }: { isMutating: boolean; onCancel: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; onViewReceipt: () => void; receiptLoading: boolean; trip: RenterTrip }) {
+function TripActions({ isMutating, isPastTrip, onCancel, onExtend, onIssue, onReturn, onReview, trip }: { isMutating: boolean; isPastTrip: boolean; onCancel: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; trip: RenterTrip }) {
   const actions = getTripActionVisibility(trip);
-  const anyAction = actions.cancel || actions.requestExtension || actions.viewReturnInstructions || actions.reportIssue || actions.review || actions.viewReceipt;
+  const canReview = actions.review && trip.stage === 'completed';
+  const anyAction = actions.cancel || actions.requestExtension || actions.viewReturnInstructions || actions.reportIssue || canReview;
   if (!anyAction) return null;
-  return <Section title="Trip actions"><View style={styles.actionStack}>{actions.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{actions.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{actions.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Report an issue" onPress={onIssue} variant="warning" /> : null}{actions.review ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Leave a review" onPress={onReview} /> : null}{actions.viewReceipt ? <ActionButton disabled={isMutating || receiptLoading} icon={<ReceiptText color="#0B6FE8" size={18} />} label={receiptLoading ? 'Loading receipt' : 'View receipt'} onPress={onViewReceipt} /> : null}{actions.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
+  return <Section title={isPastTrip ? 'After your trip' : 'Trip actions'}><View style={styles.actionStack}>{actions.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{actions.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{canReview ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Rate your trip" onPress={onReview} variant="primary" /> : null}{actions.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label={isPastTrip ? 'Report a trip issue' : 'Report an issue'} onPress={onIssue} variant="warning" /> : null}{actions.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
 }
 
 function ReceiptDetails({ receipt }: { receipt: Awaited<ReturnType<typeof bookingsApi.findReceipt>> }) {
@@ -400,9 +426,9 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 76, paddingHorizontal: 16 },
   headerCopy: { flex: 1 }, eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }, title: { color: '#102550', fontSize: 22, fontWeight: '900' },
   iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  content: { gap: 12, padding: 16, paddingBottom: 28 }, vehicleCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 14 }, vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 100, width: 118 }, imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 100, justifyContent: 'center', width: 118 }, vehicleCopy: { flex: 1, gap: 7, justifyContent: 'center', minWidth: 0 }, vehicleName: { color: '#102550', fontSize: 18, fontWeight: '900' }, reference: { color: '#536B91', fontSize: 12, fontWeight: '700' }, totalAmount: { color: '#0B6FE8', fontSize: 18, fontWeight: '900' },
+  content: { gap: 12, padding: 16, paddingBottom: 28 }, vehicleCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 14 }, vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 100, width: 118 }, imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 100, justifyContent: 'center', width: 118 }, vehicleCopy: { flex: 1, gap: 7, justifyContent: 'center', minWidth: 0 }, vehicleName: { color: '#102550', fontSize: 18, fontWeight: '900' }, reference: { color: '#536B91', fontSize: 12, fontWeight: '700' }, totalAmount: { color: '#0B6FE8', fontSize: 18, fontWeight: '900' }, historyBadge: { alignSelf: 'flex-start', backgroundColor: '#EEF2F7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 }, historyBadgeText: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   statusBanner: { alignItems: 'flex-start', borderRadius: 14, flexDirection: 'row', gap: 10, padding: 14 }, defaultBanner: { backgroundColor: '#EAF4FF' }, activeBanner: { backgroundColor: '#E9F9EE' }, returnBanner: { backgroundColor: '#FFF8DD' }, cancelledBanner: { backgroundColor: '#FEF0F0' }, disputedBanner: { backgroundColor: '#FFF1E8' }, statusCopy: { flex: 1, gap: 3 }, statusTitle: { fontSize: 15, fontWeight: '900', textTransform: 'capitalize' }, statusBody: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
-  section: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 10, padding: 14 }, sectionTitle: { color: '#102550', fontSize: 17, fontWeight: '900' }, infoRow: { borderTopColor: '#EAF4FF', borderTopWidth: 1, gap: 4, paddingTop: 10 }, infoLabelWrap: { alignItems: 'center', flexDirection: 'row', gap: 7 }, infoLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' }, infoValue: { color: '#102550', fontSize: 14, fontWeight: '800', lineHeight: 20 }, helper: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 }, errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700' },
+  section: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 10, padding: 14 }, sectionTitle: { color: '#102550', fontSize: 17, fontWeight: '900' }, rentalWindow: { flexDirection: 'row', gap: 14 }, rentalWindowColumn: { flex: 1, minWidth: 0 }, infoRow: { borderTopColor: '#EAF4FF', borderTopWidth: 1, gap: 4, paddingTop: 10 }, infoLabelWrap: { alignItems: 'center', flexDirection: 'row', gap: 7 }, infoLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' }, infoValue: { color: '#102550', fontSize: 14, fontWeight: '800', lineHeight: 20 }, helper: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 }, errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700' },
   actionStack: { gap: 9 }, actionButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 46, paddingHorizontal: 14 }, actionText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' }, dangerButton: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }, dangerText: { color: '#B91C1C' }, warningButton: { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }, warningText: { color: '#C2410C' }, primaryButton: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' }, primaryText: { color: '#FFFFFF' }, instruction: { backgroundColor: '#F3F9FF', borderRadius: 10, gap: 4, padding: 12 }, instructionTitle: { color: '#102550', fontSize: 13, fontWeight: '900' },
   inlineLoading: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 6 }, mutedText: { color: '#536B91', fontSize: 14, fontWeight: '700' }, loadingState: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' }, state: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' }, backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(15, 23, 42, 0.42)' }, sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' }, handle: { alignSelf: 'center', backgroundColor: '#D6E8FF', borderRadius: 3, height: 5, marginTop: 10, width: 42 }, sheetHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }, sheetTitle: { color: '#102550', fontSize: 20, fontWeight: '900' }, closeButton: { alignItems: 'center', justifyContent: 'center', minHeight: 40, paddingHorizontal: 4 }, closeText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' }, sheetContent: { gap: 14, padding: 20, paddingBottom: 30 }, sheetBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21 }, field: { gap: 6 }, fieldLabel: { color: '#536B91', fontSize: 13, fontWeight: '900' }, input: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, color: '#102550', fontSize: 16, fontWeight: '700', minHeight: 48, paddingHorizontal: 13 }, textarea: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' }, largeTextarea: { minHeight: 128, paddingTop: 12, textAlignVertical: 'top' }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderColor: '#D6E8FF', borderRadius: 10, borderWidth: 1, minHeight: 40, justifyContent: 'center', paddingHorizontal: 11 }, selectedChip: { backgroundColor: '#EAF4FF', borderColor: '#0B6FE8' }, chipText: { color: '#536B91', fontSize: 13, fontWeight: '800' }, selectedChipText: { color: '#0B6FE8' }, ratingRow: { flexDirection: 'row', justifyContent: 'space-between' }, starButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, disabled: { opacity: 0.52 }, pressed: { opacity: 0.75 },

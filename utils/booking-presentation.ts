@@ -1,4 +1,4 @@
-import { type Booking, type RenterBooking } from '@/types/car';
+import { type Booking, type RenterBooking, type RenterTrip } from '@/types/car';
 
 type BookingLifecycle = Pick<Booking, 'paymentStatus' | 'status'>;
 
@@ -74,6 +74,30 @@ export function hasBookingReturnPassedInKolkata(
   const returnTimestamp = toKolkataTimestamp(booking.returnAt);
 
   return returnTimestamp !== null && returnTimestamp <= now.getTime();
+}
+
+/**
+ * A passed rental window makes a booking historical in the customer UI, but
+ * never changes the backend lifecycle stage. Unresolved handovers and
+ * disputes remain actionable until the backend resolves them.
+ */
+export function isRenterTripPast(
+  trip: Pick<RenterTrip, 'returnAt' | 'stage'>,
+  now = new Date(),
+) {
+  if (trip.stage === 'completed' || trip.stage === 'cancelled') {
+    return true;
+  }
+
+  if (
+    trip.stage === 'active' ||
+    trip.stage === 'return_pending' ||
+    trip.stage === 'disputed'
+  ) {
+    return false;
+  }
+
+  return hasBookingReturnPassedInKolkata(trip, now);
 }
 
 /**

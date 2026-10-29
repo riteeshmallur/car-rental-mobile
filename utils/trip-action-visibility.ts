@@ -1,4 +1,4 @@
-import { hasBookingReturnPassedInKolkata } from '@/utils/booking-presentation';
+import { isRenterTripPast } from '@/utils/booking-presentation';
 import { type RenterTrip, type RenterTripCapabilities } from '@/types/car';
 
 export type TripActionVisibility = Pick<
@@ -11,10 +11,6 @@ export type TripActionVisibility = Pick<
   | 'viewReturnInstructions'
 >;
 
-function isUnresolvedTripStage(stage: RenterTrip['stage']) {
-  return stage === 'active' || stage === 'return_pending' || stage === 'disputed';
-}
-
 /**
  * Backend capabilities remain authoritative, but terminal rentals must never
  * offer actions that alter the booked rental window. This also protects users
@@ -24,10 +20,7 @@ export function getTripActionVisibility(
   trip: RenterTrip,
   now = new Date(),
 ): TripActionVisibility {
-  const isPast =
-    trip.stage === 'completed' ||
-    trip.stage === 'cancelled' ||
-    (!isUnresolvedTripStage(trip.stage) && hasBookingReturnPassedInKolkata(trip, now));
+  const isPast = isRenterTripPast(trip, now);
   const canChangeRental = !isPast;
 
   return {

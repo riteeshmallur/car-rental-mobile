@@ -3,6 +3,7 @@ const {
   getBookingTotal,
   getCustomerTripsPrimaryTab,
   hasBookingReturnPassedInKolkata,
+  isRenterTripPast,
   getRenterTripStatusLabel,
 } = require('@/utils/booking-presentation');
 
@@ -43,5 +44,22 @@ describe('booking presentation', () => {
 
     expect(hasBookingReturnPassedInKolkata(endedTrip, now)).toBe(true);
     expect(getCustomerTripsPrimaryTab(endedTrip, now)).toBe('past');
+  });
+
+  it('presents an ended confirmed rental as history without changing its backend status', () => {
+    const endedTrip = {
+      returnAt: '2026-10-06T14:40:00+05:30',
+      stage: 'confirmed',
+    };
+
+    expect(isRenterTripPast(endedTrip, new Date('2026-10-28T06:00:00.000Z'))).toBe(true);
+    expect(endedTrip.stage).toBe('confirmed');
+  });
+
+  it('does not treat unresolved returns or disputes as completed history', () => {
+    const now = new Date('2026-10-28T06:00:00.000Z');
+
+    expect(isRenterTripPast({ returnAt: '2026-10-06T14:40:00+05:30', stage: 'return_pending' }, now)).toBe(false);
+    expect(isRenterTripPast({ returnAt: '2026-10-06T14:40:00+05:30', stage: 'disputed' }, now)).toBe(false);
   });
 });
