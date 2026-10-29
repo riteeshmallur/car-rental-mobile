@@ -177,6 +177,7 @@ export function SearchResultsScreen() {
   );
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setSortSheetOpen] = useState(false);
+  const [isApplyingSort, setIsApplyingSort] = useState(false);
   const [draftFilters, setDraftFilters] = useState<SearchFilters>({});
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
@@ -184,10 +185,21 @@ export function SearchResultsScreen() {
   const listRef = useRef<FlatList<VehicleSearchResult>>(null);
   const searchStateKey = useMemo(() => searchRouteKey(routeState), [routeState]);
   const restoredScrollKey = useRef<string | null>(null);
+  const sortNavigationFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const isApplyingSortRef = useRef(false);
 
   useEffect(() => {
     restoredScrollKey.current = null;
   }, [searchStateKey]);
+
+  useEffect(
+    () => () => {
+      if (sortNavigationFrameRef.current !== null) {
+        cancelAnimationFrame(sortNavigationFrameRef.current);
+      }
+    },
+    [],
+  );
 
   // Results are meaningful only for a complete, valid rental search. Guarding
   // the route here also covers direct URLs and restored stale navigation state.
@@ -363,6 +375,34 @@ export function SearchResultsScreen() {
       }),
     );
   }, [routeState, setRentalWindow]);
+
+  const applySort = useCallback((nextSort: VehicleSearchSort) => {
+    if (isApplyingSortRef.current) {
+      return;
+    }
+
+    if (nextSort === sort) {
+      setSortSheetOpen(false);
+      return;
+    }
+
+    // Keep the modal mounted until the press event has completed. On web,
+    // dismissing it synchronously can let the same interaction reach the
+    // navigation underneath the sheet.
+    isApplyingSortRef.current = true;
+    setIsApplyingSort(true);
+    preserveOverlayRoute();
+    sortNavigationFrameRef.current = requestAnimationFrame(() => {
+      sortNavigationFrameRef.current = null;
+      router.replace({
+        pathname: '/(customer)/results',
+        params: toSearchRouteParams({ ...routeState, sort: nextSort }),
+      });
+      setSortSheetOpen(false);
+      setIsApplyingSort(false);
+      isApplyingSortRef.current = false;
+    });
+  }, [preserveOverlayRoute, routeState, sort]);
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -597,17 +637,11 @@ export function SearchResultsScreen() {
         onReset={() => setDraftFilters({})}
       />
       <SortSheet
+        isApplying={isApplyingSort}
         isVisible={isSortSheetOpen}
         selectedSort={sort}
-        onClose={() => setSortSheetOpen(false)}
-        onSelect={(nextSort) => {
-          preserveOverlayRoute();
-          router.replace({
-            pathname: '/(customer)/results',
-            params: toSearchRouteParams({ ...routeState, sort: nextSort }),
-          });
-          setSortSheetOpen(false);
-        }}
+        onClose={() => !isApplyingSort && setSortSheetOpen(false)}
+        onSelect={applySort}
       />
       <DateTimePickerSheet
         field={activeDateTimeField}
@@ -815,11 +849,13 @@ function FilterSection<T extends string | number | undefined>({
 }
 
 export function SortSheet({
+  isApplying = false,
   isVisible,
   selectedSort,
   onClose,
   onSelect,
 }: {
+  isApplying?: boolean;
   isVisible: boolean;
   selectedSort: VehicleSearchSort;
   onClose: () => void;
@@ -842,6 +878,7 @@ export function SortSheet({
         />
         <View
           accessibilityLabel="Sort vehicles"
+          accessibilityState={{ busy: isApplying }}
           style={[styles.sortSheet, { paddingBottom: Math.max(16, insets.bottom) }]}
         >
           <View style={styles.sheetHandle} />
@@ -850,6 +887,8 @@ export function SortSheet({
             <Pressable
               accessibilityLabel="Done sorting"
               accessibilityRole="button"
+              accessibilityState={{ disabled: isApplying }}
+              disabled={isApplying}
               onPress={onClose}
               style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
             >
@@ -864,9 +903,10 @@ export function SortSheet({
                 <Pressable
                   accessibilityLabel={option.label}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ selected, disabled: isApplying }}
+                  disabled={isApplying}
                   key={option.value}
-                  onPress={() => onSelect(option.value)}
+                  onPress={() => !isApplying && onSelect(option.value)}
                   style={({ pressed }) => [
                     styles.sortOption,
                     selected && styles.sortOptionSelected,

@@ -191,6 +191,28 @@ describe('customer home, search, filters, vehicle details, and quote components'
     expect(onSelect).toHaveBeenCalledWith('rating');
   });
 
+  it('locks sort controls while a selection is navigating, preventing duplicate or click-through actions', () => {
+    const onClose = jest.fn();
+    const onSelect = jest.fn();
+    const screen = render(
+      React.createElement(SortSheet, {
+        isApplying: true,
+        isVisible: true,
+        onClose,
+        onSelect,
+        selectedSort: 'recommended',
+      }),
+    );
+
+    const option = screen.getByLabelText('Price high to low');
+    fireEvent.press(option);
+    fireEvent.press(screen.getByLabelText('Done sorting'));
+
+    expect(option.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('shows a quote breakdown with a total before payment', () => {
     const screen = render(
       React.createElement(PriceRows, {
