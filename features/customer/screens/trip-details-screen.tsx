@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   CalendarClock,
@@ -12,7 +12,6 @@ import {
   MessageCircleWarning,
   Phone,
   ReceiptText,
-  RefreshCw,
   RotateCw,
   Star,
   UserRound,
@@ -36,11 +35,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import {
+  getPaymentScreenState,
+  type PaymentScreenState,
+} from '@/features/customer/payment/payment-flow';
 import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
 import { type RenterTrip } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import { getTripActionVisibility } from '@/utils/trip-action-visibility';
 import { canViewTripPickupInformation } from '@/utils/trip-pickup-visibility';
 import { isRenterTripPast } from '@/utils/booking-presentation';
@@ -91,6 +95,41 @@ function shortBookingReference(reference: string) {
   return compactReference.slice(0, 8).toUpperCase() || '—';
 }
 
+function normalizeStatus(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/-/g, '_') ?? '';
+}
+
+function getPaymentStatusLabel(
+  paymentState: PaymentScreenState,
+  paymentStatus: string | null | undefined,
+) {
+  if (paymentState === 'expired') return 'Payment expired';
+  if (paymentState === 'failed') return 'Payment failed';
+  if (paymentState === 'cancelled') return 'Payment cancelled';
+
+  const status = normalizeStatus(paymentStatus);
+  if (status === 'pending' || paymentState === 'initiate') return 'Payment pending';
+  if (status === 'processing' || status === 'requires_action' || status === 'authorized') {
+    return 'Payment processing';
+  }
+  if (status === 'paid' || status === 'captured' || status === 'succeeded') {
+    return 'Paid';
+  }
+  return titleCase(paymentStatus);
+}
+
+function getBookingBadgeLabel(
+  trip: RenterTrip,
+  paymentState: PaymentScreenState,
+  isPastTrip: boolean,
+) {
+  if (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled') return 'Cancelled';
+  if (normalizeStatus(trip.status) === 'pending_payment') {
+    return getPaymentStatusLabel(paymentState, trip.paymentStatus);
+  }
+  return isPastTrip ? 'Past trip' : null;
+}
+
 export function TripDetailsScreen() {
   const params = useLocalSearchParams<{ id?: string; origin?: string }>();
   const bookingId = getParam(params.id);
@@ -122,6 +161,28 @@ export function TripDetailsScreen() {
     queryFn: () => bookingsApi.findReceipt(bookingId ?? ''),
     retry: 1,
   });
+  const paymentState = trip
+    ? getPaymentScreenState(
+        { pickupAt: trip.pickupAt, status: trip.status },
+        paymentQuery.data,
+      )
+    : 'unexpected_booking_status';
+
+  const openPayment = useCallback(() => {
+    if (!bookingId || paymentState === 'expired') return;
+    router.push({
+      pathname: '/(customer)/booking/payment',
+      params: {
+        bookingId,
+        origin: 'customer-trips',
+        paymentAttempt: paymentQuery.data ? 'existing' : 'new',
+      },
+    });
+  }, [bookingId, paymentQuery.data, paymentState]);
+
+  const contactSupport = useCallback(() => {
+    router.push('/(customer)/help-support' as never);
+  }, []);
 
   const refreshTrip = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['renters', 'me', 'bookings'] });
@@ -224,19 +285,6 @@ export function TripDetailsScreen() {
           <Text style={styles.eyebrow}>{isPastTrip ? 'Trip history' : 'Trip'}</Text>
           <Text style={styles.title}>Booking details</Text>
         </View>
-        <Pressable
-          accessibilityLabel="Refresh trip"
-          accessibilityRole="button"
-          disabled={tripQuery.isFetching || isMutating}
-          onPress={() => void tripQuery.refetch()}
-          style={styles.iconButton}
-        >
-          {tripQuery.isFetching ? (
-            <ActivityIndicator color="#0B6FE8" size="small" />
-          ) : (
-            <RefreshCw color="#102550" size={20} />
-          )}
-        </Pressable>
       </View>
 
       {!bookingId ? (
@@ -252,8 +300,8 @@ export function TripDetailsScreen() {
         />
       ) : trip ? (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <VehicleSummary isPastTrip={isPastTrip} trip={trip} />
-          <StatusBanner isPastTrip={isPastTrip} trip={trip} />
+          <VehicleSummary isPastTrip={isPastTrip} paymentState={paymentState} trip={trip} />
+          <StatusBanner isPastTrip={isPastTrip} paymentState={paymentState} trip={trip} />
           <TripSummary trip={trip} />
           {canViewTripPickupInformation(trip) ? (
             <PickupDetails trip={trip} onContactHost={contactHost} />
@@ -261,7 +309,13 @@ export function TripDetailsScreen() {
           <PaymentDetails
             isLoading={paymentQuery.isLoading}
             onViewReceipt={() => setReceiptRequested(true)}
+            onOpenPayment={openPayment}
+            onRefreshPayment={() => {
+              void paymentQuery.refetch();
+              void tripQuery.refetch();
+            }}
             payment={paymentQuery.data}
+            paymentState={paymentState}
             receiptAvailable={trip.capabilities.viewReceipt}
             trip={trip}
           />
@@ -279,7 +333,11 @@ export function TripDetailsScreen() {
               <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" /><Text style={styles.mutedText}>Loading receipt</Text></View>
             ) : null
           ) : null}
-          <LifecycleDetails trip={trip} />
+          <LifecycleDetails
+            onContactSupport={contactSupport}
+            payment={paymentQuery.data}
+            trip={trip}
+          />
           <TripActions
             isMutating={isMutating}
             onCancel={requestCancellation}
@@ -311,8 +369,9 @@ export function TripDetailsScreen() {
   );
 }
 
-function VehicleSummary({ isPastTrip, trip }: { isPastTrip: boolean; trip: RenterTrip }) {
+function VehicleSummary({ isPastTrip, paymentState, trip }: { isPastTrip: boolean; paymentState: PaymentScreenState; trip: RenterTrip }) {
   const imageUrl = getVehicleImageVariantUrl(trip.vehicle.imageUrl, 'thumbnail');
+  const badgeLabel = getBookingBadgeLabel(trip, paymentState, isPastTrip);
   return (
     <View style={styles.vehicleCard}>
       {imageUrl ? <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} /> : <View style={styles.imageFallback}><CarFront color="#102550" size={34} /></View>}
@@ -320,14 +379,23 @@ function VehicleSummary({ isPastTrip, trip }: { isPastTrip: boolean; trip: Rente
         <Text style={styles.vehicleName}>{trip.vehicle.make} {trip.vehicle.model}</Text>
         <Text selectable style={styles.reference}>Ref {shortBookingReference(trip.reference)}</Text>
         <Text style={styles.totalAmount}>{formatMoney(trip.pricing.totalPrice)}</Text>
-        {isPastTrip ? <View style={styles.historyBadge}><Text style={styles.historyBadgeText}>Past trip</Text></View> : null}
+        {badgeLabel ? <View style={[styles.historyBadge, (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled') && styles.cancelledBadge]}><Text style={[styles.historyBadgeText, (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled') && styles.cancelledBadgeText]}>{badgeLabel}</Text></View> : null}
       </View>
     </View>
   );
 }
 
-function StatusBanner({ isPastTrip, trip }: { isPastTrip: boolean; trip: RenterTrip }) {
+function StatusBanner({ isPastTrip, paymentState, trip }: { isPastTrip: boolean; paymentState: PaymentScreenState; trip: RenterTrip }) {
   const copy = useMemo(() => {
+    if (normalizeStatus(trip.status) === 'pending_payment') {
+      switch (paymentState) {
+        case 'failed': return 'The payment did not complete. Retry only if the payment window is still open.';
+        case 'cancelled': return 'The payment was cancelled before it completed. You can try again while this booking remains valid.';
+        case 'expired': return 'This booking can no longer be paid because its payment window has ended.';
+        case 'processing': return 'Your payment is being verified. Refresh payment status before trying again.';
+        default: return 'Your booking is waiting for payment. Complete payment before the rental window begins.';
+      }
+    }
     switch (trip.stage) {
       case 'upcoming': case 'confirmed': return isPastTrip ? 'The scheduled rental window has ended. Payment and trip history are available below.' : 'Your booking is confirmed. Pickup details are available below.';
       case 'active': return 'Your rental is active. Return the vehicle using the return flow when you are ready.';
@@ -337,8 +405,14 @@ function StatusBanner({ isPastTrip, trip }: { isPastTrip: boolean; trip: RenterT
       case 'disputed': return 'An issue has been reported. The booking team will review the dispute.';
       default: return 'We are preparing your booking details.';
     }
-  }, [trip.stage]);
-  return <View style={[styles.statusBanner, statusBannerStyle(trip.stage)]}><CheckCircle2 color={statusColor(trip.stage)} size={20} /><View style={styles.statusCopy}><Text style={[styles.statusTitle, { color: statusColor(trip.stage) }]}>{tripTitle(trip.stage)}</Text><Text style={styles.statusBody}>{copy}</Text></View></View>;
+  }, [paymentState, trip.stage, trip.status]);
+  const title = normalizeStatus(trip.status) === 'pending_payment'
+    ? getPaymentStatusLabel(paymentState, trip.paymentStatus)
+    : tripTitle(trip.stage);
+  const tone = normalizeStatus(trip.status) === 'pending_payment'
+    ? paymentBannerTone(paymentState)
+    : statusColor(trip.stage);
+  return <View style={[styles.statusBanner, normalizeStatus(trip.status) === 'pending_payment' ? paymentBannerStyle(paymentState) : statusBannerStyle(trip.stage)]}><CheckCircle2 color={tone} size={20} /><View style={styles.statusCopy}><Text style={[styles.statusTitle, { color: tone }]}>{title}</Text><Text style={styles.statusBody}>{copy}</Text></View></View>;
 }
 
 function TripSummary({ trip }: { trip: RenterTrip }) {
@@ -355,17 +429,28 @@ function PickupDetails({ trip, onContactHost }: { trip: RenterTrip; onContactHos
   return <Section title="Pickup details">{trip.pickup.hostPhoneNumber ? <ActionButton icon={<Phone color="#0B6FE8" size={18} />} label="Contact host" onPress={onContactHost} /> : null}{trip.pickup.verifiedAt ? <InfoRow icon={<CheckCircle2 color="#15803D" size={18} />} label="Pickup verified" value={formatDateTime(trip.pickup.verifiedAt)} /> : <Text style={styles.helper}>The host will verify pickup before your trip begins.</Text>}</Section>;
 }
 
-function PaymentDetails({ isLoading, onViewReceipt, payment, receiptAvailable, trip }: { isLoading: boolean; onViewReceipt: () => void; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; receiptAvailable: boolean; trip: RenterTrip }) {
+function PaymentDetails({ isLoading, onOpenPayment, onRefreshPayment, onViewReceipt, payment, paymentState, receiptAvailable, trip }: { isLoading: boolean; onOpenPayment: () => void; onRefreshPayment: () => void; onViewReceipt: () => void; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; paymentState: PaymentScreenState; receiptAvailable: boolean; trip: RenterTrip }) {
   const paymentStatus = payment?.status ?? trip.paymentStatus;
-  const isPaid = ['paid', 'captured', 'succeeded'].includes(paymentStatus ?? '');
+  const isPaid = ['paid', 'captured', 'succeeded'].includes(normalizeStatus(paymentStatus));
   const totalPaid = isPaid ? payment?.amount ?? trip.pricing.totalPrice : null;
+  const pendingPayment = normalizeStatus(trip.status) === 'pending_payment';
+  const canRetry = pendingPayment && Boolean(payment) && ['failed', 'cancelled', 'canceled'].includes(normalizeStatus(paymentStatus)) && paymentState !== 'expired';
+  const canStartPayment = pendingPayment && !payment && paymentState === 'initiate';
 
-  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={titleCase(paymentStatus)} /><InfoRow label={isPaid ? 'Total paid' : 'Booking total'} value={formatMoney(totalPaid ?? trip.pricing.totalPrice)} />{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <InfoRow key={refund.id} label="Refund" value={`${formatMoney(refund.amount)} · ${titleCase(refund.status)}`} />)}{receiptAvailable ? <ActionButton icon={<ReceiptText color="#0B6FE8" size={18} />} label="View payment receipt" onPress={onViewReceipt} /> : null}</>}</Section>;
+  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={pendingPayment ? getPaymentStatusLabel(paymentState, paymentStatus) : titleCase(paymentStatus)} /><InfoRow label={isPaid ? 'Total paid' : 'Booking total'} value={formatMoney(totalPaid ?? trip.pricing.totalPrice)} />{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <InfoRow key={refund.id} label="Refund" value={`${formatMoney(refund.amount)} · ${titleCase(refund.status)}`} />)}{canStartPayment ? <ActionButton icon={<CircleDollarSign color="#FFFFFF" size={18} />} label="Complete payment" onPress={onOpenPayment} variant="primary" /> : null}{canRetry ? <ActionButton icon={<RotateCw color="#FFFFFF" size={18} />} label="Retry payment" onPress={onOpenPayment} variant="primary" /> : null}{pendingPayment && paymentState === 'processing' ? <ActionButton label="Check payment status" onPress={onRefreshPayment} /> : null}{pendingPayment && paymentState === 'expired' ? <Text style={styles.errorText}>Payment can no longer be completed for this booking.</Text> : null}{receiptAvailable ? <ActionButton icon={<ReceiptText color="#0B6FE8" size={18} />} label="View payment receipt" onPress={onViewReceipt} /> : null}</>}</Section>;
 }
 
-function LifecycleDetails({ trip }: { trip: RenterTrip }) {
+function LifecycleDetails({ onContactSupport, payment, trip }: { onContactSupport: () => void; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; trip: RenterTrip }) {
   const { cancellation, dispute, review, return: returnInfo } = trip;
-  if (trip.capabilities.viewCancellationRefund && cancellation) return <Section title="Cancellation and refund"><InfoRow icon={<XCircle color="#B91C1C" size={18} />} label="Cancellation" value={cancellation.reason ?? 'Cancelled'} />{cancellation.refundAmount ? <InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Refund" value={`${formatMoney(cancellation.refundAmount)} · ${titleCase(cancellation.refundStatus)}`} /> : <Text style={styles.helper}>Refund details will appear here when processed.</Text>}</Section>;
+  if (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled' || (trip.capabilities.viewCancellationRefund && cancellation)) {
+    const paid = ['paid', 'captured', 'succeeded'].includes(normalizeStatus(payment?.status ?? trip.paymentStatus));
+    const totalPaid = paid ? payment?.amount ?? trip.pricing.totalPrice : null;
+    const refundAmount = cancellation?.refundAmount ?? null;
+    const deduction = totalPaid !== null && refundAmount !== null
+      ? Math.max(0, Number(totalPaid) - Number(refundAmount))
+      : null;
+    return <Section title="Cancellation and refund"><InfoRow icon={<XCircle color="#B91C1C" size={18} />} label="Cancellation reason" value={cancellation?.reason ?? 'Cancelled'} />{cancellation?.cancelledAt ? <InfoRow label="Cancelled on" value={formatDateTime(cancellation.cancelledAt)} /> : null}{totalPaid !== null ? <InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Total paid" value={formatMoney(totalPaid)} /> : <InfoRow label="Payment" value="No payment was collected" />}{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{refundAmount !== null ? <><InfoRow label="Eligible refund" value={formatMoney(refundAmount)} /><InfoRow label="Refund status" value={titleCase(cancellation?.refundStatus)} />{deduction !== null ? <InfoRow label="Cancellation deduction" value={formatMoney(deduction)} /> : null}</> : <Text style={styles.helper}>Refund eligibility and processing status will appear when supplied by the booking service.</Text>}<ActionButton icon={<MessageCircleWarning color="#0B6FE8" size={18} />} label="Contact support about refund" onPress={onContactSupport} /></Section>;
+  }
   if (trip.capabilities.viewDisputeStatus && dispute) return <Section title="Issue report"><InfoRow icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Status" value={titleCase(dispute.status)} /><InfoRow label="Reported issue" value={dispute.reason} /></Section>;
   if (trip.capabilities.viewReturnStatus) return <Section title="Return status"><InfoRow icon={<ClipboardCheck color="#A16207" size={18} />} label="Vehicle return" value={returnInfo.returnedAt ? `Recorded ${formatDateTime(returnInfo.returnedAt)}` : 'Return is being recorded'} /><InfoRow label="Inspection" value={titleCase(returnInfo.inspectionStatus)} /></Section>;
   if (review) return <Section title="Your review"><InfoRow icon={<Star color="#EAB308" size={18} />} label={`${review.rating} of 5`} value={titleCase(review.status)} />{review.comment ? <Text style={styles.helper}>{review.comment}</Text> : null}</Section>;
@@ -396,7 +481,7 @@ function ExtendSheet({ currentReturnAt, isSubmitting, onClose, onSubmit }: { cur
 
 function ReturnSheet({ isSubmitting, onClose, onSubmit }: { isSubmitting: boolean; onClose: () => void; onSubmit: (odometer: number, fuel: FuelLevel, note?: string) => void }) {
   const [odometer, setOdometer] = useState(''); const [fuel, setFuel] = useState<FuelLevel>('full'); const [note, setNote] = useState(''); const valid = Number.isInteger(Number(odometer)) && Number(odometer) >= 0;
-  return <ActionSheet title="Return vehicle" isSubmitting={isSubmitting} onClose={onClose}><Text style={styles.sheetBody}>Record the dashboard odometer and the fuel level before handing the vehicle back.</Text><Field label="Odometer reading"><TextInput accessibilityHint="Enter the current whole-number odometer reading." accessibilityLabel="Odometer reading" keyboardType="number-pad" onChangeText={setOdometer} placeholder="e.g. 12540" style={styles.input} value={odometer} /></Field><Text style={styles.fieldLabel}>Fuel level</Text><View accessibilityLabel="Fuel level" accessibilityRole="radiogroup" style={styles.chips}>{fuelOptions.map((option) => <Pressable accessibilityLabel={option.label} accessibilityRole="radio" accessibilityState={{ selected: fuel === option.value }} key={option.value} onPress={() => setFuel(option.value)} style={[styles.chip, fuel === option.value && styles.selectedChip]}><Text style={[styles.chipText, fuel === option.value && styles.selectedChipText]}>{option.label}</Text></Pressable>)}</View><Field label="Note (optional)"><TextInput accessibilityLabel="Return note" multiline onChangeText={setNote} placeholder="Anything the host should know" style={[styles.input, styles.textarea]} value={note} /></Field><ActionButton disabled={!valid || isSubmitting} label={isSubmitting ? 'Submitting return' : 'Submit return'} onPress={() => onSubmit(Number(odometer), fuel, note.trim() || undefined)} variant="primary" /></ActionSheet>;
+  return <ActionSheet title="Return vehicle" isSubmitting={isSubmitting} onClose={onClose}><Text style={styles.sheetBody}>Record the dashboard odometer and the fuel level before handing the vehicle back.</Text><Field label="Odometer reading"><TextInput accessibilityHint="Enter the current whole-number odometer reading." accessibilityLabel="Odometer reading" keyboardType="number-pad" onChangeText={setOdometer} placeholder="e.g. 12540" style={styles.input} value={odometer} /></Field><Text style={styles.fieldLabel}>Fuel level</Text><View accessibilityLabel="Fuel level" accessibilityRole="radiogroup" style={styles.chips}>{fuelOptions.map((option) => <Pressable accessibilityLabel={option.label} accessibilityRole="radio" {...radioAccessibilityProps(fuel === option.value)} key={option.value} onPress={() => setFuel(option.value)} style={[styles.chip, fuel === option.value && styles.selectedChip]}><Text style={[styles.chipText, fuel === option.value && styles.selectedChipText]}>{option.label}</Text></Pressable>)}</View><Field label="Note (optional)"><TextInput accessibilityLabel="Return note" multiline onChangeText={setNote} placeholder="Anything the host should know" style={[styles.input, styles.textarea]} value={note} /></Field><ActionButton disabled={!valid || isSubmitting} label={isSubmitting ? 'Submitting return' : 'Submit return'} onPress={() => onSubmit(Number(odometer), fuel, note.trim() || undefined)} variant="primary" /></ActionSheet>;
 }
 
 function IssueSheet({ isSubmitting, onClose, onSubmit }: { isSubmitting: boolean; onClose: () => void; onSubmit: (reason: string) => void }) {
@@ -404,7 +489,7 @@ function IssueSheet({ isSubmitting, onClose, onSubmit }: { isSubmitting: boolean
 }
 
 function ReviewSheet({ isSubmitting, onClose, onSubmit }: { isSubmitting: boolean; onClose: () => void; onSubmit: (rating: number, comment?: string) => void }) {
-  const [rating, setRating] = useState(0); const [comment, setComment] = useState(''); return <ActionSheet title="Review your trip" isSubmitting={isSubmitting} onClose={onClose}><Text style={styles.sheetBody}>How was the vehicle?</Text><View accessibilityLabel="Trip rating" accessibilityRole="radiogroup" style={styles.ratingRow}>{[1,2,3,4,5].map((value) => <Pressable accessibilityLabel={`${value} stars`} accessibilityRole="radio" accessibilityState={{ selected: value === rating }} key={value} onPress={() => setRating(value)} style={styles.starButton}><Star color={value <= rating ? '#EAB308' : '#D6E8FF'} fill={value <= rating ? '#EAB308' : 'transparent'} size={32} /></Pressable>)}</View><Field label="Comment (optional)"><TextInput accessibilityLabel="Trip review comment" multiline onChangeText={setComment} placeholder="Tell us about your trip" style={[styles.input, styles.textarea]} value={comment} /></Field><ActionButton disabled={rating === 0 || isSubmitting} label={isSubmitting ? 'Submitting review' : 'Submit review'} onPress={() => onSubmit(rating, comment.trim() || undefined)} variant="primary" /></ActionSheet>;
+  const [rating, setRating] = useState(0); const [comment, setComment] = useState(''); return <ActionSheet title="Review your trip" isSubmitting={isSubmitting} onClose={onClose}><Text style={styles.sheetBody}>How was the vehicle?</Text><View accessibilityLabel="Trip rating" accessibilityRole="radiogroup" style={styles.ratingRow}>{[1,2,3,4,5].map((value) => <Pressable accessibilityLabel={`${value} stars`} accessibilityRole="radio" {...radioAccessibilityProps(value === rating)} key={value} onPress={() => setRating(value)} style={styles.starButton}><Star color={value <= rating ? '#EAB308' : '#D6E8FF'} fill={value <= rating ? '#EAB308' : 'transparent'} size={32} /></Pressable>)}</View><Field label="Comment (optional)"><TextInput accessibilityLabel="Trip review comment" multiline onChangeText={setComment} placeholder="Tell us about your trip" style={[styles.input, styles.textarea]} value={comment} /></Field><ActionButton disabled={rating === 0 || isSubmitting} label={isSubmitting ? 'Submitting review' : 'Submit review'} onPress={() => onSubmit(rating, comment.trim() || undefined)} variant="primary" /></ActionSheet>;
 }
 
 function ActionSheet({ children, isSubmitting, onClose, title }: { children: React.ReactNode; isSubmitting: boolean; onClose: () => void; title: string }) {
@@ -420,13 +505,15 @@ function StateMessage({ actionLabel, body, onAction, title }: { actionLabel?: st
 function showRequestError(error: unknown) { Alert.alert('Trip update failed', normalizeApiError(error).message); }
 function statusColor(stage: RenterTrip['stage']) { if (stage === 'cancelled') return '#B91C1C'; if (stage === 'disputed') return '#C2410C'; if (stage === 'return_pending') return '#A16207'; if (stage === 'active') return '#15803D'; return '#0B6FE8'; }
 function statusBannerStyle(stage: RenterTrip['stage']) { if (stage === 'cancelled') return styles.cancelledBanner; if (stage === 'disputed') return styles.disputedBanner; if (stage === 'return_pending') return styles.returnBanner; if (stage === 'active') return styles.activeBanner; return styles.defaultBanner; }
+function paymentBannerTone(state: PaymentScreenState) { return state === 'failed' || state === 'cancelled' || state === 'expired' ? '#B91C1C' : state === 'processing' ? '#A16207' : '#0B6FE8'; }
+function paymentBannerStyle(state: PaymentScreenState) { return state === 'failed' || state === 'cancelled' || state === 'expired' ? styles.cancelledBanner : state === 'processing' ? styles.returnBanner : styles.defaultBanner; }
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: '#F3F9FF', flex: 1 },
   header: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 76, paddingHorizontal: 16 },
   headerCopy: { flex: 1 }, eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }, title: { color: '#102550', fontSize: 22, fontWeight: '900' },
   iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  content: { gap: 12, padding: 16, paddingBottom: 28 }, vehicleCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 14 }, vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 100, width: 118 }, imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 100, justifyContent: 'center', width: 118 }, vehicleCopy: { flex: 1, gap: 7, justifyContent: 'center', minWidth: 0 }, vehicleName: { color: '#102550', fontSize: 18, fontWeight: '900' }, reference: { color: '#536B91', fontSize: 12, fontWeight: '700' }, totalAmount: { color: '#0B6FE8', fontSize: 18, fontWeight: '900' }, historyBadge: { alignSelf: 'flex-start', backgroundColor: '#EEF2F7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 }, historyBadgeText: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  content: { gap: 12, padding: 16, paddingBottom: 28 }, vehicleCard: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 14 }, vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 100, width: 118 }, imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 100, justifyContent: 'center', width: 118 }, vehicleCopy: { flex: 1, gap: 7, justifyContent: 'center', minWidth: 0 }, vehicleName: { color: '#102550', fontSize: 18, fontWeight: '900' }, reference: { color: '#536B91', fontSize: 12, fontWeight: '700' }, totalAmount: { color: '#0B6FE8', fontSize: 18, fontWeight: '900' }, historyBadge: { alignSelf: 'flex-start', backgroundColor: '#EEF2F7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 }, historyBadgeText: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }, cancelledBadge: { backgroundColor: '#FEECEC' }, cancelledBadgeText: { color: '#B91C1C' },
   statusBanner: { alignItems: 'flex-start', borderRadius: 14, flexDirection: 'row', gap: 10, padding: 14 }, defaultBanner: { backgroundColor: '#EAF4FF' }, activeBanner: { backgroundColor: '#E9F9EE' }, returnBanner: { backgroundColor: '#FFF8DD' }, cancelledBanner: { backgroundColor: '#FEF0F0' }, disputedBanner: { backgroundColor: '#FFF1E8' }, statusCopy: { flex: 1, gap: 3 }, statusTitle: { fontSize: 15, fontWeight: '900', textTransform: 'capitalize' }, statusBody: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
   section: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 10, padding: 14 }, sectionTitle: { color: '#102550', fontSize: 17, fontWeight: '900' }, rentalWindow: { flexDirection: 'row', gap: 14 }, rentalWindowColumn: { flex: 1, minWidth: 0 }, infoRow: { borderTopColor: '#EAF4FF', borderTopWidth: 1, gap: 4, paddingTop: 10 }, infoLabelWrap: { alignItems: 'center', flexDirection: 'row', gap: 7 }, infoLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' }, infoValue: { color: '#102550', fontSize: 14, fontWeight: '800', lineHeight: 20 }, helper: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 }, errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700' },
   actionStack: { gap: 9 }, actionButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 46, paddingHorizontal: 14 }, actionText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' }, dangerButton: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }, dangerText: { color: '#B91C1C' }, warningButton: { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }, warningText: { color: '#C2410C' }, primaryButton: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' }, primaryText: { color: '#FFFFFF' }, instruction: { backgroundColor: '#F3F9FF', borderRadius: 10, gap: 4, padding: 12 }, instructionTitle: { color: '#102550', fontSize: 13, fontWeight: '900' },

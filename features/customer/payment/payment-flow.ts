@@ -4,6 +4,7 @@ export type PaymentScreenState =
   | 'initiate'
   | 'failed'
   | 'cancelled'
+  | 'expired'
   | 'processing'
   | 'confirmed'
   | 'unexpected_booking_status';
@@ -12,26 +13,55 @@ function normalizedStatus(value: string | null | undefined) {
   return value?.trim().toUpperCase().replace(/-/g, '_') ?? '';
 }
 
-export function isPendingPaymentBooking(booking: Booking | null | undefined) {
+export function isPendingPaymentBooking(
+  booking: Pick<Booking, 'status'> | null | undefined,
+) {
   return normalizedStatus(booking?.status) === 'PENDING_PAYMENT';
 }
 
+/**
+ * The backend remains the authority for a payment deadline. When it has not
+ * provided a separate deadline, never allow a new payment attempt after the
+ * rental has started. This prevents an expired booking from being revived by
+ * a stale payment screen.
+ */
+export function isPaymentWindowOpen(
+  booking: Pick<Booking, 'pickupAt' | 'status'> | null | undefined,
+  now = new Date(),
+) {
+  if (!isPendingPaymentBooking(booking)) {
+    return false;
+  }
+
+  const pickupAt = Date.parse(booking?.pickupAt ?? '');
+  return !Number.isFinite(pickupAt) || pickupAt > now.getTime();
+}
+
 export function isConfirmedPaidBooking(
-  booking: Booking | null | undefined,
+  booking: Pick<Booking, 'status'> | null | undefined,
   payment: BookingPayment | null | undefined,
 ) {
   return normalizedStatus(booking?.status) === 'CONFIRMED' && normalizedStatus(payment?.status) === 'PAID';
 }
 
 export function getPaymentScreenState(
-  booking: Booking | null | undefined,
+  booking: Pick<Booking, 'pickupAt' | 'status'> | null | undefined,
   payment: BookingPayment | null | undefined,
+  now = new Date(),
 ): PaymentScreenState {
   if (isConfirmedPaidBooking(booking, payment)) {
     return 'confirmed';
   }
 
+  const bookingStatus = normalizedStatus(booking?.status);
   const paymentStatus = normalizedStatus(payment?.status);
+  if (
+    bookingStatus === 'EXPIRED' ||
+    paymentStatus === 'EXPIRED' ||
+    (isPendingPaymentBooking(booking) && !isPaymentWindowOpen(booking, now))
+  ) {
+    return 'expired';
+  }
   if (paymentStatus === 'FAILED') {
     return 'failed';
   }

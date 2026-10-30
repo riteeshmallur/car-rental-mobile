@@ -6,7 +6,6 @@ import {
   CarFront,
   CheckCircle2,
   Clock3,
-  RefreshCw,
   TrendingUp,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -99,18 +98,6 @@ export function HostEarningsScreen() {
               <Text style={styles.title}>Earnings</Text>
             </View>
           </View>
-          {earningsQuery.isFetching ? (
-            <ActivityIndicator color="#102550" />
-          ) : (
-            <Pressable
-              accessibilityLabel="Refresh earnings"
-              accessibilityRole="button"
-              onPress={() => void earningsQuery.refetch()}
-              style={styles.iconButton}
-            >
-              <RefreshCw color="#102550" size={20} />
-            </Pressable>
-          )}
         </View>
 
         {earningsQuery.isLoading ? (

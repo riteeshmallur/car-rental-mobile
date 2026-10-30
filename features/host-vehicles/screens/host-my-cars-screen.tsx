@@ -8,7 +8,6 @@ import {
   Pencil,
   Plus,
   Power,
-  RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react-native';
 import { useMemo } from 'react';
@@ -161,18 +160,6 @@ export function HostMyCarsScreen() {
               <Text style={styles.title}>My Cars</Text>
             </View>
           </View>
-          {vehiclesQuery.isFetching ? (
-            <ActivityIndicator color="#102550" />
-          ) : (
-            <Pressable
-              accessibilityLabel="Refresh cars"
-              accessibilityRole="button"
-              onPress={() => void vehiclesQuery.refetch()}
-              style={styles.iconButton}
-            >
-              <RefreshCw color="#102550" size={20} />
-            </Pressable>
-          )}
         </View>
 
         <View style={styles.tabs}>

@@ -14,6 +14,7 @@ import { Check, Search, X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 
 export type VehicleSelectionOption = {
   label: string;
@@ -108,7 +109,7 @@ export function VehicleSelectionSheet({
                 <Pressable
                   accessibilityLabel={item.label}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected }}
+                  {...radioAccessibilityProps(selected)}
                   onPress={() => {
                     onSelect(item.value);
                     onClose();

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CircleAlert, CreditCard, LoaderCircle, RefreshCw, ShieldCheck } from 'lucide-react-native';
+import { CircleAlert, CreditCard, LoaderCircle, ShieldCheck } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
@@ -39,13 +39,14 @@ function getParam(value: string | string[] | undefined) {
 }
 
 export function PaymentScreen() {
-  const params = useLocalSearchParams<{ bookingId?: string | string[]; origin?: string | string[] }>();
+  const params = useLocalSearchParams<{ bookingId?: string | string[]; origin?: string | string[]; paymentAttempt?: string | string[] }>();
   const bookingId = getParam(params.bookingId);
+  const hasExistingPaymentAttempt = getParam(params.paymentAttempt) === 'existing';
   const queryClient = useQueryClient();
   const setBooking = useBookingFlowStore((state) => state.setBooking);
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [isScreenFocused, setIsScreenFocused] = useState(true);
-  const [hasPaymentAttempt, setHasPaymentAttempt] = useState(false);
+  const [hasPaymentAttempt, setHasPaymentAttempt] = useState(hasExistingPaymentAttempt);
   const paymentSubmissionStarted = useRef(false);
   const paymentAttemptKeyRef = useRef(createIdempotencyKey('payment'));
   const paymentRetryKeyRef = useRef(createIdempotencyKey('payment-retry'));
@@ -318,6 +319,8 @@ export function PaymentScreen() {
           />
         ) : null}
 
+        {paymentState === 'expired' ? <PaymentUnavailableState /> : null}
+
         {paymentState === 'processing' ? (
           payment?.provider === 'razorpay' && payment.checkout ? (
             <PaymentAction
@@ -347,6 +350,20 @@ export function PaymentScreen() {
         ) : null}
       </ScrollView>
     </BookingShell>
+  );
+}
+
+function PaymentUnavailableState() {
+  return (
+    <View style={[styles.paymentCard, styles.paymentCardError]}>
+      <View style={[styles.iconFrame, styles.iconFrameError]}>
+        <CircleAlert color="#B91C1C" size={28} />
+      </View>
+      <Text accessibilityRole="header" style={styles.title}>Payment expired</Text>
+      <Text style={styles.body}>
+        This booking can no longer be paid because its payment window has ended. Please start a new search for available cars.
+      </Text>
+    </View>
   );
 }
 
@@ -436,7 +453,7 @@ function PaymentProcessingState({
         onPress={onRefresh}
         style={[styles.secondaryButton, isRefreshing && styles.disabledSecondaryButton]}
       >
-        {isRefreshing ? <ActivityIndicator accessibilityLabel="Checking payment status" color="#0B6FE8" /> : <><RefreshCw color="#0B6FE8" size={18} /><Text style={styles.secondaryButtonText}>Check status</Text></>}
+        {isRefreshing ? <ActivityIndicator accessibilityLabel="Checking payment status" color="#0B6FE8" /> : <Text style={styles.secondaryButtonText}>Check status</Text>}
       </Pressable>
     </View>
   );

@@ -9,7 +9,6 @@ import {
   FileSearch,
   Landmark,
   Plus,
-  RefreshCw,
   ShieldCheck,
   WalletCards,
 } from 'lucide-react-native';
@@ -93,7 +92,6 @@ export function HostDashboardScreen() {
               <Plus color="#FFFFFF" size={18} />
               <Text style={styles.addVehicleText}>Add car</Text>
             </Pressable>
-            {dashboardQuery.isFetching || setupQuery.isFetching || vehiclesQuery.isFetching ? <ActivityIndicator color="#0B6FE8" /> : <Pressable accessibilityLabel="Refresh dashboard" accessibilityRole="button" onPress={refreshDashboard} style={styles.iconButton}><RefreshCw color="#102550" size={20} /></Pressable>}
           </View>
         </View>
 
@@ -217,6 +215,18 @@ function HostSetupChecklist({
   }
 
   const hasProgress = setup.completedTasks > 1;
+  const completedTasks = setup.tasks.filter((task) => task.status === 'completed');
+  const remainingTasks = setup.tasks.filter((task) => task.status !== 'completed');
+  const completedTaskNames = completedTasks.map((task) => setupTaskDefinition(task.key, task.status, draft).title);
+  const remainingTaskNames = remainingTasks.map((task) => {
+    const title = setupTaskDefinition(task.key, task.status, draft).title;
+    const status = task.status === 'under_review'
+      ? 'under review'
+      : task.status === 'action_required'
+        ? 'action required'
+        : 'pending';
+    return `${title} (${status})`;
+  });
   const checklistTasks = draft ? setup.tasks.filter((task) => task.key !== 'first_car') : setup.tasks;
   const visibleTasks = !hasProgress || expanded ? checklistTasks : checklistTasks.filter((task) => task.status !== 'completed');
 
@@ -231,7 +241,10 @@ function HostSetupChecklist({
           <Text style={styles.progressText}>{setup.completedTasks}/{setup.totalTasks}</Text>
         </View>
       </View>
-      <Text style={styles.setupBody}>{draft ? 'Continue the vehicle listing above, then finish the remaining reviews to receive earnings.' : 'Finish the remaining reviews to activate listings and receive earnings.'}</Text>
+      <Text style={styles.setupProgressSummary}>{setup.completedTasks} of {setup.totalTasks} setup tasks completed · {remainingTasks.length} remaining</Text>
+      <Text style={styles.setupBody}>{completedTaskNames.length ? `Completed: ${completedTaskNames.join(', ')}.` : 'No host setup tasks are complete yet.'}</Text>
+      {remainingTaskNames.length ? <Text style={styles.setupRemainingText}>Remaining: {remainingTaskNames.join(', ')}.</Text> : null}
+      {remainingTasks.some((task) => task.status === 'under_review') ? <Text style={styles.setupReviewHint}>We’re reviewing the items marked under review. No action is needed unless we request more information.</Text> : null}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${Math.max(8, (setup.completedTasks / setup.totalTasks) * 100)}%` }]} />
       </View>
@@ -429,7 +442,10 @@ const styles = StyleSheet.create({
   setupHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   setupEyebrow: { color: '#0B6FE8', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   setupTitle: { color: '#102550', fontSize: 18, fontWeight: '900', marginTop: 2 },
+  setupProgressSummary: { color: '#0B6FE8', fontSize: 13, fontWeight: '900', lineHeight: 18 },
   setupBody: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18 },
+  setupRemainingText: { color: '#102550', fontSize: 12, fontWeight: '700', lineHeight: 18 },
+  setupReviewHint: { color: '#536B91', fontSize: 12, fontWeight: '600', lineHeight: 18 },
   setupLoadingText: { color: '#536B91', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   setupRetryButton: { alignSelf: 'flex-start', backgroundColor: '#EAF4FF', borderRadius: 9, minHeight: 38, justifyContent: 'center', paddingHorizontal: 12 },
   setupRetryText: { color: '#0B6FE8', fontSize: 13, fontWeight: '900' },

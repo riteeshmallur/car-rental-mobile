@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CalendarClock, CarFront, RefreshCw } from 'lucide-react-native';
+import { CalendarClock, CarFront } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -115,19 +115,6 @@ export function TripsScreen() {
             <Text style={styles.eyebrow}>Customer</Text>
             <Text style={styles.title}>Trips</Text>
           </View>
-          <Pressable
-            accessibilityLabel="Refresh trips"
-            accessibilityRole="button"
-            disabled={bookingsQuery.isFetching}
-            onPress={() => void bookingsQuery.refetch()}
-            style={styles.iconButton}
-          >
-            {bookingsQuery.isFetching ? (
-              <ActivityIndicator color="#0B6FE8" size="small" />
-            ) : (
-              <RefreshCw color="#102550" size={20} />
-            )}
-          </Pressable>
         </View>
 
         <View accessibilityRole="tablist" style={styles.tabs}>

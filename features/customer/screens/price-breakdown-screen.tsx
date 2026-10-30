@@ -114,6 +114,19 @@ export function PriceBreakdownScreen() {
           ]}
           total={quote.totalAmount}
         />
+        <View style={styles.policyNotice}>
+          <Text style={styles.policyTitle}>Cancellation and refunds</Text>
+          <Text style={styles.policyBody}>Paid bookings cancelled 24 hours or more before pickup are eligible for a full refund. Less than 24 hours before pickup, the eligible refund is 50%. No cancellation refund applies at or after pickup.</Text>
+          <Pressable
+            accessibilityLabel="Read cancellation and refund policy"
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/(customer)/policy', params: { type: 'cancellation-refunds' } })}
+            style={styles.policyLink}
+            testID="cancellation-refund-policy-link"
+          >
+            <Text style={styles.policyLinkText}>Read the cancellation and refund policy</Text>
+          </Pressable>
+        </View>
         {bookingMutation.isError || unexpectedBookingStatus ? (
           <View style={styles.errorBox}>
             <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorTitle}>
@@ -167,6 +180,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
+  },
+  policyNotice: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D6E8FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
+  },
+  policyTitle: {
+    color: '#102550',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  policyBody: {
+    color: '#536B91',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+  policyLink: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  policyLinkText: {
+    color: '#0B6FE8',
+    fontSize: 13,
+    fontWeight: '900',
   },
   primaryButton: {
     minHeight: 52,

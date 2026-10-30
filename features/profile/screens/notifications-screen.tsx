@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Bell, CheckCheck, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCheck } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -72,7 +72,7 @@ export function NotificationsScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.screen}>
-        <Header isLoading={notificationsQuery.isFetching} onBack={goBack} onRefresh={() => void notificationsQuery.refetch()} />
+        <Header onBack={goBack} />
         {notificationsQuery.isLoading ? <LoadingState /> : notificationsQuery.isError ? <State title="Notifications could not load" body={normalizeApiError(notificationsQuery.error).message} action="Try again" onAction={() => void notificationsQuery.refetch()} /> : <FlatList
           contentContainerStyle={styles.list}
           data={notifications}
@@ -92,8 +92,8 @@ export function NotificationsScreen() {
   );
 }
 
-function Header({ isLoading, onBack, onRefresh }: { isLoading: boolean; onBack: () => void; onRefresh: () => void }) {
-  return <View style={styles.header}><View style={styles.headerLead}><Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={onBack} style={styles.iconButton}><ArrowLeft color="#102550" size={21} /></Pressable><View><Text style={styles.eyebrow}>Account</Text><Text accessibilityRole="header" style={styles.title}>Notifications</Text></View></View><Pressable accessibilityLabel={isLoading ? 'Refreshing notifications' : 'Refresh notifications'} accessibilityRole="button" accessibilityState={{ busy: isLoading, disabled: isLoading }} disabled={isLoading} onPress={onRefresh} style={styles.iconButton}>{isLoading ? <ActivityIndicator accessibilityLabel="Refreshing notifications" color="#0B6FE8" size="small" /> : <RefreshCw color="#102550" size={20} />}</Pressable></View>;
+function Header({ onBack }: { onBack: () => void }) {
+  return <View style={styles.header}><View style={styles.headerLead}><Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={onBack} style={styles.iconButton}><ArrowLeft color="#102550" size={21} /></Pressable><View><Text style={styles.eyebrow}>Account</Text><Text accessibilityRole="header" style={styles.title}>Notifications</Text></View></View></View>;
 }
 
 function NotificationRow({ item, isUpdating, onRead }: { item: RenterNotification; isUpdating: boolean; onRead: () => void }) {

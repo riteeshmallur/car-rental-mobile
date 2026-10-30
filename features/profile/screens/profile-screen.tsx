@@ -115,6 +115,10 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
     router.push('/(customer)/personal-information');
   }, [mode]);
 
+  const openSettings = useCallback(() => {
+    router.push(mode === 'host' ? '/(host)/settings' : '/(customer)/settings');
+  }, [mode]);
+
   const openHostEntry = useCallback(
     (action: HostEntryAction) => {
       if (mode === 'host') {
@@ -213,8 +217,9 @@ export function ProfileScreen({ mode }: ProfileScreenProps) {
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Edit personal information"
-                onPress={openPersonalInformation}
+                accessibilityHint="Opens account settings."
+                accessibilityLabel="Open settings"
+                onPress={openSettings}
                 style={styles.iconButton}
               >
                 <Settings color={colors.ink} size={22} />

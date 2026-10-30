@@ -6,7 +6,6 @@ import {
   ChevronRight,
   FileCheck2,
   IdCard,
-  RefreshCw,
 } from 'lucide-react-native';
 import {
   ActivityIndicator,
@@ -89,20 +88,6 @@ export function DocumentsScreen({ mode }: DocumentsScreenProps) {
             <Text accessibilityRole="header" style={styles.title}>My Documents</Text>
             <Text style={styles.subtitle}>Manage verification and vehicle records</Text>
           </View>
-          <Pressable
-            accessibilityLabel="Refresh documents"
-            accessibilityRole="button"
-            accessibilityState={{ busy: isLoading }}
-            disabled={isLoading}
-            onPress={() => {
-              void hostStatusQuery.refetch();
-              if (canManageListings) void vehiclesQuery.refetch();
-              if (canManageListings) void setupQuery.refetch();
-            }}
-            style={({ pressed }) => [styles.iconButton, pressed && !isLoading && styles.pressed]}
-          >
-            {isLoading ? <ActivityIndicator color={colors.brand} size="small" /> : <RefreshCw color={colors.ink} size={20} />}
-          </Pressable>
         </View>
 
         {isLoading ? (

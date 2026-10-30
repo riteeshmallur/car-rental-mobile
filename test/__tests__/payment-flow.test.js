@@ -1,6 +1,7 @@
 const {
   getPaymentScreenState,
   isConfirmedPaidBooking,
+  isPaymentWindowOpen,
   isPendingPaymentBooking,
   shouldPollPayment,
 } = require('@/features/customer/payment/payment-flow');
@@ -35,6 +36,17 @@ describe('payment flow', () => {
     expect(getPaymentScreenState(booking, { ...payment, status: 'processing' })).toBe('processing');
     expect(shouldPollPayment(booking, { ...payment, status: 'processing' })).toBe(true);
     expect(shouldPollPayment({ ...booking, status: 'confirmed' }, { ...payment, status: 'paid' })).toBe(false);
+  });
+
+  it('expires a pending booking once its pickup time has passed and prevents new payment attempts', () => {
+    const now = new Date('2026-10-30T06:00:00.000Z');
+    const expiredBooking = {
+      ...booking,
+      pickupAt: '2026-10-30T10:00:00.000+05:30',
+    };
+
+    expect(isPaymentWindowOpen(expiredBooking, now)).toBe(false);
+    expect(getPaymentScreenState(expiredBooking, null, now)).toBe('expired');
   });
 
 });

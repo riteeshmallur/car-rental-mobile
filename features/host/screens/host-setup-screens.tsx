@@ -22,6 +22,7 @@ import {
   type SubmitHostIdentityVerificationPayload,
 } from '@/services/hosts/hosts-api';
 import { normalizeApiError } from '@/utils/errors';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import { colors, radii, shadows } from '@/utils/theme';
 
 const queryKeys = {
@@ -228,7 +229,7 @@ function Choice({ icon, label, onPress, selected }: { icon?: React.ReactNode; la
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      {...radioAccessibilityProps(selected)}
       onPress={onPress}
       style={({ pressed }) => [styles.choice, selected && styles.choiceSelected, pressed && styles.pressed]}
     >

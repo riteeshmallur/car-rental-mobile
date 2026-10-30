@@ -39,6 +39,7 @@ import { BottomNavigation } from '@/features/customer/components/bottom-navigati
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import {
   DateTimePickerSheet,
   type DateTimeField,
@@ -828,7 +829,7 @@ function FilterSection<T extends string | number | undefined>({
             <Pressable
               accessibilityLabel={`${title}: ${option.label}`}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              {...radioAccessibilityProps(selected)}
               key={`${title}-${option.label}`}
               onPress={() => onSelect(option)}
               style={({ pressed }) => [
@@ -903,7 +904,7 @@ export function SortSheet({
                 <Pressable
                   accessibilityLabel={option.label}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected, disabled: isApplying }}
+                  {...radioAccessibilityProps(selected, isApplying)}
                   disabled={isApplying}
                   key={option.value}
                   onPress={() => !isApplying && onSelect(option.value)}

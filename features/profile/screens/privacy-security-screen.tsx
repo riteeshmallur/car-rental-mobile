@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Download,
   FileDown,
-  RefreshCw,
   ShieldCheck,
   Trash2,
 } from 'lucide-react-native';
@@ -60,11 +59,7 @@ export function PrivacySecurityScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.screen}>
-        <Header
-          isLoading={exportQuery.isFetching || deletionQuery.isFetching}
-          onBack={goBack}
-          onRefresh={refresh}
-        />
+        <Header onBack={goBack} />
         {isLoading ? <LoadingState /> : error ? (
           <State
             action="Try again"
@@ -130,15 +125,7 @@ export function PrivacySecurityScreen() {
   );
 }
 
-function Header({
-  isLoading,
-  onBack,
-  onRefresh,
-}: {
-  isLoading: boolean;
-  onBack: () => void;
-  onRefresh: () => void;
-}) {
+function Header({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.header}>
       <View style={styles.headerLead}>
@@ -150,9 +137,6 @@ function Header({
           <Text style={styles.title}>Privacy & security</Text>
         </View>
       </View>
-      <Pressable accessibilityLabel="Refresh account controls" accessibilityRole="button" disabled={isLoading} onPress={onRefresh} style={styles.iconButton}>
-        {isLoading ? <ActivityIndicator color={colors.brand} size="small" /> : <RefreshCw color={colors.ink} size={20} />}
-      </Pressable>
     </View>
   );
 }

@@ -54,6 +54,7 @@ import {
   type UpsertHostVehiclePayload,
 } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import {
@@ -1890,7 +1891,7 @@ function AdvanceNoticeField({
                 <Pressable
                   accessibilityLabel={`${option} hours`}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected }}
+                  {...radioAccessibilityProps(selected)}
                   key={option}
                   onPress={() => onChange(option)}
                   style={[styles.advanceNoticeOption, selected && styles.advanceNoticeOptionSelected]}
@@ -2386,7 +2387,7 @@ function SegmentField({
               <Pressable
                 accessibilityLabel={optionLabel}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: value === optionValue }}
+                {...radioAccessibilityProps(value === optionValue)}
                 key={optionValue}
                 onPress={() => onChange(optionValue)}
                 style={[

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Banknote, CalendarDays, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Banknote, CalendarDays } from 'lucide-react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -51,18 +51,6 @@ export function HostPayoutsScreen() {
               <Text style={styles.title}>Payouts</Text>
             </View>
           </View>
-          {payoutsQuery.isFetching ? (
-            <ActivityIndicator color="#0B6FE8" />
-          ) : (
-            <Pressable
-              accessibilityLabel="Refresh payouts"
-              accessibilityRole="button"
-              onPress={() => void payoutsQuery.refetch()}
-              style={styles.iconButton}
-            >
-              <RefreshCw color="#102550" size={20} />
-            </Pressable>
-          )}
         </View>
 
         {payoutsQuery.isLoading ? (

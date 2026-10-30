@@ -213,6 +213,7 @@ export function HomeScreen() {
         <View style={styles.mobileContent}>
           <View style={styles.heroShell}>
             <HomeHero
+              firstName={user?.firstName}
               header={
                 <CustomerHeader
                   onNotificationsPress={() => router.push('/(customer)/notifications')}

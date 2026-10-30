@@ -17,6 +17,7 @@ import {
   type RentalWindow,
 } from '@/features/customer/utils/rental-window';
 import { type LocationSearchResult } from '@/types/location';
+import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import { colors, radii } from '@/utils/theme';
 
 export type DateTimeField = 'pickupDate' | 'pickupTime' | 'returnDate' | 'returnTime';
@@ -514,10 +515,7 @@ function TimePickerColumn({
                 <Pressable
                   accessibilityLabel={`${label}, ${formatPickerTime(choice)}`}
                   accessibilityRole="radio"
-                  accessibilityState={{
-                    disabled: !selectable,
-                    selected: sameTime(value, choice),
-                  }}
+                  {...radioAccessibilityProps(sameTime(value, choice), !selectable)}
                   disabled={!selectable}
                   key={`${label}-${choice.toISOString()}`}
                   onPress={() => onChange(choice)}

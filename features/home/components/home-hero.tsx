@@ -2,10 +2,13 @@ import { Image } from 'expo-image';
 import { type ReactNode } from 'react';
 import { Platform, StyleSheet, Text, type ViewStyle, View } from 'react-native';
 
+import { useIstGreeting } from '@/hooks/use-ist-greeting';
+
 const bengaluruHomeBackground = require('@/assets/images/hopin-bengaluru-home-background.png');
 
 type HomeHeroProps = {
   header: ReactNode;
+  firstName?: string | null;
 };
 
 function gradientBackground(value: string): ViewStyle {
@@ -16,7 +19,9 @@ function gradientBackground(value: string): ViewStyle {
   return { experimental_backgroundImage: value };
 }
 
-export function HomeHero({ header }: HomeHeroProps) {
+export function HomeHero({ firstName, header }: HomeHeroProps) {
+  const greeting = useIstGreeting(firstName);
+
   return (
     <View style={styles.container}>
       <Image
@@ -31,7 +36,7 @@ export function HomeHero({ header }: HomeHeroProps) {
       <View accessibilityElementsHidden style={styles.bottomGradient} />
       <View style={styles.header}>{header}</View>
       <View style={styles.copy}>
-        <Text style={styles.eyebrow}>GOOD MORNING,</Text>
+        <Text numberOfLines={1} style={styles.eyebrow}>{greeting}</Text>
         <Text accessibilityRole="header" style={styles.title}>
           Ready for your{`\n`}next drive?
         </Text>
@@ -83,7 +88,7 @@ const styles = StyleSheet.create({
     color: '#102550',
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 3,
+    letterSpacing: 1.2,
   },
   title: {
     color: '#102550',

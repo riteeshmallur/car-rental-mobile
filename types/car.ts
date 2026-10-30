@@ -407,6 +407,7 @@ export type RenterTrip = {
     reason: string | null;
     refundAmount: string | null;
     refundStatus: string | null;
+    cancelledAt?: string | null;
   } | null;
   dispute: {
     id: string;
