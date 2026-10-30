@@ -32,47 +32,54 @@ export function HostBottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <View
-      accessibilityRole="tablist"
-      style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}
-      testID="host-bottom-navigation"
-    >
-      {navItems.map((item) => {
-        const isActive = pathname === item.path;
-        const Icon = item.icon;
+    <View style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <View accessibilityRole="tablist" style={styles.container} testID="host-bottom-navigation">
+        {navItems.map((item) => {
+          const isActive = pathname === item.path;
+          const Icon = item.icon;
 
-        return (
-          <Pressable
-            accessibilityLabel={item.label}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            key={item.path}
-            onPress={() => router.replace(item.href)}
-            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-          >
-            <Icon color={isActive ? colors.brand : colors.muted} size={20} />
-            <Text numberOfLines={1} style={[styles.label, isActive && styles.labelActive]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              accessibilityLabel={item.label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              key={item.path}
+              onPress={() => router.replace(item.href)}
+              style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+            >
+              <Icon color={isActive ? colors.brand : colors.muted} size={22} />
+              <Text numberOfLines={1} style={[styles.label, isActive && styles.labelActive]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    flexShrink: 0,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
   container: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
     flexDirection: 'row',
-    flexShrink: 0,
     justifyContent: 'space-around',
-    minHeight: 74,
-    paddingHorizontal: 4,
-    paddingTop: 8,
+    maxWidth: 560,
+    minHeight: 76,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    width: '100%',
     ...shadows.floating,
   },
   item: {
@@ -89,7 +96,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     textAlign: 'center',
   },
