@@ -48,4 +48,10 @@ export const authApi = {
       data: refreshToken ? { refreshToken } : {},
     });
   },
+  logoutAll() {
+    return apiRequest<null>({
+      method: 'POST',
+      url: '/auth/logout-all',
+    });
+  },
 };

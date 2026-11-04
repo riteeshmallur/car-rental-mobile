@@ -58,15 +58,21 @@ describe('auth session restoration', () => {
   it('restores a native session from SecureStore tokens', async () => {
     const tokens = { accessToken: 'access-token', refreshToken: 'refresh-token' };
     mockGetStoredAuthTokens.mockResolvedValue(tokens);
-    mockAuthMe.mockResolvedValue(user);
+    mockAuthRefresh.mockResolvedValue({
+      accessToken: 'rotated-access-token',
+      refreshToken: 'rotated-refresh-token',
+      user,
+    });
 
     await useAuthStore.getState().bootstrap();
 
-    expect(mockAuthMe).toHaveBeenCalledTimes(1);
+    expect(mockAuthRefresh).toHaveBeenCalledWith('refresh-token', {
+      suppressGlobalError: true,
+    });
     expect(useAuthStore.getState()).toMatchObject({
       isAuthenticated: true,
       status: 'authenticated',
-      tokens,
+      tokens: { accessToken: 'rotated-access-token', refreshToken: 'rotated-refresh-token' },
       user,
     });
   });
@@ -76,7 +82,7 @@ describe('auth session restoration', () => {
       accessToken: 'expired-access',
       refreshToken: 'expired-refresh',
     });
-    mockAuthMe.mockRejectedValue(new Error('Unauthorized'));
+    mockAuthRefresh.mockRejectedValue(new Error('SESSION_EXPIRED'));
 
     await useAuthStore.getState().bootstrap();
 
@@ -112,6 +118,23 @@ describe('auth session restoration', () => {
       status: 'authenticated',
       tokens: { accessToken: 'cookie-restored-access' },
       user: refreshedUser,
+    });
+  });
+
+  it('clears browser auth state when the refresh cookie session has expired', async () => {
+    Platform.OS = 'web';
+    mockGetStoredAuthTokens.mockResolvedValue(null);
+    mockAuthRefresh.mockRejectedValue(new Error('SESSION_EXPIRED'));
+
+    await useAuthStore.getState().bootstrap();
+
+    expect(mockAuthMe).not.toHaveBeenCalled();
+    expect(mockClearStoredAuthTokens).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState()).toMatchObject({
+      isAuthenticated: false,
+      status: 'unauthenticated',
+      tokens: null,
+      user: null,
     });
   });
 

@@ -77,7 +77,13 @@ export function registerApiAuthSessionHandlers(handlers: AuthSessionHandlers) {
 function isSessionEndpoint(url?: string) {
   return Boolean(
     url &&
-      ['/auth/otp/request', '/auth/otp/verify', '/auth/refresh', '/auth/logout'].some(
+      [
+        '/auth/otp/request',
+        '/auth/otp/verify',
+        '/auth/refresh',
+        '/auth/logout',
+        '/auth/logout-all',
+      ].some(
         (path) => url.includes(path),
       ),
   );

@@ -79,16 +79,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      const user = await authApi.me({ suppressGlobalError: true });
-      const activeTokens = (await getStoredAuthTokens()) ?? tokens;
-
-      if (!activeTokens) {
-        throw new Error('Your session has expired. Please log in again.');
+      // SecureStore only proves that credentials exist on this device. The
+      // backend refresh endpoint is the source of truth for idle, revoked,
+      // and absolute session expiry before native routes can mount.
+      const refreshToken = tokens?.refreshToken;
+      if (!refreshToken) {
+        throw new Error('Your session could not be restored.');
       }
+
+      const session = await authApi.refresh(refreshToken, {
+        suppressGlobalError: true,
+      });
+      await setStoredAuthTokens({
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+      });
+      const activeTokens = {
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+      };
       useErrorStore.getState().clearError();
       set({
         status: 'authenticated',
-        user,
+        user: session.user,
         tokens: activeTokens,
         isAuthenticated: true,
       });
