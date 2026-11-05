@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CalendarClock, CarFront } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,10 +18,11 @@ import { CachedVehicleImage } from '@/features/customer/components/cached-vehicl
 import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { bookingsApi } from '@/services/bookings/bookings-api';
-import { type RenterBooking, type RenterTripPhase } from '@/types/car';
+import { type RenterBooking } from '@/types/car';
 import { normalizeApiError } from '@/utils/errors';
 import {
   getBookingTotal,
+  getBookingPresentationState,
   getCustomerTripsPrimaryTab,
   getRenterTripStatusLabel,
   KOLKATA_TIME_ZONE,
@@ -74,13 +75,7 @@ export function TripsScreen() {
   const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeTab = resolveTripsTab(requestedTab);
-  const [now, setNow] = useState(() => new Date());
   useSafeBack({ fallback: '/(customer)/home' });
-
-  useEffect(() => {
-    const clock = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(clock);
-  }, []);
 
   const bookingsQuery = useQuery({
     queryKey: ['renters', 'me', 'bookings'],
@@ -99,11 +94,11 @@ export function TripsScreen() {
     };
 
     for (const booking of bookingsQuery.data ?? []) {
-      grouped[getCustomerTripsPrimaryTab(booking, now)].push(booking);
+      grouped[getCustomerTripsPrimaryTab(booking)].push(booking);
     }
 
     return grouped;
-  }, [bookingsQuery.data, now]);
+  }, [bookingsQuery.data]);
 
   const isRefreshing = bookingsQuery.isRefetching && !bookingsQuery.isLoading;
 
@@ -235,7 +230,7 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
 
         <View style={styles.footerRow}>
           <Text style={styles.paymentLabel}>
-            {booking.tripPhase === 'payment_required' ? 'Amount due' : titleCase(booking.paymentStatus)}
+            {booking.statusPresentation.lifecycle === 'payment_required' ? 'Amount due' : titleCase(booking.paymentStatus)}
           </Text>
           <Text style={styles.paymentAmount}>{formatMoney(getBookingTotal(booking))}</Text>
         </View>
@@ -276,17 +271,19 @@ function openBooking(booking: RenterBooking) {
 }
 
 function getBookingCardAction(booking: RenterBooking) {
-  if (booking.status === 'pending_payment' && booking.paymentStatus === 'pending') return { kind: 'payment' as const, label: 'Pay now' };
-  if (booking.tripPhase === 'active' || booking.status === 'active') return { kind: 'details' as const, label: 'View trip' };
-  if (booking.tripPhase === 'return_pending' || booking.status === 'return_pending') return { kind: 'details' as const, label: 'View return details' };
+  if (booking.statusPresentation.lifecycle === 'payment_required') return { kind: 'payment' as const, label: 'Pay now' };
+  if (booking.statusPresentation.timing === 'return_overdue') return { kind: 'details' as const, label: 'View return details' };
+  if (booking.statusPresentation.lifecycle === 'active') return { kind: 'details' as const, label: 'View trip' };
+  if (booking.statusPresentation.lifecycle === 'return_pending') return { kind: 'details' as const, label: 'View return details' };
   if (getCustomerTripsPrimaryTab(booking) !== 'upcoming') return { kind: 'details' as const, label: 'View details' };
   return { kind: 'details' as const, label: 'View booking' };
 }
 
 function StatusBadge({ booking }: { booking: RenterBooking }) {
+  const status = getBookingPresentationState(booking);
   return (
-    <View style={[styles.statusBadge, statusStyle(booking.tripPhase)]}>
-      <Text style={[styles.statusText, statusTextStyle(booking.tripPhase)]}>
+    <View style={[styles.statusBadge, statusStyle(status)]}>
+      <Text style={[styles.statusText, statusTextStyle(status)]}>
         {getRenterTripStatusLabel(booking)}
       </Text>
     </View>
@@ -334,11 +331,17 @@ function StateMessage({
   );
 }
 
-function statusStyle(phase: RenterTripPhase) {
-  switch (phase) {
+function statusStyle(status: string) {
+  switch (status) {
     case 'payment_required': return styles.paymentRequiredStatus;
+    case 'payment_processing': return styles.returnStatus;
+    case 'payment_failed':
+    case 'payment_cancelled':
+    case 'payment_expired': return styles.cancelledStatus;
     case 'awaiting_host_approval': return styles.awaitingHostStatus;
     case 'active': return styles.activeStatus;
+    case 'return_overdue': return styles.returnStatus;
+    case 'pickup_overdue': return styles.cancelledStatus;
     case 'return_pending': return styles.returnStatus;
     case 'completed': return styles.completedStatus;
     case 'cancelled': return styles.cancelledStatus;
@@ -347,10 +350,16 @@ function statusStyle(phase: RenterTripPhase) {
   }
 }
 
-function statusTextStyle(phase: RenterTripPhase) {
-  switch (phase) {
+function statusTextStyle(status: string) {
+  switch (status) {
     case 'payment_required': return styles.paymentRequiredStatusText;
+    case 'payment_processing': return styles.returnStatusText;
+    case 'payment_failed':
+    case 'payment_cancelled':
+    case 'payment_expired': return styles.cancelledStatusText;
     case 'awaiting_host_approval': return styles.awaitingHostStatusText;
+    case 'pickup_overdue': return styles.cancelledStatusText;
+    case 'return_overdue': return styles.returnStatusText;
     case 'cancelled': return styles.cancelledStatusText;
     case 'disputed': return styles.disputedStatusText;
     case 'return_pending': return styles.returnStatusText;

@@ -14,26 +14,18 @@ function makeTrip(overrides = {}) {
     capabilities: allCapabilities,
     returnAt: '2026-10-06T14:40:00.000+05:30',
     stage: 'confirmed',
+    statusPresentation: { lifecycle: 'upcoming', timing: 'on_schedule' },
     ...overrides,
   };
 }
 
 describe('trip action visibility', () => {
-  const now = new Date('2026-10-28T06:00:00.000Z');
-
-  it('removes rental-changing actions for a past booking while preserving permitted receipt, review, and issue actions', () => {
-    expect(getTripActionVisibility(makeTrip(), now)).toEqual({
-      cancel: false,
-      reportIssue: true,
-      requestExtension: false,
-      review: true,
-      viewReceipt: true,
-      viewReturnInstructions: false,
-    });
+  it('uses backend capabilities without re-deriving action eligibility from device time', () => {
+    expect(getTripActionVisibility(makeTrip())).toEqual(allCapabilities);
   });
 
   it('keeps return and dispute actions available for unresolved trips', () => {
-    expect(getTripActionVisibility(makeTrip({ stage: 'return_pending' }), now)).toEqual(allCapabilities);
-    expect(getTripActionVisibility(makeTrip({ stage: 'disputed' }), now)).toEqual(allCapabilities);
+    expect(getTripActionVisibility(makeTrip({ stage: 'return_pending' }))).toEqual(allCapabilities);
+    expect(getTripActionVisibility(makeTrip({ stage: 'disputed' }))).toEqual(allCapabilities);
   });
 });

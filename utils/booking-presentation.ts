@@ -32,9 +32,35 @@ export function getBookingStatusLabel(booking: BookingLifecycle) {
 }
 
 export function getRenterTripStatusLabel(booking: RenterBooking) {
-  if (booking.status === 'pending_payment' && booking.paymentStatus === 'pending') return 'Payment required';
-  if (booking.status === 'pending_host_approval') return 'Awaiting host';
-  return getBookingStatusLabel(booking);
+  const status = getBookingPresentationState(booking);
+
+  switch (status) {
+    case 'pickup_overdue': return 'Pickup not confirmed';
+    case 'return_overdue': return 'Return overdue';
+    case 'payment_required': return 'Payment required';
+    case 'payment_processing': return 'Payment processing';
+    case 'payment_failed': return 'Payment failed';
+    case 'payment_cancelled': return 'Payment cancelled';
+    case 'payment_expired': return 'Payment expired';
+    case 'awaiting_host_approval': return 'Awaiting host approval';
+    default: return getBookingStatusLabel(booking);
+  }
+}
+
+export function getBookingPresentationState(
+  booking: Pick<RenterBooking, 'statusPresentation'>,
+) {
+  return booking.statusPresentation.timing === 'on_schedule'
+    ? booking.statusPresentation.lifecycle
+    : booking.statusPresentation.timing;
+}
+
+export function getTripPresentationState(
+  trip: Pick<RenterTrip, 'statusPresentation' | 'stage'>,
+) {
+  return trip.statusPresentation.timing === 'on_schedule'
+    ? trip.statusPresentation.lifecycle
+    : trip.statusPresentation.timing;
 }
 
 export type CustomerTripsPrimaryTab = 'upcoming' | 'past' | 'cancelled';
@@ -82,9 +108,11 @@ export function hasBookingReturnPassedInKolkata(
  * disputes remain actionable until the backend resolves them.
  */
 export function isRenterTripPast(
-  trip: Pick<RenterTrip, 'returnAt' | 'stage'>,
-  now = new Date(),
+  trip: Pick<RenterTrip, 'stage' | 'statusPresentation'>,
 ) {
+  if (trip.statusPresentation.timing === 'pickup_overdue') {
+    return true;
+  }
   if (trip.stage === 'completed' || trip.stage === 'cancelled') {
     return true;
   }
@@ -97,7 +125,7 @@ export function isRenterTripPast(
     return false;
   }
 
-  return hasBookingReturnPassedInKolkata(trip, now);
+  return false;
 }
 
 /**
@@ -107,9 +135,11 @@ export function isRenterTripPast(
  */
 export function getCustomerTripsPrimaryTab(
   booking: RenterBooking,
-  now = new Date(),
 ): CustomerTripsPrimaryTab {
   if (
+    booking.statusPresentation.lifecycle === 'payment_expired' ||
+    booking.statusPresentation.lifecycle === 'payment_failed' ||
+    booking.statusPresentation.lifecycle === 'payment_cancelled' ||
     booking.tripPhase === 'cancelled' ||
     booking.status === 'cancelled' ||
     booking.status === 'failed' ||
@@ -120,12 +150,20 @@ export function getCustomerTripsPrimaryTab(
     return 'cancelled';
   }
 
-  if (booking.tripPhase === 'completed' || booking.status === 'completed') {
+  if (
+    booking.statusPresentation.lifecycle === 'completed' ||
+    booking.tripPhase === 'completed' ||
+    booking.status === 'completed'
+  ) {
     return 'past';
   }
 
-  // These statuses represent an unresolved handover or dispute. Keep them in
-  // the actionable Upcoming tab even when their scheduled return has elapsed.
+  if (booking.statusPresentation.timing === 'pickup_overdue') {
+    return 'past';
+  }
+
+  // Active, return-pending, and disputed bookings remain in Upcoming because
+  // the customer may still need to complete a return or work with support.
   if (
     booking.tripPhase === 'active' ||
     booking.tripPhase === 'return_pending' ||
@@ -135,10 +173,6 @@ export function getCustomerTripsPrimaryTab(
     booking.status === 'disputed'
   ) {
     return 'upcoming';
-  }
-
-  if (hasBookingReturnPassedInKolkata(booking, now)) {
-    return 'past';
   }
 
   return 'upcoming';

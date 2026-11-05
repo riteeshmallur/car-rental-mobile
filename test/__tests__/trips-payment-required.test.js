@@ -38,6 +38,10 @@ const pendingBooking = {
   totalPaid: '0.00',
   totalPrice: '5354.00',
   tripPhase: 'payment_required',
+  statusPresentation: {
+    lifecycle: 'payment_required',
+    timing: 'on_schedule',
+  },
   updatedAt: '2026-10-28T08:00:00.000Z',
   userId: 'customer-1',
   vehicle: { id: 'vehicle-1', imageUrl: null, make: 'Maruti', model: 'Swift' },

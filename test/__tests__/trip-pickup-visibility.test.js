@@ -7,24 +7,23 @@ function trip(overrides = {}) {
     capabilities: { viewPickupInformation: true },
     returnAt: '2026-10-31T12:30:00.000Z',
     stage: 'confirmed',
+    statusPresentation: { lifecycle: 'upcoming', timing: 'on_schedule' },
     ...overrides,
   };
 }
 
 describe('trip pickup information visibility', () => {
-  it('keeps pickup instructions available before the rental has ended', () => {
-    expect(canViewTripPickupInformation(trip(), now)).toBe(true);
+  it('keeps pickup instructions available when the backend allows them', () => {
+    expect(canViewTripPickupInformation(trip())).toBe(true);
   });
 
-  it('hides pickup instructions and host contact after the return time', () => {
-    expect(
-      canViewTripPickupInformation(trip({ returnAt: '2026-10-06T09:10:00.000Z' }), now),
-    ).toBe(false);
+  it('hides pickup instructions after the backend reports a missed pickup', () => {
+    expect(canViewTripPickupInformation(trip({ statusPresentation: { lifecycle: 'upcoming', timing: 'pickup_overdue' } }))).toBe(false);
   });
 
   it('hides pickup information for terminal and post-pickup stages', () => {
     for (const stage of ['return_pending', 'completed', 'cancelled', 'disputed']) {
-      expect(canViewTripPickupInformation(trip({ stage }), now)).toBe(false);
+      expect(canViewTripPickupInformation(trip({ stage }))).toBe(false);
     }
   });
 });

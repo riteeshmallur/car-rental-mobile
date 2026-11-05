@@ -47,7 +47,11 @@ import { normalizeApiError } from '@/utils/errors';
 import { radioAccessibilityProps } from '@/utils/radio-accessibility';
 import { getTripActionVisibility } from '@/utils/trip-action-visibility';
 import { canViewTripPickupInformation } from '@/utils/trip-pickup-visibility';
-import { isRenterTripPast } from '@/utils/booking-presentation';
+import {
+  getTripPresentationState,
+  isRenterTripPast,
+  KOLKATA_TIME_ZONE,
+} from '@/utils/booking-presentation';
 
 type SheetName = 'extend' | 'return' | 'issue' | 'review' | null;
 type FuelLevel = 'empty' | 'quarter' | 'half' | 'three_quarters' | 'full';
@@ -68,11 +72,15 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: KOLKATA_TIME_ZONE,
   }).format(new Date(value));
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeZone: KOLKATA_TIME_ZONE,
+  }).format(
     new Date(value),
   );
 }
@@ -123,6 +131,9 @@ function getBookingBadgeLabel(
   paymentState: PaymentScreenState,
   isPastTrip: boolean,
 ) {
+  const presentation = getTripPresentationState(trip);
+  if (presentation === 'pickup_overdue') return 'Pickup not confirmed';
+  if (presentation === 'return_overdue') return 'Return overdue';
   if (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled') return 'Cancelled';
   if (normalizeStatus(trip.status) === 'pending_payment') {
     return getPaymentStatusLabel(paymentState, trip.paymentStatus);
@@ -341,6 +352,7 @@ export function TripDetailsScreen() {
           <TripActions
             isMutating={isMutating}
             onCancel={requestCancellation}
+            onContactSupport={contactSupport}
             onExtend={() => setSheet('extend')}
             onIssue={() => setSheet('issue')}
             onReturn={() => setSheet('return')}
@@ -386,7 +398,14 @@ function VehicleSummary({ isPastTrip, paymentState, trip }: { isPastTrip: boolea
 }
 
 function StatusBanner({ isPastTrip, paymentState, trip }: { isPastTrip: boolean; paymentState: PaymentScreenState; trip: RenterTrip }) {
+  const presentation = getTripPresentationState(trip);
   const copy = useMemo(() => {
+    if (presentation === 'pickup_overdue') {
+      return 'The pickup time has passed and vehicle handover was not confirmed. Contact support for help with this booking.';
+    }
+    if (presentation === 'return_overdue') {
+      return 'The scheduled return time has passed and the vehicle return is still awaiting confirmation. Follow the return instructions or contact support.';
+    }
     if (normalizeStatus(trip.status) === 'pending_payment') {
       switch (paymentState) {
         case 'failed': return 'The payment did not complete. Retry only if the payment window is still open.';
@@ -405,14 +424,29 @@ function StatusBanner({ isPastTrip, paymentState, trip }: { isPastTrip: boolean;
       case 'disputed': return 'An issue has been reported. The booking team will review the dispute.';
       default: return 'We are preparing your booking details.';
     }
-  }, [paymentState, trip.stage, trip.status]);
-  const title = normalizeStatus(trip.status) === 'pending_payment'
+  }, [paymentState, presentation, trip.stage, trip.status]);
+  const title = presentation === 'pickup_overdue'
+    ? 'Pickup not confirmed'
+    : presentation === 'return_overdue'
+      ? 'Return overdue'
+      : normalizeStatus(trip.status) === 'pending_payment'
     ? getPaymentStatusLabel(paymentState, trip.paymentStatus)
     : tripTitle(trip.stage);
-  const tone = normalizeStatus(trip.status) === 'pending_payment'
+  const tone = presentation === 'pickup_overdue'
+    ? '#B91C1C'
+    : presentation === 'return_overdue'
+      ? '#A16207'
+      : normalizeStatus(trip.status) === 'pending_payment'
     ? paymentBannerTone(paymentState)
     : statusColor(trip.stage);
-  return <View style={[styles.statusBanner, normalizeStatus(trip.status) === 'pending_payment' ? paymentBannerStyle(paymentState) : statusBannerStyle(trip.stage)]}><CheckCircle2 color={tone} size={20} /><View style={styles.statusCopy}><Text style={[styles.statusTitle, { color: tone }]}>{title}</Text><Text style={styles.statusBody}>{copy}</Text></View></View>;
+  const banner = presentation === 'pickup_overdue'
+    ? styles.cancelledBanner
+    : presentation === 'return_overdue'
+      ? styles.returnBanner
+      : normalizeStatus(trip.status) === 'pending_payment'
+        ? paymentBannerStyle(paymentState)
+        : statusBannerStyle(trip.stage);
+  return <View style={[styles.statusBanner, banner]}><CheckCircle2 color={tone} size={20} /><View style={styles.statusCopy}><Text style={[styles.statusTitle, { color: tone }]}>{title}</Text><Text style={styles.statusBody}>{copy}</Text></View></View>;
 }
 
 function TripSummary({ trip }: { trip: RenterTrip }) {
@@ -457,12 +491,13 @@ function LifecycleDetails({ onContactSupport, payment, trip }: { onContactSuppor
   return null;
 }
 
-function TripActions({ isMutating, isPastTrip, onCancel, onExtend, onIssue, onReturn, onReview, trip }: { isMutating: boolean; isPastTrip: boolean; onCancel: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; trip: RenterTrip }) {
+function TripActions({ isMutating, isPastTrip, onCancel, onContactSupport, onExtend, onIssue, onReturn, onReview, trip }: { isMutating: boolean; isPastTrip: boolean; onCancel: () => void; onContactSupport: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; trip: RenterTrip }) {
   const actions = getTripActionVisibility(trip);
   const canReview = actions.review && trip.stage === 'completed';
-  const anyAction = actions.cancel || actions.requestExtension || actions.viewReturnInstructions || actions.reportIssue || canReview;
+  const needsSupport = trip.statusPresentation.timing !== 'on_schedule';
+  const anyAction = actions.cancel || actions.requestExtension || actions.viewReturnInstructions || actions.reportIssue || canReview || needsSupport;
   if (!anyAction) return null;
-  return <Section title={isPastTrip ? 'After your trip' : 'Trip actions'}><View style={styles.actionStack}>{actions.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{actions.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{canReview ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Rate your trip" onPress={onReview} variant="primary" /> : null}{actions.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label={isPastTrip ? 'Report a trip issue' : 'Report an issue'} onPress={onIssue} variant="warning" /> : null}{actions.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
+  return <Section title={isPastTrip ? 'After your trip' : 'Trip actions'}><View style={styles.actionStack}>{needsSupport ? <ActionButton icon={<MessageCircleWarning color="#0B6FE8" size={18} />} label="Contact support" onPress={onContactSupport} /> : null}{actions.requestExtension ? <ActionButton disabled={isMutating} icon={<RotateCw color="#0B6FE8" size={18} />} label="Request extension" onPress={onExtend} /> : null}{actions.viewReturnInstructions ? <><View style={styles.instruction}><Text style={styles.instructionTitle}>Return instructions</Text><Text style={styles.helper}>Park at the agreed return point, note the odometer and fuel level, then submit the return for host inspection.</Text></View><ActionButton disabled={isMutating} icon={<ClipboardCheck color="#0B6FE8" size={18} />} label="Return vehicle" onPress={onReturn} /></> : null}{canReview ? <ActionButton disabled={isMutating} icon={<Star color="#0B6FE8" size={18} />} label="Rate your trip" onPress={onReview} variant="primary" /> : null}{actions.reportIssue ? <ActionButton disabled={isMutating} icon={<MessageCircleWarning color="#C2410C" size={18} />} label={isPastTrip ? 'Report a trip issue' : 'Report an issue'} onPress={onIssue} variant="warning" /> : null}{actions.cancel ? <ActionButton disabled={isMutating} icon={<XCircle color="#B91C1C" size={18} />} label={isMutating ? 'Updating trip' : 'Cancel booking'} onPress={onCancel} variant="danger" /> : null}</View></Section>;
 }
 
 function ReceiptDetails({ receipt }: { receipt: Awaited<ReturnType<typeof bookingsApi.findReceipt>> }) {

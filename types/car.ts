@@ -308,6 +308,10 @@ export type Booking = {
 
 export type RenterTripPhase =
   | 'payment_required'
+  | 'payment_processing'
+  | 'payment_failed'
+  | 'payment_cancelled'
+  | 'payment_expired'
   | 'awaiting_host_approval'
   | 'upcoming'
   | 'active'
@@ -316,10 +320,21 @@ export type RenterTripPhase =
   | 'cancelled'
   | 'disputed';
 
+export type RenterBookingTiming =
+  | 'on_schedule'
+  | 'pickup_overdue'
+  | 'return_overdue';
+
+export type RenterBookingStatusPresentation = {
+  lifecycle: RenterTripPhase;
+  timing: RenterBookingTiming;
+};
+
 export type RenterBooking = Booking & {
   reference: string;
   totalPaid: string;
   tripPhase: RenterTripPhase;
+  statusPresentation: RenterBookingStatusPresentation;
   vehicle: {
     id: string;
     make: string;
@@ -369,6 +384,7 @@ export type RenterTrip = {
   reference: string;
   status: string;
   stage: RenterTripStage;
+  statusPresentation: RenterBookingStatusPresentation;
   paymentStatus: string | null;
   pickupAt: string;
   returnAt: string;

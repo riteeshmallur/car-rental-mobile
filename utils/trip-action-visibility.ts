@@ -1,4 +1,3 @@
-import { isRenterTripPast } from '@/utils/booking-presentation';
 import { type RenterTrip, type RenterTripCapabilities } from '@/types/car';
 
 export type TripActionVisibility = Pick<
@@ -16,19 +15,13 @@ export type TripActionVisibility = Pick<
  * offer actions that alter the booked rental window. This also protects users
  * when an older booking response carries stale capability flags.
  */
-export function getTripActionVisibility(
-  trip: RenterTrip,
-  now = new Date(),
-): TripActionVisibility {
-  const isPast = isRenterTripPast(trip, now);
-  const canChangeRental = !isPast;
-
+export function getTripActionVisibility(trip: RenterTrip): TripActionVisibility {
   return {
-    cancel: trip.capabilities.cancel && canChangeRental,
+    cancel: trip.capabilities.cancel,
     reportIssue: trip.capabilities.reportIssue,
-    requestExtension: trip.capabilities.requestExtension && canChangeRental,
+    requestExtension: trip.capabilities.requestExtension,
     review: trip.capabilities.review,
     viewReceipt: trip.capabilities.viewReceipt,
-    viewReturnInstructions: trip.capabilities.viewReturnInstructions && canChangeRental,
+    viewReturnInstructions: trip.capabilities.viewReturnInstructions,
   };
 }

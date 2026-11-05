@@ -8,17 +8,15 @@ const pickupInformationStages = new Set<RenterTrip['stage']>([
 
 /**
  * Pickup instructions and host contact information are operational details.
- * Do not expose them after the rental window has ended, even if an older
- * booking record still reports a pre-return stage.
+ * The backend determines whether the pickup window was missed. Do not infer
+ * capability from device time, which could disagree with the server.
  */
 export function canViewTripPickupInformation(
-  trip: Pick<RenterTrip, 'capabilities' | 'returnAt' | 'stage'>,
-  now = Date.now(),
+  trip: Pick<RenterTrip, 'capabilities' | 'stage' | 'statusPresentation'>,
 ) {
-  if (!trip.capabilities.viewPickupInformation || !pickupInformationStages.has(trip.stage)) {
-    return false;
-  }
-
-  const returnAt = Date.parse(trip.returnAt);
-  return !Number.isFinite(returnAt) || returnAt > now;
+  return (
+    trip.capabilities.viewPickupInformation &&
+    pickupInformationStages.has(trip.stage) &&
+    trip.statusPresentation.timing !== 'pickup_overdue'
+  );
 }
