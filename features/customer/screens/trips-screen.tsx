@@ -230,7 +230,9 @@ function BookingCard({ booking }: { booking: RenterBooking }) {
 
         <View style={styles.footerRow}>
           <Text style={styles.paymentLabel}>
-            {booking.statusPresentation.lifecycle === 'payment_required' ? 'Amount due' : titleCase(booking.paymentStatus)}
+            {getBookingPresentationState(booking) === 'payment_required'
+              ? 'Amount due'
+              : titleCase(booking.paymentStatus)}
           </Text>
           <Text style={styles.paymentAmount}>{formatMoney(getBookingTotal(booking))}</Text>
         </View>
@@ -271,10 +273,11 @@ function openBooking(booking: RenterBooking) {
 }
 
 function getBookingCardAction(booking: RenterBooking) {
-  if (booking.statusPresentation.lifecycle === 'payment_required') return { kind: 'payment' as const, label: 'Pay now' };
-  if (booking.statusPresentation.timing === 'return_overdue') return { kind: 'details' as const, label: 'View return details' };
-  if (booking.statusPresentation.lifecycle === 'active') return { kind: 'details' as const, label: 'View trip' };
-  if (booking.statusPresentation.lifecycle === 'return_pending') return { kind: 'details' as const, label: 'View return details' };
+  const presentationState = getBookingPresentationState(booking);
+  if (presentationState === 'payment_required') return { kind: 'payment' as const, label: 'Pay now' };
+  if (presentationState === 'return_overdue') return { kind: 'details' as const, label: 'View return details' };
+  if (presentationState === 'active') return { kind: 'details' as const, label: 'View trip' };
+  if (presentationState === 'return_pending') return { kind: 'details' as const, label: 'View return details' };
   if (getCustomerTripsPrimaryTab(booking) !== 'upcoming') return { kind: 'details' as const, label: 'View details' };
   return { kind: 'details' as const, label: 'View booking' };
 }

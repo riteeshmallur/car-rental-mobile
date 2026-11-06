@@ -48,11 +48,34 @@ export function getRenterTripStatusLabel(booking: RenterBooking) {
 }
 
 export function getBookingPresentationState(
-  booking: Pick<RenterBooking, 'statusPresentation'>,
+  booking: Pick<RenterBooking, 'paymentStatus' | 'status' | 'statusPresentation' | 'tripPhase'>,
 ) {
-  return booking.statusPresentation.timing === 'on_schedule'
-    ? booking.statusPresentation.lifecycle
-    : booking.statusPresentation.timing;
+  const presentation = booking.statusPresentation;
+  if (presentation) {
+    return presentation.timing === 'on_schedule'
+      ? presentation.lifecycle
+      : presentation.timing;
+  }
+
+  // Older responses and cached bookings may not include the presentation
+  // object yet. The persisted lifecycle fields remain authoritative, so use
+  // them rather than hiding a payment-required booking from the Trips UI.
+  if (booking.tripPhase) {
+    return booking.tripPhase;
+  }
+
+  if (booking.status === 'pending_payment') {
+    if (booking.paymentStatus === 'processing') return 'payment_processing';
+    if (booking.paymentStatus === 'failed') return 'payment_failed';
+    if (booking.paymentStatus === 'cancelled') return 'payment_cancelled';
+    return 'payment_required';
+  }
+
+  if (booking.status === 'pending_host_approval') {
+    return 'awaiting_host_approval';
+  }
+
+  return 'upcoming';
 }
 
 export function getTripPresentationState(
@@ -136,10 +159,12 @@ export function isRenterTripPast(
 export function getCustomerTripsPrimaryTab(
   booking: RenterBooking,
 ): CustomerTripsPrimaryTab {
+  const presentationState = getBookingPresentationState(booking);
+
   if (
-    booking.statusPresentation.lifecycle === 'payment_expired' ||
-    booking.statusPresentation.lifecycle === 'payment_failed' ||
-    booking.statusPresentation.lifecycle === 'payment_cancelled' ||
+    presentationState === 'payment_expired' ||
+    presentationState === 'payment_failed' ||
+    presentationState === 'payment_cancelled' ||
     booking.tripPhase === 'cancelled' ||
     booking.status === 'cancelled' ||
     booking.status === 'failed' ||
@@ -151,14 +176,14 @@ export function getCustomerTripsPrimaryTab(
   }
 
   if (
-    booking.statusPresentation.lifecycle === 'completed' ||
+    presentationState === 'completed' ||
     booking.tripPhase === 'completed' ||
     booking.status === 'completed'
   ) {
     return 'past';
   }
 
-  if (booking.statusPresentation.timing === 'pickup_overdue') {
+  if (presentationState === 'pickup_overdue') {
     return 'past';
   }
 
