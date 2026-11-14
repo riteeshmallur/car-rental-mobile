@@ -1427,6 +1427,7 @@ function PhotosStep({
   onSetCoverPhoto: (uri: string) => void;
 }) {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [photoPendingRemovalUri, setPhotoPendingRemovalUri] = useState<string | null>(null);
   const [tipsExpanded, setTipsExpanded] = useState(false);
   const guidance = [
     { label: 'Front view', detail: 'Start here', rotation: '0deg' },
@@ -1435,11 +1436,15 @@ function PhotosStep({
     { label: 'Right side', detail: 'Full profile', rotation: '12deg' },
     { label: 'Interior', detail: 'Cabin & seats', rotation: '0deg' },
   ];
-  const requestRemovePhoto = (uri: string) => {
-    Alert.alert('Remove this photo?', 'It will be removed from this vehicle listing when you save your changes.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => onRemovePhoto(uri) },
-    ]);
+  const requestRemovePhoto = (uri: string) => setPhotoPendingRemovalUri(uri);
+
+  const confirmRemovePhoto = () => {
+    if (!photoPendingRemovalUri) {
+      return;
+    }
+
+    onRemovePhoto(photoPendingRemovalUri);
+    setPhotoPendingRemovalUri(null);
   };
 
   return (
@@ -1582,6 +1587,37 @@ function PhotosStep({
             <Text style={styles.photoPreviewHint}>Tap outside to close</Text>
           </View>
         </Pressable>
+      </Modal>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setPhotoPendingRemovalUri(null)}
+        transparent
+        visible={Boolean(photoPendingRemovalUri)}
+      >
+        <View accessibilityViewIsModal style={styles.photoRemoveDialogBackdrop}>
+          <View accessibilityRole="alert" style={styles.photoRemoveDialogCard}>
+            <Text style={styles.photoRemoveDialogTitle}>Remove this photo?</Text>
+            <Text style={styles.photoRemoveDialogText}>It will be removed from this vehicle listing when you save your changes.</Text>
+            <View style={styles.photoRemoveDialogActions}>
+              <Pressable
+                accessibilityLabel="Cancel removing photo"
+                accessibilityRole="button"
+                onPress={() => setPhotoPendingRemovalUri(null)}
+                style={({ pressed }) => [styles.photoRemoveDialogCancelButton, pressed && styles.photoRemoveDialogCancelButtonPressed]}
+              >
+                <Text style={styles.photoRemoveDialogCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Remove photo"
+                accessibilityRole="button"
+                onPress={confirmRemovePhoto}
+                style={({ pressed }) => [styles.photoRemoveDialogConfirmButton, pressed && styles.photoRemoveDialogConfirmButtonPressed]}
+              >
+                <Text style={styles.photoRemoveDialogConfirmText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -3782,6 +3818,17 @@ const styles = StyleSheet.create({
   photoPreviewCard: { width: '100%', overflow: 'hidden', borderRadius: 16, backgroundColor: '#FFFFFF' },
   photoPreviewImage: { width: '100%', aspectRatio: 0.9 },
   photoPreviewHint: { color: '#536B91', fontSize: 12, fontWeight: '600', textAlign: 'center', padding: 12 },
+  photoRemoveDialogBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 37, 80, 0.48)', padding: 24 },
+  photoRemoveDialogCard: { width: '100%', maxWidth: 360, borderRadius: 16, backgroundColor: '#FFFFFF', padding: 20 },
+  photoRemoveDialogTitle: { color: '#102550', fontSize: 18, fontWeight: '800' },
+  photoRemoveDialogText: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, marginTop: 8 },
+  photoRemoveDialogActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 20 },
+  photoRemoveDialogCancelButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 88, borderRadius: 10, borderWidth: 1, borderColor: '#D6E8FF', paddingHorizontal: 16 },
+  photoRemoveDialogCancelButtonPressed: { backgroundColor: '#F3F9FF' },
+  photoRemoveDialogCancelText: { color: '#102550', fontSize: 14, fontWeight: '800' },
+  photoRemoveDialogConfirmButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 88, borderRadius: 10, backgroundColor: '#D84534', paddingHorizontal: 16 },
+  photoRemoveDialogConfirmButtonPressed: { backgroundColor: '#B62E21' },
+  photoRemoveDialogConfirmText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   photoReorderActions: { position: 'absolute', right: 8, bottom: 8, flexDirection: 'row', gap: 4 },
   photoReorderButton: { height: 28, width: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: 'rgba(37, 40, 43, 0.78)' },
   documentUploadCard: {
