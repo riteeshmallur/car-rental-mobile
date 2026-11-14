@@ -27,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
 import { formatMoney, getVehicleImageVariantUrl } from '@/features/customer/utils/car-formatters';
 import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
+import { getPayoutStatusPresentation } from '@/features/host-earnings/utils/payout-status';
 import {
   getVehicleDraftName,
   getVehicleSetupProgress,
@@ -367,7 +368,16 @@ function getListingDrafts(vehicles: HostVehicleListing[]) {
 function getRecentActivity(vehicles: HostVehicleListing[], bookings: HostBooking[], earnings: HostEarningEntry[]): ActivityItem[] {
   const vehicleActivity = vehicles.filter((vehicle) => vehicle.status !== 'DRAFT').map((vehicle) => ({ id: `vehicle-${vehicle.id}-${vehicle.updatedAt}`, at: vehicle.updatedAt, icon: 'car' as const, title: vehicle.status === 'PENDING_REVIEW' ? 'Vehicle submitted for review' : vehicle.status === 'PUBLISHED' ? 'Vehicle listing is active' : vehicle.status === 'CHANGES_REQUIRED' ? 'Vehicle changes requested' : 'Vehicle listing updated', detail: getVehicleDraftName(vehicle) }));
   const bookingActivity = bookings.map((booking) => ({ id: `booking-${booking.id}-${booking.updatedAt}`, at: booking.updatedAt, icon: 'booking' as const, title: booking.status === 'PENDING_PAYMENT' || booking.paymentStatus !== 'paid' ? 'Awaiting Payment' : booking.hostPhase === 'requests' ? 'New booking request' : booking.hostPhase === 'active' ? 'Trip is active' : booking.hostPhase === 'completed' ? 'Trip completed' : booking.hostPhase === 'cancelled' ? 'Booking cancelled' : 'Booking confirmed', detail: `${booking.vehicle.make} ${booking.vehicle.model}` }));
-  const earningActivity = earnings.filter((earning) => earning.payoutStatus === 'completed').map((earning) => ({ id: `earning-${earning.id}-${earning.paidAt}`, at: earning.paidAt, icon: 'earnings' as const, title: 'Payout processed', detail: `${formatMoney(earning.hostNetAmount)} · ${earning.vehicle.make} ${earning.vehicle.model}` }));
+  const earningActivity = earnings.map((earning) => {
+    const payout = getPayoutStatusPresentation(earning.payoutStatus);
+    return {
+      id: `earning-${earning.id}-${earning.paidAt}`,
+      at: earning.paidAt,
+      icon: 'earnings' as const,
+      title: payout.isPaid ? 'Payout processed' : `Payout: ${payout.label}`,
+      detail: `${formatMoney(earning.hostNetAmount)} · ${earning.vehicle.make} ${earning.vehicle.model}`,
+    };
+  });
   return [...vehicleActivity, ...bookingActivity, ...earningActivity].filter((item) => Boolean(item.at)).sort((left, right) => Date.parse(right.at) - Date.parse(left.at)).slice(0, 5);
 }
 

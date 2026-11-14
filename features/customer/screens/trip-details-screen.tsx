@@ -89,6 +89,50 @@ function titleCase(value: string | null | undefined) {
   return (value ?? 'Pending').replace(/_/g, ' ');
 }
 
+function formatFinancialAmount(value: number | string, currency: string) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return formatMoney(value);
+
+  return new Intl.NumberFormat('en-IN', {
+    currency: currency || 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    style: 'currency',
+  }).format(amount);
+}
+
+function getRefundStatusLabel(status: string | null | undefined) {
+  switch (normalizeStatus(status)) {
+    case 'pending':
+      return 'Refund processing';
+    case 'succeeded':
+      return 'Refund completed';
+    case 'failed':
+      return 'Refund failed';
+    case 'cancelled':
+      return 'Refund cancelled';
+    default:
+      return 'Status unavailable';
+  }
+}
+
+function getDepositSettlementStatusLabel(status: string | null | undefined) {
+  const labels: Record<string, string> = {
+    deposit_required: 'Deposit required',
+    awaiting_collection: 'Awaiting collection',
+    collected: 'Deposit collected',
+    settlement_pending: 'Settlement pending',
+    under_review: 'Deductions under review',
+    partially_deducted: 'Partially deducted',
+    refund_pending: 'Deposit refund processing',
+    refunded: 'Deposit refunded',
+    settlement_failed: 'Settlement failed',
+    manual_review: 'Manual review required',
+    fully_deducted: 'Fully deducted',
+  };
+  return labels[normalizeStatus(status)] ?? 'Status unavailable';
+}
+
 function tripTitle(stage: RenterTrip['stage']) {
   switch (stage) {
     case 'return_pending':
@@ -471,24 +515,26 @@ function PaymentDetails({ isLoading, onOpenPayment, onRefreshPayment, onViewRece
   const canRetry = pendingPayment && Boolean(payment) && ['failed', 'cancelled', 'canceled'].includes(normalizeStatus(paymentStatus)) && paymentState !== 'expired';
   const canStartPayment = pendingPayment && !payment && paymentState === 'initiate';
 
-  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={pendingPayment ? getPaymentStatusLabel(paymentState, paymentStatus) : titleCase(paymentStatus)} /><InfoRow label={isPaid ? 'Total paid' : 'Booking total'} value={formatMoney(totalPaid ?? trip.pricing.totalPrice)} />{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <InfoRow key={refund.id} label="Refund" value={`${formatMoney(refund.amount)} · ${titleCase(refund.status)}`} />)}{canStartPayment ? <ActionButton icon={<CircleDollarSign color="#FFFFFF" size={18} />} label="Complete payment" onPress={onOpenPayment} variant="primary" /> : null}{canRetry ? <ActionButton icon={<RotateCw color="#FFFFFF" size={18} />} label="Retry payment" onPress={onOpenPayment} variant="primary" /> : null}{pendingPayment && paymentState === 'processing' ? <ActionButton label="Check payment status" onPress={onRefreshPayment} /> : null}{pendingPayment && paymentState === 'expired' ? <Text style={styles.errorText}>Payment can no longer be completed for this booking.</Text> : null}{receiptAvailable ? <ActionButton icon={<ReceiptText color="#0B6FE8" size={18} />} label="View payment receipt" onPress={onViewReceipt} /> : null}</>}</Section>;
+  return <Section title="Payment and refund">{isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#0B6FE8" size="small" /><Text style={styles.mutedText}>Loading payment status</Text></View> : <><InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Payment status" value={pendingPayment ? getPaymentStatusLabel(paymentState, paymentStatus) : titleCase(paymentStatus)} /><InfoRow label={isPaid ? 'Total paid' : 'Booking total'} value={formatFinancialAmount(totalPaid ?? trip.pricing.totalPrice, trip.currency)} />{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatFinancialAmount(trip.pricing.securityDeposit, trip.currency)} /> : null}{payment?.failureMessage ? <Text style={styles.errorText}>{payment.failureMessage}</Text> : null}{payment?.refunds.map((refund) => <View key={refund.id}><InfoRow label="Refund" value={`${formatFinancialAmount(refund.amount, refund.currency)} · ${getRefundStatusLabel(refund.status)}`} />{refund.providerRefundId ? <InfoRow label="Refund reference" value={refund.providerRefundId} /> : null}{refund.reconciliationError ? <InfoRow label="Refund review" value="Refund requires manual review" /> : null}</View>)}{canStartPayment ? <ActionButton icon={<CircleDollarSign color="#FFFFFF" size={18} />} label="Complete payment" onPress={onOpenPayment} variant="primary" /> : null}{canRetry ? <ActionButton icon={<RotateCw color="#FFFFFF" size={18} />} label="Retry payment" onPress={onOpenPayment} variant="primary" /> : null}{pendingPayment && paymentState === 'processing' ? <ActionButton label="Check payment status" onPress={onRefreshPayment} /> : null}{pendingPayment && paymentState === 'expired' ? <Text style={styles.errorText}>Payment can no longer be completed for this booking.</Text> : null}{receiptAvailable ? <ActionButton icon={<ReceiptText color="#0B6FE8" size={18} />} label="View payment receipt" onPress={onViewReceipt} /> : null}</>}</Section>;
 }
 
 function LifecycleDetails({ onContactSupport, payment, trip }: { onContactSupport: () => void; payment?: Awaited<ReturnType<typeof bookingsApi.findPayment>>; trip: RenterTrip }) {
   const { cancellation, dispute, review, return: returnInfo } = trip;
+  const depositSettlement = trip.depositSettlement ? <DepositSettlementDetails settlement={trip.depositSettlement} currency={trip.currency} /> : null;
   if (trip.stage === 'cancelled' || normalizeStatus(trip.status) === 'cancelled' || (trip.capabilities.viewCancellationRefund && cancellation)) {
     const paid = ['paid', 'captured', 'succeeded'].includes(normalizeStatus(payment?.status ?? trip.paymentStatus));
-    const totalPaid = paid ? payment?.amount ?? trip.pricing.totalPrice : null;
+    const totalPaid = cancellation?.originalPaymentAmount ?? (paid ? payment?.amount ?? trip.pricing.totalPrice : null);
     const refundAmount = cancellation?.refundAmount ?? null;
-    const deduction = totalPaid !== null && refundAmount !== null
-      ? Math.max(0, Number(totalPaid) - Number(refundAmount))
-      : null;
-    return <Section title="Cancellation and refund"><InfoRow icon={<XCircle color="#B91C1C" size={18} />} label="Cancellation reason" value={cancellation?.reason ?? 'Cancelled'} />{cancellation?.cancelledAt ? <InfoRow label="Cancelled on" value={formatDateTime(cancellation.cancelledAt)} /> : null}{totalPaid !== null ? <InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Total paid" value={formatMoney(totalPaid)} /> : <InfoRow label="Payment" value="No payment was collected" />}{trip.pricing.securityDeposit ? <InfoRow label="Refundable deposit" value={formatMoney(trip.pricing.securityDeposit)} /> : null}{refundAmount !== null ? <><InfoRow label="Eligible refund" value={formatMoney(refundAmount)} /><InfoRow label="Refund status" value={titleCase(cancellation?.refundStatus)} />{deduction !== null ? <InfoRow label="Cancellation deduction" value={formatMoney(deduction)} /> : null}</> : <Text style={styles.helper}>Refund eligibility and processing status will appear when supplied by the booking service.</Text>}<ActionButton icon={<MessageCircleWarning color="#0B6FE8" size={18} />} label="Contact support about refund" onPress={onContactSupport} /></Section>;
+    return <><Section title="Cancellation and refund"><InfoRow icon={<XCircle color="#B91C1C" size={18} />} label="Cancellation reason" value={cancellation?.reason ?? 'Cancelled'} />{cancellation?.cancelledAt ? <InfoRow label="Cancelled on" value={formatDateTime(cancellation.cancelledAt)} /> : null}{cancellation ? <InfoRow label="Cancelled by" value={titleCase(cancellation.cancelledBy)} /> : null}{totalPaid !== null ? <InfoRow icon={<CircleDollarSign color="#0B6FE8" size={18} />} label="Original payment" value={formatFinancialAmount(totalPaid, trip.currency)} /> : <InfoRow label="Payment" value="No payment was collected" />}{cancellation?.deductionAmount !== null && cancellation?.deductionAmount !== undefined ? <InfoRow label="Cancellation deduction" value={formatFinancialAmount(cancellation.deductionAmount, trip.currency)} /> : null}{refundAmount !== null ? <><InfoRow label="Eligible refund" value={formatFinancialAmount(refundAmount, trip.currency)} /><InfoRow label="Refund status" value={getRefundStatusLabel(cancellation?.refundStatus)} />{cancellation?.refundProviderReference ? <InfoRow label="Refund reference" value={cancellation.refundProviderReference} /> : null}{cancellation?.refundRequiresManualReview ? <InfoRow label="Refund review" value={cancellation.refundManualReviewReason ?? 'Refund requires manual review'} /> : null}</> : <Text style={styles.helper}>Refund eligibility and processing status will appear when supplied by the booking service.</Text>}<ActionButton icon={<MessageCircleWarning color="#0B6FE8" size={18} />} label="Contact support about refund" onPress={onContactSupport} /></Section>{depositSettlement}</>;
   }
-  if (trip.capabilities.viewDisputeStatus && dispute) return <Section title="Issue report"><InfoRow icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Status" value={titleCase(dispute.status)} /><InfoRow label="Reported issue" value={dispute.reason} /></Section>;
-  if (trip.capabilities.viewReturnStatus) return <Section title="Return status"><InfoRow icon={<ClipboardCheck color="#A16207" size={18} />} label="Vehicle return" value={returnInfo.returnedAt ? `Recorded ${formatDateTime(returnInfo.returnedAt)}` : 'Return is being recorded'} /><InfoRow label="Inspection" value={titleCase(returnInfo.inspectionStatus)} /></Section>;
-  if (review) return <Section title="Your review"><InfoRow icon={<Star color="#EAB308" size={18} />} label={`${review.rating} of 5`} value={titleCase(review.status)} />{review.comment ? <Text style={styles.helper}>{review.comment}</Text> : null}</Section>;
-  return null;
+  if (trip.capabilities.viewDisputeStatus && dispute) return <><Section title="Issue report"><InfoRow icon={<MessageCircleWarning color="#C2410C" size={18} />} label="Status" value={titleCase(dispute.status)} /><InfoRow label="Reported issue" value={dispute.reason} /></Section>{depositSettlement}</>;
+  if (trip.capabilities.viewReturnStatus) return <><Section title="Return status"><InfoRow icon={<ClipboardCheck color="#A16207" size={18} />} label="Vehicle return" value={returnInfo.returnedAt ? `Recorded ${formatDateTime(returnInfo.returnedAt)}` : 'Return is being recorded'} /><InfoRow label="Inspection" value={titleCase(returnInfo.inspectionStatus)} /></Section>{depositSettlement}</>;
+  if (review) return <><Section title="Your review"><InfoRow icon={<Star color="#EAB308" size={18} />} label={`${review.rating} of 5`} value={titleCase(review.status)} />{review.comment ? <Text style={styles.helper}>{review.comment}</Text> : null}</Section>{depositSettlement}</>;
+  return depositSettlement;
+}
+
+function DepositSettlementDetails({ currency, settlement }: { currency: string; settlement: NonNullable<RenterTrip['depositSettlement']> }) {
+  return <Section title="Security deposit"><InfoRow label="Settlement status" value={getDepositSettlementStatusLabel(settlement.status)} /><InfoRow label="Deposit collected" value={formatFinancialAmount(settlement.collectedAmount, currency)} /><InfoRow label="Approved deductions" value={formatFinancialAmount(settlement.approvedDeductionAmount, currency)} /><InfoRow label="Refundable deposit" value={formatFinancialAmount(settlement.refundableAmount, currency)} />{settlement.refundStatus ? <InfoRow label="Deposit refund status" value={getRefundStatusLabel(settlement.refundStatus)} /> : null}{settlement.refundProviderReference ? <InfoRow label="Deposit refund reference" value={settlement.refundProviderReference} /> : null}{settlement.requiresManualReview ? <InfoRow label="Deposit review" value={settlement.manualReviewReason ?? 'Deposit settlement requires manual review'} /> : null}{settlement.deductions.map((deduction) => <InfoRow key={deduction.id} label={`${titleCase(deduction.type)} deduction`} value={`${formatFinancialAmount(deduction.approvedAmount, currency)} · ${titleCase(deduction.status)}`} />)}</Section>;
 }
 
 function TripActions({ isMutating, isPastTrip, onCancel, onContactSupport, onExtend, onIssue, onReturn, onReview, trip }: { isMutating: boolean; isPastTrip: boolean; onCancel: () => void; onContactSupport: () => void; onExtend: () => void; onIssue: () => void; onReturn: () => void; onReview: () => void; trip: RenterTrip }) {

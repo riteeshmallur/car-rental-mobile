@@ -419,11 +419,40 @@ export type RenterTrip = {
     returnedAt: string | null;
     inspectionStatus: 'not_started' | 'recorded';
   };
+  depositSettlement: {
+    id: string;
+    collectedAmount: string;
+    approvedDeductionAmount: string;
+    refundableAmount: string;
+    status: DepositSettlementStatus;
+    refundStatus: RefundStatus | null;
+    refundProviderReference: string | null;
+    requiresManualReview: boolean;
+    manualReviewReason: string | null;
+    deductions: Array<{
+      id: string;
+      type: 'late_return' | 'fuel' | 'mileage' | 'damage' | 'other';
+      description: string;
+      proposedAmount: string;
+      approvedAmount: string;
+      status: string;
+      evidenceUrls: string[];
+    }>;
+  } | null;
   cancellation: {
+    id: string;
     reason: string | null;
+    cancelledBy: 'customer' | 'host' | 'system';
     refundAmount: string | null;
-    refundStatus: string | null;
-    cancelledAt?: string | null;
+    refundStatus: RefundStatus | null;
+    cancelledAt: string;
+    policyCode: string | null;
+    policyVersion: string | null;
+    originalPaymentAmount: string | null;
+    deductionAmount: string | null;
+    refundProviderReference: string | null;
+    refundRequiresManualReview: boolean;
+    refundManualReviewReason: string | null;
   } | null;
   dispute: {
     id: string;
@@ -441,6 +470,27 @@ export type RenterTrip = {
   } | null;
   capabilities: RenterTripCapabilities;
 };
+
+export const REFUND_STATUSES = ['pending', 'succeeded', 'failed', 'cancelled'] as const;
+export type KnownRefundStatus = (typeof REFUND_STATUSES)[number];
+// Preserve a safe UI fallback when the server adds a status before the app ships.
+export type RefundStatus = KnownRefundStatus | (string & {});
+
+export const DEPOSIT_SETTLEMENT_STATUSES = [
+  'deposit_required',
+  'awaiting_collection',
+  'collected',
+  'settlement_pending',
+  'under_review',
+  'partially_deducted',
+  'refund_pending',
+  'refunded',
+  'settlement_failed',
+  'manual_review',
+  'fully_deducted',
+] as const;
+export type KnownDepositSettlementStatus = (typeof DEPOSIT_SETTLEMENT_STATUSES)[number];
+export type DepositSettlementStatus = KnownDepositSettlementStatus | (string & {});
 
 export type BookingPayment = {
   id: string;
@@ -469,8 +519,10 @@ export type BookingPayment = {
     id: string;
     amount: string;
     currency: string;
-    status: 'pending' | 'succeeded' | 'failed' | 'cancelled';
+    status: RefundStatus;
     reason: string | null;
+    providerRefundId?: string | null;
+    reconciliationError?: string | null;
     createdAt: string;
   }>;
 };
@@ -513,7 +565,21 @@ export type HostBooking = Booking & {
   };
 };
 
-export type HostPayoutStatus = 'pending' | 'completed' | 'cancelled' | 'failed';
+export const HOST_PAYOUT_STATUSES = [
+  'pending',
+  'eligible',
+  'awaiting_approval',
+  'approved',
+  'processing',
+  'paid',
+  'completed',
+  'failed',
+  'reconciliation_required',
+  'on_hold',
+  'cancelled',
+] as const;
+export type KnownHostPayoutStatus = (typeof HOST_PAYOUT_STATUSES)[number];
+export type HostPayoutStatus = KnownHostPayoutStatus | (string & {});
 
 export type HostEarningEntry = {
   id: string;
@@ -522,6 +588,7 @@ export type HostEarningEntry = {
   grossRentalAmount: string;
   platformCommission: string;
   hostNetAmount: string;
+  refundAdjustmentAmount: string;
   payoutStatus: HostPayoutStatus;
   paidAt: string;
   vehicle: {
@@ -544,6 +611,8 @@ export type HostEarningsResponse = {
   thisMonthEarnings: string;
   pendingPayouts: string;
   completedPayouts: string;
+  refundAdjustments: string;
+  manualReviewAdjustments: number;
   items: HostEarningEntry[];
   meta: {
     page: number;
@@ -565,6 +634,12 @@ export type HostDashboard = {
   bookingRequests: number;
   activeTrips: number;
   pendingPayoutAmount: string;
+  totalEligibleEarnings: string;
+  availablePayoutAmount: string;
+  payoutsInProgressAmount: string;
+  completedPayoutAmount: string;
+  refundAdjustmentAmount: string;
+  manualReviewAdjustmentCount: number;
 };
 
 export type HostCalendarEvent = {
@@ -579,12 +654,13 @@ export type HostCalendarEvent = {
 
 export type HostPayoutRecord = {
   id: string;
-  status: string;
+  status: HostPayoutStatus;
   currency: string;
   grossAmount: string;
   platformCommission: string;
   taxWithheld: string;
   netAmount: string;
+  refundAdjustmentAmount: string;
   createdAt: string;
   processedAt: string | null;
 };

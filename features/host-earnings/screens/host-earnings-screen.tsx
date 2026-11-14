@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
+import { getPayoutStatusPresentation } from '@/features/host-earnings/utils/payout-status';
 import { HostBottomNavigation } from '@/features/host/components/host-bottom-navigation';
 import {
   formatMoney,
@@ -47,10 +48,6 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'medium',
   }).format(new Date(value));
-}
-
-function formatStatus(value: string) {
-  return value.replace(/_/g, ' ');
 }
 
 export function HostEarningsScreen() {
@@ -133,6 +130,11 @@ export function HostEarningsScreen() {
                     icon={<CheckCircle2 color="#047857" size={20} />}
                     label="Completed payouts"
                     value={formatMoney(earnings.completedPayouts)}
+                  />
+                  <SummaryTile
+                    icon={<Clock3 color="#A16207" size={20} />}
+                    label="Refund adjustments"
+                    value={formatMoney(earnings.refundAdjustments)}
                   />
                 </View>
 
@@ -243,6 +245,7 @@ function SummaryTile({
 function EarningCard({ entry }: { entry: HostEarningEntry }) {
   const imageUrl = getVehicleImageVariantUrl(entry.vehicle.imageUrl, 'thumbnail');
   const vehicleName = `${entry.vehicle.make} ${entry.vehicle.model}`;
+  const payoutStatus = getPayoutStatusPresentation(entry.payoutStatus);
 
   return (
     <View style={styles.card}>
@@ -259,8 +262,8 @@ function EarningCard({ entry }: { entry: HostEarningEntry }) {
             <Text numberOfLines={1} style={styles.vehicleName}>
               {vehicleName}
             </Text>
-            <View style={[styles.statusBadge, getPayoutStatusStyle(entry.payoutStatus)]}>
-              <Text style={styles.statusText}>{formatStatus(entry.payoutStatus)}</Text>
+            <View style={[styles.statusBadge, getPayoutStatusStyle(payoutStatus.tone)]}>
+              <Text style={styles.statusText}>{payoutStatus.label}</Text>
             </View>
           </View>
           <Text selectable style={styles.reference}>
@@ -273,6 +276,9 @@ function EarningCard({ entry }: { entry: HostEarningEntry }) {
       <View style={styles.breakdown}>
         <MoneyRow label="Rental amount" value={entry.grossRentalAmount} />
         <MoneyRow label="Platform commission" value={entry.platformCommission} />
+        {Number(entry.refundAdjustmentAmount) !== 0 ? (
+          <MoneyRow label="Refund adjustment" value={entry.refundAdjustmentAmount} />
+        ) : null}
         <MoneyRow emphasized label="Host earnings" value={entry.hostNetAmount} />
       </View>
     </View>
@@ -346,16 +352,20 @@ function EarningsSkeleton() {
   );
 }
 
-function getPayoutStatusStyle(status: HostEarningEntry['payoutStatus']) {
-  if (status === 'completed') {
+function getPayoutStatusStyle(tone: 'neutral' | 'positive' | 'warning' | 'danger') {
+  if (tone === 'positive') {
     return styles.statusGreen;
   }
 
-  if (status === 'pending') {
+  if (tone === 'warning') {
     return styles.statusYellow;
   }
 
-  return styles.statusRed;
+  if (tone === 'danger') {
+    return styles.statusRed;
+  }
+
+  return styles.statusNeutral;
 }
 
 const styles = StyleSheet.create({
@@ -548,6 +558,9 @@ const styles = StyleSheet.create({
   },
   statusRed: {
     backgroundColor: '#FEE2E2',
+  },
+  statusNeutral: {
+    backgroundColor: '#EAF4FF',
   },
   reference: {
     color: '#536B91',

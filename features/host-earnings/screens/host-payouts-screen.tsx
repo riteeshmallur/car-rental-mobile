@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMoney } from '@/features/customer/utils/car-formatters';
+import { getPayoutStatusPresentation } from '@/features/host-earnings/utils/payout-status';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { hostsApi } from '@/services/hosts/hosts-api';
 import { type HostPayoutRecord } from '@/types/car';
@@ -19,10 +20,6 @@ import { normalizeApiError } from '@/utils/errors';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(value));
-}
-
-function labelStatus(value: string) {
-  return value.replace(/_/g, ' ');
 }
 
 export function HostPayoutsScreen() {
@@ -102,7 +99,7 @@ export function HostPayoutsScreen() {
 }
 
 function PayoutCard({ payout }: { payout: HostPayoutRecord }) {
-  const isPaid = payout.status.toLowerCase() === 'paid';
+  const status = getPayoutStatusPresentation(payout.status);
 
   return (
     <View style={styles.card}>
@@ -111,9 +108,9 @@ function PayoutCard({ payout }: { payout: HostPayoutRecord }) {
           <CalendarDays color="#536B91" size={17} />
           <Text style={styles.dateText}>{formatDate(payout.createdAt)}</Text>
         </View>
-        <View style={[styles.status, isPaid ? styles.statusPaid : styles.statusPending]}>
-          <Text style={[styles.statusText, isPaid ? styles.statusTextPaid : styles.statusTextPending]}>
-            {labelStatus(payout.status)}
+        <View style={[styles.status, getStatusStyle(status.tone)]}>
+          <Text style={[styles.statusText, getStatusTextStyle(status.tone)]}>
+            {status.label}
           </Text>
         </View>
       </View>
@@ -127,11 +124,28 @@ function PayoutCard({ payout }: { payout: HostPayoutRecord }) {
       {Number(payout.taxWithheld) > 0 ? (
         <PayoutDetail label="Tax withheld" value={`-${formatMoney(payout.taxWithheld)}`} />
       ) : null}
+      {Number(payout.refundAdjustmentAmount) !== 0 ? (
+        <PayoutDetail label="Refund adjustment" value={formatMoney(payout.refundAdjustmentAmount)} />
+      ) : null}
       {payout.processedAt ? (
         <Text style={styles.processed}>Processed {formatDate(payout.processedAt)}</Text>
       ) : null}
     </View>
   );
+}
+
+function getStatusStyle(tone: 'neutral' | 'positive' | 'warning' | 'danger') {
+  if (tone === 'positive') return styles.statusPaid;
+  if (tone === 'danger') return styles.statusFailed;
+  if (tone === 'neutral') return styles.statusNeutral;
+  return styles.statusPending;
+}
+
+function getStatusTextStyle(tone: 'neutral' | 'positive' | 'warning' | 'danger') {
+  if (tone === 'positive') return styles.statusTextPaid;
+  if (tone === 'danger') return styles.statusTextFailed;
+  if (tone === 'neutral') return styles.statusTextNeutral;
+  return styles.statusTextPending;
 }
 
 function PayoutDetail({ label, value }: { label: string; value: string }) {
@@ -197,9 +211,13 @@ const styles = StyleSheet.create({
   status: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 },
   statusPaid: { backgroundColor: '#DCFCE7' },
   statusPending: { backgroundColor: '#FEF3C7' },
+  statusFailed: { backgroundColor: '#FEE2E2' },
+  statusNeutral: { backgroundColor: '#EAF4FF' },
   statusText: { fontSize: 11, fontWeight: '900', textTransform: 'capitalize' },
   statusTextPaid: { color: '#166534' },
   statusTextPending: { color: '#92400E' },
+  statusTextFailed: { color: '#B91C1C' },
+  statusTextNeutral: { color: '#075BC8' },
   totalRow: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
   totalLabel: { color: '#536B91', fontSize: 14, fontWeight: '800' },
   totalValue: { color: '#102550', fontSize: 21, fontWeight: '900' },
