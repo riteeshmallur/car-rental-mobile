@@ -7,7 +7,9 @@ function renderWithProviders(ui) {
   const client = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
-      queries: { retry: false },
+      // React Query otherwise schedules a five-minute cache GC timer after
+      // test queries unmount, which keeps Jest's event loop alive.
+      queries: { gcTime: Infinity, retry: false },
     },
   });
 
