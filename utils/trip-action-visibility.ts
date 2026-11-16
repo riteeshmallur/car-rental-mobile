@@ -11,14 +11,14 @@ export type TripActionVisibility = Pick<
 >;
 
 /**
- * Backend capabilities remain authoritative, but terminal rentals must never
- * offer actions that alter the booked rental window. This also protects users
- * when an older booking response carries stale capability flags.
+ * Backend capabilities remain authoritative. A recorded pickup verification is
+ * additionally required before customers can report a vehicle issue, so the
+ * action is not offered before handover.
  */
 export function getTripActionVisibility(trip: RenterTrip): TripActionVisibility {
   return {
     cancel: trip.capabilities.cancel,
-    reportIssue: trip.capabilities.reportIssue,
+    reportIssue: trip.capabilities.reportIssue && trip.pickup.verifiedAt !== null,
     requestExtension: trip.capabilities.requestExtension,
     review: trip.capabilities.review,
     viewReceipt: trip.capabilities.viewReceipt,
