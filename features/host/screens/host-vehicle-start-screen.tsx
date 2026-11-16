@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { router } from 'expo-router';
 import { ArrowLeft, CarFront, ClipboardList } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   content: {
     flex: 1,
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   heading: {
     color: '#102550',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   body: {
     color: '#536B91',
@@ -141,6 +142,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

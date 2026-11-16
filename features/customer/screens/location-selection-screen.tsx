@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Search, X } from 'lucide-react-native';
@@ -7,8 +9,6 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 26,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   subtitle: {
     color: '#536B91',
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#102550',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   emptyBody: {
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   resultName: {
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   resultMeta: {
     color: '#536B91',

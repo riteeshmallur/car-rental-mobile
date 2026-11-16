@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -15,7 +16,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -393,13 +393,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: '#0F766E',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   title: {
     color: '#102550',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   iconButton: {
     height: 44,
@@ -450,12 +450,12 @@ const styles = StyleSheet.create({
   summaryLabel: {
     color: '#536B91',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   summaryValue: {
     color: '#102550',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   historyHeader: {
     flexDirection: 'row',
@@ -465,12 +465,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   historyCount: {
     color: '#536B91',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   filters: {
     flexDirection: 'row',
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   filterText: {
     color: '#536B91',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   filterTextActive: {
     color: '#0F766E',
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   statusBadge: {
     borderRadius: 999,
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#102550',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   statusGreen: {
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   dateText: {
     color: '#536B91',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   breakdown: {
     gap: 9,
@@ -591,12 +591,12 @@ const styles = StyleSheet.create({
   },
   moneyLabelStrong: {
     color: '#102550',
-    fontWeight: '900',
+    fontWeight: '800',
   },
   moneyValue: {
     color: '#536B91',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   moneyValueStrong: {
     color: '#102550',
@@ -622,12 +622,12 @@ const styles = StyleSheet.create({
   pageButtonText: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   pageText: {
     color: '#536B91',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   disabledButton: {
     opacity: 0.45,
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stateBody: {
     color: '#536B91',
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   stateButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   skeletonContent: {
     gap: 12,

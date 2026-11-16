@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '@/components/typography/app-text';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   body: {
     color: '#536B91',

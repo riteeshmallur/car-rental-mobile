@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { Check, Heart } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   formatDailyPrice,
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   imageFallbackText: {
     color: colors.brand,
     fontSize: 44,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   copy: {
     minWidth: 0,
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 21,
   },
   meta: {
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: colors.brand,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   priceSuffix: {
     color: colors.text,
@@ -190,6 +191,6 @@ const styles = StyleSheet.create({
   bookButtonText: {
     color: colors.surface,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

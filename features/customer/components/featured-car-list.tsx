@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '@/components/typography/app-text';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CarCard } from '@/features/customer/components/car-card';
 import { type Car } from '@/types/car';
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.ink,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   viewAll: {
     color: colors.brand,
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   emptyBody: {
     color: colors.muted,

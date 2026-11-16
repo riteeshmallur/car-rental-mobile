@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { ArrowRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useState } from 'react';
@@ -6,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
   type LayoutChangeEvent,
@@ -17,6 +17,7 @@ import {
 
 import { type SearchFilters } from '@/features/customer/utils/search-route-state';
 import { type VehicleSearchSort } from '@/types/car';
+import { typography } from '@/utils/typography';
 
 const carouselArtwork = {
   city: require('@/assets/images/hopin-carousel-city-drives.png'),
@@ -156,17 +157,10 @@ const styles = StyleSheet.create({
     paddingTop: 18,
   },
   title: {
-    color: '#102550',
-    fontFamily: 'Georgia',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 23,
+    ...typography.cardTitle,
   },
   description: {
-    color: '#536B91',
-    fontSize: 11,
-    fontWeight: '500',
-    lineHeight: 15,
+    ...typography.supporting,
   },
   actionRow: {
     flexDirection: 'row',

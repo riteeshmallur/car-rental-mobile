@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useEffect, useState } from 'react';
 import { type PropsWithChildren, type ReactNode } from 'react';
 import {
@@ -8,7 +9,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.ink,
     fontSize: 31,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 38,
   },
   subtitle: {
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   journeyHeadline: {
     color: '#102550',
     fontSize: 38,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: 0,
     lineHeight: 43,
     textShadowColor: 'rgba(255, 255, 255, 0.28)',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   journeyPanelTitle: {
     color: '#102550',
     fontSize: 29,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 35,
   },
   journeyPanelSubtitle: {

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
@@ -30,7 +31,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1145,7 +1145,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   subtitle: {
     color: '#536B91',
@@ -1188,7 +1188,7 @@ const styles = StyleSheet.create({
   searchDetailTitle: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   searchDetailMeta: {
     color: colors.muted,
@@ -1211,7 +1211,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   actionButtonDisabled: {
     backgroundColor: '#EEF5FC',
@@ -1233,7 +1233,7 @@ const styles = StyleSheet.create({
   filterCountText: {
     color: colors.surface,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   sheetOverlay: {
     flex: 1,
@@ -1289,7 +1289,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.ink,
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   resetButton: {
     minHeight: 42,
@@ -1299,7 +1299,7 @@ const styles = StyleSheet.create({
   resetText: {
     color: colors.brand,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   sheetContent: {
     gap: 20,
@@ -1330,7 +1330,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   chipWrap: {
     flexDirection: 'row',
@@ -1388,7 +1388,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   showButton: {
     paddingVertical: 12,
@@ -1407,7 +1407,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.surface,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   sortOptions: {
     gap: 10,
@@ -1440,7 +1440,7 @@ const styles = StyleSheet.create({
   sortCheck: {
     color: colors.brand,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.8,
@@ -1493,7 +1493,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   ratingPill: {
     minHeight: 28,
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
   ratingText: {
     color: '#92400E',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   vehicleMetaGrid: {
     flexDirection: 'row',
@@ -1560,7 +1560,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   totalPrice: {
     flexShrink: 1,
@@ -1580,7 +1580,7 @@ const styles = StyleSheet.create({
   rentalDaysText: {
     color: '#102550',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   footerLoader: {
     paddingVertical: 18,
@@ -1639,7 +1639,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: '#102550',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   stateBody: {
@@ -1663,7 +1663,7 @@ const styles = StyleSheet.create({
   stateActionText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stateActions: {
     alignSelf: 'stretch',
@@ -1688,6 +1688,6 @@ const styles = StyleSheet.create({
   stateSecondaryActionText: {
     color: '#0B6FE8',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

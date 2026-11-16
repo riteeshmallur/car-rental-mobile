@@ -1,9 +1,11 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { Image } from 'expo-image';
 import { ArrowRight } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { type SearchFilters } from '@/features/customer/utils/search-route-state';
 import { type VehicleSearchSort } from '@/types/car';
+import { typography } from '@/utils/typography';
 
 const categoryArtwork = {
   hatchback: require('@/assets/images/categories/hopin-hatchback-hd.png'),
@@ -100,11 +102,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: '#102550',
-    fontFamily: 'Georgia',
-    fontSize: 27,
-    fontWeight: '700',
-    lineHeight: 33,
+    ...typography.sectionTitle,
   },
   titleCompact: {
     fontSize: 23,

@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { X } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useErrorStore } from '@/store/error-store';

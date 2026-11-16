@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { Bell, UserRound } from 'lucide-react-native';
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { HopInLogo } from '@/components/branding/hopin-logo';
 import { type SafeUser } from '@/types/auth';

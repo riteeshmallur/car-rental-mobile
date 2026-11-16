@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { ChevronDown } from 'lucide-react-native';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { countryCodes } from '@/features/auth/constants/country-codes';
 import { useWebBackGuard } from '@/hooks/use-web-back-guard';

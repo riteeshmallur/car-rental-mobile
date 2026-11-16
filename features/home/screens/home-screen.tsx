@@ -1,7 +1,8 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { carsApi } from '@/services/cars/cars-api';
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
   inlineErrorTitle: {
     color: '#991B1B',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   inlineErrorBody: {
     color: '#B91C1C',

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CalendarClock, MapPin } from 'lucide-react-native';
@@ -7,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#102550',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   content: {
     gap: 16,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   vehicleInitial: {
     color: '#102550',
     fontSize: 34,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   vehicleCopy: {
     flex: 1,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   vehicleTitle: {
     color: '#102550',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   inlineRow: {
     flexDirection: 'row',
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#102550',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   tripRow: {
     flexDirection: 'row',
@@ -428,12 +428,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   totalAmount: {
     color: '#102550',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   primaryButton: {
     minHeight: 52,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   secondaryButton: {
     minHeight: 42,
@@ -458,12 +458,12 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stateTitle: {
     color: '#102550',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   stateBody: {

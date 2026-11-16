@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { Component, type ErrorInfo, type PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useErrorStore } from '@/store/error-store';
 

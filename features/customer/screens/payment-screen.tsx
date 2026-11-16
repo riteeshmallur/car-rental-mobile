@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CircleAlert, CreditCard, LoaderCircle, ShieldCheck } from 'lucide-react-native';
@@ -9,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -469,7 +469,7 @@ function LoadingPaymentState({ label = 'Checking booking and payment status.' }:
 }
 
 const styles = StyleSheet.create({
-  amount: { color: '#102550', fontSize: 28, fontWeight: '900' },
+  amount: { color: '#102550', fontSize: 28, fontWeight: '800' },
   body: { color: '#536B91', fontSize: 14, fontWeight: '700', lineHeight: 21, textAlign: 'center' },
   content: { gap: 16, padding: 18 },
   disabledButton: { backgroundColor: '#536B91' },
@@ -482,13 +482,13 @@ const styles = StyleSheet.create({
   paymentCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
   paymentCardError: { borderColor: '#FECACA' },
   primaryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 8, justifyContent: 'center', minHeight: 52, width: '100%' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   scroll: { flex: 1, minHeight: 0 },
   secondaryButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
-  secondaryButtonText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' },
+  secondaryButtonText: { color: '#0B6FE8', fontSize: 14, fontWeight: '800' },
   secureRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   secureText: { color: '#047857', fontSize: 13, fontWeight: '800' },
   summary: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, gap: 6, padding: 14 },
   summaryLabel: { color: '#536B91', fontSize: 13, fontWeight: '800' },
-  title: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  title: { color: '#102550', fontSize: 20, fontWeight: '800', textAlign: 'center' },
 });

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '@/components/typography/app-text';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Check, ChevronRight } from 'lucide-react-native';
 
 type AddVehicleFooterProps = {
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.82,

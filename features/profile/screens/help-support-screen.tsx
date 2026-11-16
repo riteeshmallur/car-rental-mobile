@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { router } from 'expo-router';
 import {
   ArrowLeft,
@@ -7,7 +8,7 @@ import {
   MessageCircleQuestion,
   Phone,
 } from 'lucide-react-native';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -127,8 +128,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     backgroundColor: colors.surface,
   },
-  eyebrow: { color: colors.muted, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: colors.ink, fontSize: 23, fontWeight: '900' },
+  eyebrow: { color: colors.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  title: { color: colors.ink, fontSize: 23, fontWeight: '800' },
   content: { gap: 12, padding: 16, paddingBottom: 32 },
   hero: {
     alignItems: 'center',
@@ -139,9 +140,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandSoft,
     padding: 20,
   },
-  heroTitle: { color: colors.ink, fontSize: 21, fontWeight: '900' },
+  heroTitle: { color: colors.ink, fontSize: 21, fontWeight: '800' },
   heroBody: { color: colors.text, fontSize: 13, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
-  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: '900', marginTop: 6 },
+  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: '800', marginTop: 6 },
   row: {
     minHeight: 76,
     flexDirection: 'row',
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandSoft,
   },
   rowCopy: { minWidth: 0, flex: 1 },
-  rowTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  rowTitle: { color: colors.ink, fontSize: 15, fontWeight: '800' },
   rowValue: { color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: 2 },
   pressed: { opacity: 0.75 },
 });

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -18,7 +19,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -502,13 +502,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: '#0F766E',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   title: {
     color: '#102550',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   iconButton: {
     height: 44,
@@ -545,14 +545,14 @@ const styles = StyleSheet.create({
   tabText: {
     color: '#536B91',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   tabCount: {
     marginTop: 2,
     color: '#536B91',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   activeTabText: {
     color: '#0F766E',
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   statusBadge: {
     borderRadius: 999,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#102550',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   statusGreen: {
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
   price: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   metaRow: {
     flexDirection: 'row',
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   availability: {
     color: '#536B91',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   changeRequest: {
     gap: 8,
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   changeRequestTitle: {
     color: '#92400E',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   changeRequestBody: {
     color: '#78350F',
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
   changeRequestActionText: {
     color: '#0B6FE8',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   actionGrid: {
     flexDirection: 'row',
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#102550',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stateBox: {
     margin: 16,
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stateBody: {
     color: '#536B91',
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
   stateButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   fab: {
     position: 'absolute',
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
   fabText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   skeletonCard: {
     minHeight: 120,

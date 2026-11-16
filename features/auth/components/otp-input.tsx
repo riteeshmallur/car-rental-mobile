@@ -1,9 +1,10 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { useRef } from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
+  type TextInput as NativeTextInput,
   type TextInputProps,
   View,
 } from 'react-native';
@@ -24,7 +25,7 @@ export function OtpInput({
   onChange,
   value,
 }: OtpInputProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<NativeTextInput>(null);
   const digits = Array.from({ length }, (_, index) => value[index] || '');
 
   const inputProps: TextInputProps = {

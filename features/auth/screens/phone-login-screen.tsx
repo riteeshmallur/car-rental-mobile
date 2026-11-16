@@ -1,9 +1,11 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AuthShell } from '@/features/auth/components/auth-shell';
 import { AuthSubmitButton } from '@/features/auth/components/auth-submit-button';

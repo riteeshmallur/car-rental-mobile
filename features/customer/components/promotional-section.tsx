@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { ChevronRight, ShieldCheck } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { colors, radii } from '@/utils/theme';
 
 export function PromotionalSection() {
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   body: {
     color: colors.text,

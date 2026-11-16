@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { CarFront, Heart, MapPin, Star } from 'lucide-react-native';
@@ -8,7 +9,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 18, paddingTop: 14 },
   header: { marginBottom: 18 },
   headerCopy: { flex: 1, gap: 2 },
-  title: { color: colors.ink, fontSize: 24, fontWeight: '900' },
+  title: { color: colors.ink, fontSize: 24, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   listView: { flex: 1, minHeight: 0 },
   list: { gap: 12, paddingBottom: 28 },
@@ -279,19 +279,19 @@ const styles = StyleSheet.create({
   imageFrame: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: radii.sm, height: 106, justifyContent: 'center', overflow: 'hidden', width: 126 },
   image: { height: '100%', width: '100%' },
   cardCopy: { flex: 1, gap: 8, minWidth: 0 },
-  carName: { color: colors.ink, fontSize: 17, fontWeight: '900' },
+  carName: { color: colors.ink, fontSize: 17, fontWeight: '800' },
   ratingRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   ratingText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
   locationRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   locationText: { color: colors.muted, flex: 1, fontSize: 12, fontWeight: '700' },
-  price: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  price: { color: colors.ink, fontSize: 15, fontWeight: '800' },
   heartButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 19, borderWidth: 1, height: 38, justifyContent: 'center', position: 'absolute', right: 12, top: 12, width: 38 },
   footerLoader: { alignItems: 'center', paddingVertical: 16 },
   stateMessage: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', paddingHorizontal: 28 },
-  stateTitle: { color: colors.ink, fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  stateTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   stateBody: { color: colors.muted, fontSize: 14, fontWeight: '700', lineHeight: 21, textAlign: 'center' },
   retryButton: { backgroundColor: colors.brand, borderRadius: radii.md, marginTop: 8, minHeight: 44, justifyContent: 'center', paddingHorizontal: 18 },
-  retryText: { color: colors.surface, fontSize: 14, fontWeight: '900' },
+  retryText: { color: colors.surface, fontSize: 14, fontWeight: '800' },
   skeletonList: { gap: 12 },
   skeletonCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 12 },
   skeletonImage: { backgroundColor: '#D6E8FF', borderRadius: radii.sm, height: 106, width: 126 },

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import {
@@ -27,7 +28,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
   detailsHeaderTitle: {
     color: colors.ink,
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   detailsHeaderSubtitle: {
     color: colors.muted,
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   galleryCountText: {
     color: colors.surface,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   heroButton: {
     height: 44,
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   vehicleTitle: {
     color: colors.ink,
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   ratingRow: {
     flexDirection: 'row',
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
   ratingText: {
     color: '#8A5A00',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   specGrid: {
     flexWrap: 'wrap',
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
   specValue: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'capitalize',
   },
   specLabel: {
@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
   tripTitle: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   section: {
     gap: 12,
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.ink,
     fontSize: 19,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   featureWrap: {
     flexDirection: 'row',
@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: '#166534',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   paragraph: {
     color: colors.text,
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
   locationTitle: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   hostCard: {
     flexDirection: 'row',
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   availability: {
     flexDirection: 'row',
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
   availabilityTitle: {
     color: colors.success,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   availabilityTitleBlocked: {
     color: colors.error,
@@ -1103,12 +1103,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   reviewRating: {
     color: '#92400E',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stickyBar: {
     flexShrink: 0,
@@ -1128,7 +1128,7 @@ const styles = StyleSheet.create({
   stickyDaily: {
     color: '#102550',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   stickyTotal: {
     color: '#536B91',
@@ -1154,7 +1154,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.8,
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: '#102550',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   stateBody: {
@@ -1222,6 +1222,6 @@ const styles = StyleSheet.create({
   stateActionText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Banknote, CalendarDays } from 'lucide-react-native';
 import {
@@ -6,7 +7,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -196,13 +196,13 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76, paddingHorizontal: 16 },
   headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: '#102550', fontSize: 23, fontWeight: '900' },
+  eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  title: { color: '#102550', fontSize: 23, fontWeight: '800' },
   listContent: { gap: 12, padding: 16, paddingBottom: 32 },
   introCard: { alignItems: 'center', backgroundColor: '#ECFDF3', borderColor: '#BBF7D0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 14 },
   introIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, height: 42, justifyContent: 'center', width: 42 },
   introCopy: { flex: 1 },
-  introTitle: { color: '#14532D', fontSize: 16, fontWeight: '900' },
+  introTitle: { color: '#14532D', fontSize: 16, fontWeight: '800' },
   introBody: { color: '#166534', fontSize: 12, fontWeight: '700', lineHeight: 18, marginTop: 2 },
   card: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 14, borderWidth: 1, gap: 10, padding: 14 },
   cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
@@ -213,22 +213,22 @@ const styles = StyleSheet.create({
   statusPending: { backgroundColor: '#FEF3C7' },
   statusFailed: { backgroundColor: '#FEE2E2' },
   statusNeutral: { backgroundColor: '#EAF4FF' },
-  statusText: { fontSize: 11, fontWeight: '900', textTransform: 'capitalize' },
+  statusText: { fontSize: 11, fontWeight: '800', textTransform: 'capitalize' },
   statusTextPaid: { color: '#166534' },
   statusTextPending: { color: '#92400E' },
   statusTextFailed: { color: '#B91C1C' },
   statusTextNeutral: { color: '#075BC8' },
   totalRow: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
   totalLabel: { color: '#536B91', fontSize: 14, fontWeight: '800' },
-  totalValue: { color: '#102550', fontSize: 21, fontWeight: '900' },
+  totalValue: { color: '#102550', fontSize: 21, fontWeight: '800' },
   line: { backgroundColor: '#D6E8FF', height: 1 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
   detailLabel: { color: '#536B91', fontSize: 13, fontWeight: '600' },
   detailValue: { color: '#536B91', fontSize: 13, fontWeight: '800' },
   processed: { color: '#047857', fontSize: 12, fontWeight: '800' },
   state: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 28 },
-  stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  stateTitle: { color: '#102550', fontSize: 20, fontWeight: '800', textAlign: 'center' },
   stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
   retryButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', minHeight: 46, minWidth: 124, paddingHorizontal: 16 },
-  retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 });

@@ -1,8 +1,10 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { Image } from 'expo-image';
 import { type ReactNode } from 'react';
-import { Platform, StyleSheet, Text, type ViewStyle, View } from 'react-native';
+import { Platform, StyleSheet, type ViewStyle, View } from 'react-native';
 
 import { useIstGreeting } from '@/hooks/use-ist-greeting';
+import { typography } from '@/utils/typography';
 
 const bengaluruHomeBackground = require('@/assets/images/hopin-bengaluru-home-background.png');
 
@@ -91,16 +93,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   title: {
-    color: '#102550',
-    fontFamily: 'Georgia',
-    fontSize: 35,
-    fontWeight: '700',
-    lineHeight: 39,
+    ...typography.hero,
   },
   subtitle: {
-    color: '#536B91',
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 21,
+    ...typography.supporting,
   },
 });

@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -11,8 +13,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.ink,
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   subtitle: {
     color: colors.muted,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   input: {
     minHeight: 50,
@@ -391,12 +391,12 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.surface,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   secondaryButtonText: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   disabledButton: {
     opacity: 0.55,
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: colors.ink,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   stateText: {

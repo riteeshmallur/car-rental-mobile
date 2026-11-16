@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import {
   Briefcase,
   Heart,
@@ -6,7 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { type Href, router, usePathname } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shadows } from '@/utils/theme';
 

@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { ArrowRight, CarFront } from 'lucide-react-native';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { type HostEntryCopy } from '@/features/host/utils/host-entry';
 import { colors, radii } from '@/utils/theme';
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.ink,
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   body: {
     color: colors.text,
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: colors.surface,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.76,

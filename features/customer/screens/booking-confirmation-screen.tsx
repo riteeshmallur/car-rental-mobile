@@ -1,8 +1,9 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   BookingShell,
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#14532D',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   body: {
     color: '#166534',
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#102550',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   rowText: {
     color: '#536B91',
@@ -181,6 +182,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

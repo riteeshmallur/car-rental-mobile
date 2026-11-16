@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -6,7 +7,7 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -165,24 +166,24 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76, paddingHorizontal: 16 },
   headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12, flex: 1, minWidth: 0 },
   iconButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  eyebrow: { color: colors.muted, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: colors.ink, fontSize: 22, fontWeight: '900' },
+  eyebrow: { color: colors.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  title: { color: colors.ink, fontSize: 22, fontWeight: '800' },
   content: { gap: 12, padding: 16, paddingBottom: 32 },
   intro: { color: colors.muted, fontSize: 13, fontWeight: '600', lineHeight: 19 },
   section: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, gap: 12, padding: 14 },
   sectionHeader: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: '900' },
+  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: '800' },
   body: { color: colors.muted, fontSize: 13, fontWeight: '600', lineHeight: 20 },
   status: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 10, flexDirection: 'row', gap: 9, padding: 10 },
   statusCopy: { flex: 1 },
-  statusTitle: { color: colors.text, fontSize: 13, fontWeight: '900', textTransform: 'capitalize' },
+  statusTitle: { color: colors.text, fontSize: 13, fontWeight: '800', textTransform: 'capitalize' },
   statusText: { color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: 2 },
   primaryButton: { alignItems: 'center', backgroundColor: colors.brand, borderRadius: radii.md, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 46, paddingHorizontal: 16 },
-  primaryText: { color: colors.surface, fontSize: 14, fontWeight: '900' },
+  primaryText: { color: colors.surface, fontSize: 14, fontWeight: '800' },
   dangerButton: { alignItems: 'center', backgroundColor: colors.errorSoft, borderColor: '#FECACA', borderRadius: radii.md, borderWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 46, paddingHorizontal: 16 },
-  dangerText: { color: '#B91C1C', fontSize: 14, fontWeight: '900' },
+  dangerText: { color: '#B91C1C', fontSize: 14, fontWeight: '800' },
   error: { color: '#B91C1C', fontSize: 12, fontWeight: '700', lineHeight: 18 },
   disabled: { opacity: 0.55 },
   state: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 28 },
-  stateTitle: { color: colors.ink, fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  stateTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', textAlign: 'center' },
 });

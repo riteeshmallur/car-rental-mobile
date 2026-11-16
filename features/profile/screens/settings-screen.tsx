@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { router } from 'expo-router';
 import {
   ArrowLeft,
@@ -7,7 +8,7 @@ import {
   ShieldCheck,
   UserRound,
 } from 'lucide-react-native';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 76, paddingHorizontal: 16 },
   backButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 24, fontWeight: '900' },
+  title: { color: colors.ink, fontSize: 24, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13, fontWeight: '600', marginTop: 2 },
   content: { gap: 14, padding: 16, paddingBottom: 32 },
   intro: { color: colors.muted, fontSize: 13, fontWeight: '600', lineHeight: 20 },

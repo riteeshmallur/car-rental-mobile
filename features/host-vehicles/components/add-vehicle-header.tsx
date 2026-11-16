@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '@/components/typography/app-text';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ArrowLeft, Check, RotateCcw } from 'lucide-react-native';
 
 export type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 25,
   },
   subtitle: {
@@ -211,6 +212,6 @@ const styles = StyleSheet.create({
   retryText: {
     color: '#B91C1C',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
 });

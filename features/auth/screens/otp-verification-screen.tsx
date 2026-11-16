@@ -1,9 +1,10 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AuthShell } from '@/features/auth/components/auth-shell';
 import { AuthSubmitButton } from '@/features/auth/components/auth-submit-button';

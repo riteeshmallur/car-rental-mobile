@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRef, useState } from 'react';
 
 import {
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   noticeTitle: {
     color: '#075BC8',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   noticeBody: {
     color: '#075BC8',
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
   policyTitle: {
     color: '#102550',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   policyBody: {
     color: '#536B91',
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
   policyLinkText: {
     color: '#0B6FE8',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   primaryButton: {
     minHeight: 52,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   disabledButton: {
     backgroundColor: '#536B91',
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     color: '#991B1B',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   errorText: {
     color: '#B91C1C',

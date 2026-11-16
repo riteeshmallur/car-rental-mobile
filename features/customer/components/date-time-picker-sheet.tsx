@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -6,7 +7,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -576,14 +576,14 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  title: { flex: 1, color: colors.ink, fontSize: 21, lineHeight: 27, fontWeight: '900' },
-  clearText: { color: colors.success, fontSize: 18, fontWeight: '900' },
+  title: { flex: 1, color: colors.ink, fontSize: 21, lineHeight: 27, fontWeight: '800' },
+  clearText: { color: colors.success, fontSize: 18, fontWeight: '800' },
   rangeText: { color: colors.text, fontSize: 15, fontWeight: '600' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 10 },
-  weekDay: { width: '14.28%', color: colors.muted, fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  weekDay: { width: '14.28%', color: colors.muted, fontSize: 15, fontWeight: '800', textAlign: 'center' },
   calendarHeader: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   monthButton: { height: 34, width: 34, alignItems: 'center', justifyContent: 'center' },
-  monthTitle: { color: colors.ink, fontSize: 22, fontWeight: '900' },
+  monthTitle: { color: colors.ink, fontSize: 22, fontWeight: '800' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 },
   dayCell: { height: 42, width: '14.28%', alignItems: 'center', justifyContent: 'center', borderRadius: 21 },
   dayCellInRange: { backgroundColor: colors.brandSoft, borderRadius: 0 },
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   dayCellReturnSelected: { backgroundColor: colors.brand, borderRadius: 0 },
   dayCellDisabled: { opacity: 0.35 },
   dayText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
-  dayTextSelected: { color: colors.surface, fontWeight: '900' },
+  dayTextSelected: { color: colors.surface, fontWeight: '800' },
   dayTextDisabled: { color: colors.muted },
   selectionHint: { minHeight: 24, alignItems: 'center', justifyContent: 'center' },
   selectionHintText: { color: colors.brand, fontSize: 13, fontWeight: '800' },
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
   },
   timeRow: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
   timeColumn: { flex: 1 },
-  timeTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center', textTransform: 'uppercase' },
+  timeTitle: { color: colors.ink, fontSize: 18, fontWeight: '800', textAlign: 'center', textTransform: 'uppercase' },
   timeViewport: { height: timeViewportHeight, marginTop: 6, position: 'relative' },
   timeScroll: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   timeChoices: { alignItems: 'center', paddingVertical: timeChoicePadding },
@@ -638,5 +638,5 @@ const styles = StyleSheet.create({
   validationError: { color: colors.error, fontSize: 13, fontWeight: '800', textAlign: 'center' },
   continueButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.success, marginTop: 2 },
   continueButtonDisabled: { opacity: 0.45 },
-  continueText: { color: colors.surface, fontSize: 17, fontWeight: '900', letterSpacing: 1 },
+  continueText: { color: colors.surface, fontSize: 17, fontWeight: '800', letterSpacing: 1 },
 });

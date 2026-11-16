@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { AppText as Text } from '@/components/typography/app-text';
+import { ActivityIndicator, Pressable, StyleSheet,} from 'react-native';
 import { colors, radii, shadows } from '@/utils/theme';
 
 type AuthSubmitButtonProps = {

@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ArrowLeft, BadgeCheck, Building2, CreditCard, FileCheck2, IdCard, Landmark, ShieldCheck } from 'lucide-react-native';
@@ -9,8 +11,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

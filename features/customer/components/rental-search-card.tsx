@@ -1,10 +1,11 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import {
   ArrowRight,
   CalendarDays,
   ChevronDown,
   MapPin,
 } from 'lucide-react-native';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   formatDate,

@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -6,8 +8,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Check, Search, X } from 'lucide-react-native';
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#102550',
     fontSize: 19,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   closeButton: {
     height: 40,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: '#0F766E',
-    fontWeight: '900',
+    fontWeight: '800',
   },
   emptyText: {
     color: '#536B91',

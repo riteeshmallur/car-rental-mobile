@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
@@ -21,7 +22,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   hostCtaText: {
     color: colors.surface,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   hostAccent: {
     position: 'absolute',
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.surface,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   disabledButton: {
     opacity: 0.55,
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     color: colors.ink,
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   sheetBody: {
     color: colors.muted,
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
   sheetNoText: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   sheetYesButton: {
     minHeight: 52,
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
   sheetYesText: {
     color: colors.surface,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   state: {
     minHeight: 280,
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: colors.ink,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   stateBody: {

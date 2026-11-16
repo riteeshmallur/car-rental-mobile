@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput } from '@/components/typography/app-text-input';
+import { AppText as Text } from '@/components/typography/app-text';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -32,8 +34,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -2800,7 +2800,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     color: '#102550',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 30,
   },
   stepHelper: {
@@ -2838,7 +2838,7 @@ const styles = StyleSheet.create({
   label: {
     color: '#102550',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   input: {
     minHeight: 52,
@@ -2877,7 +2877,7 @@ const styles = StyleSheet.create({
   currencyPrefix: {
     color: '#102550',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   inputError: {
     borderColor: '#DC2626',
@@ -2918,7 +2918,7 @@ const styles = StyleSheet.create({
   segmentText: {
     color: '#536B91',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   segmentTextActive: {
     color: '#08765B',
@@ -2981,7 +2981,7 @@ const styles = StyleSheet.create({
   locationResultTitle: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   locationResultMeta: {
     color: '#536B91',
@@ -3069,7 +3069,7 @@ const styles = StyleSheet.create({
   featureSectionTitle: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   featureEmptyText: {
     color: '#536B91',
@@ -3090,7 +3090,7 @@ const styles = StyleSheet.create({
   chipText: {
     color: '#102550',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   popularChip: {
     minHeight: 42,
@@ -3137,7 +3137,7 @@ const styles = StyleSheet.create({
   photoPickerText: {
     color: '#102550',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
     marginTop: 3,
   },
   photoPickerSubtext: {
@@ -3161,7 +3161,7 @@ const styles = StyleSheet.create({
   photoCount: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   photoCountRow: {
     alignItems: 'center',
@@ -3211,7 +3211,7 @@ const styles = StyleSheet.create({
   coverBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   setCoverButton: {
     position: 'absolute',
@@ -3225,7 +3225,7 @@ const styles = StyleSheet.create({
   setCoverButtonText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   addMorePhotoTile: {
     width: '48%',
@@ -3244,7 +3244,7 @@ const styles = StyleSheet.create({
   addMorePhotoText: {
     color: '#0B6FE8',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   documentNotice: {
     flexDirection: 'row',
@@ -3295,7 +3295,7 @@ const styles = StyleSheet.create({
   clearDateText: {
     color: '#0B6FE8',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   advanceNoticeOptions: {
     flexDirection: 'row',
@@ -3352,12 +3352,12 @@ const styles = StyleSheet.create({
   datePickerTitle: {
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   datePickerDone: {
     color: '#0B6FE8',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   webDateCalendar: {
     gap: 12,
@@ -3387,7 +3387,7 @@ const styles = StyleSheet.create({
   webDateCalendarMonth: {
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   webDateCalendarGrid: {
     flexDirection: 'row',
@@ -3402,7 +3402,7 @@ const styles = StyleSheet.create({
   webDateCalendarWeekday: {
     color: '#536B91',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   webDateCalendarDay: {
     height: 40,
@@ -3465,7 +3465,7 @@ const styles = StyleSheet.create({
   toggleText: {
     color: '#102550',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 20,
   },
   toggleCopy: {
@@ -3539,7 +3539,7 @@ const styles = StyleSheet.create({
   reviewVehicleName: {
     color: '#102550',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   reviewVehicleMeta: {
     color: '#536B91',
@@ -3582,7 +3582,7 @@ const styles = StyleSheet.create({
   reviewLabel: {
     color: '#102550',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   reviewValue: {
     color: '#536B91',
@@ -3593,11 +3593,11 @@ const styles = StyleSheet.create({
   reviewCurrencyIcon: {
     color: '#0B6FE8',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   rentalSettings: { gap: 18 },
   rentalSettingsHeading: { gap: 3 },
-  rentalSettingsTitle: { color: '#102550', fontSize: 17, fontWeight: '900' },
+  rentalSettingsTitle: { color: '#102550', fontSize: 17, fontWeight: '800' },
   rentalSettingsHelper: { color: '#536B91', fontSize: 13, fontWeight: '600', lineHeight: 19 },
   rentalSettingsDivider: { backgroundColor: '#D6E8FF', height: 1 },
   submissionComplete: {
@@ -3619,7 +3619,7 @@ const styles = StyleSheet.create({
   submissionTitle: {
     color: '#102550',
     fontSize: 23,
-    fontWeight: '900',
+    fontWeight: '800',
     textAlign: 'center',
   },
   submissionBody: {
@@ -3641,7 +3641,7 @@ const styles = StyleSheet.create({
   submissionButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   errorBox: {
     borderRadius: 8,

@@ -1,3 +1,4 @@
+import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CalendarClock, CarFront } from 'lucide-react-native';
@@ -8,7 +9,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -375,13 +375,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, minHeight: 0, paddingHorizontal: 16 },
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76 },
   eyebrow: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
-  title: { color: '#102550', fontSize: 26, fontWeight: '900' },
+  title: { color: '#102550', fontSize: 26, fontWeight: '800' },
   iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   tab: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 5, justifyContent: 'center', minHeight: 44, paddingHorizontal: 8 },
   activeTab: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' },
   tabText: { color: '#536B91', fontSize: 13, fontWeight: '800' },
-  tabCount: { color: '#536B91', fontSize: 12, fontWeight: '900' },
+  tabCount: { color: '#536B91', fontSize: 12, fontWeight: '800' },
   activeTabText: { color: '#FFFFFF' },
   list: { flex: 1, minHeight: 0 },
   listContent: { gap: 12, paddingBottom: 22 },
@@ -392,19 +392,19 @@ const styles = StyleSheet.create({
   imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 82, justifyContent: 'center', width: 92 },
   cardCopy: { flex: 1, gap: 5, minWidth: 0 },
   titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
-  vehicleName: { color: '#102550', flex: 1, flexShrink: 1, fontSize: 17, fontWeight: '900', lineHeight: 22 },
+  vehicleName: { color: '#102550', flex: 1, flexShrink: 1, fontSize: 17, fontWeight: '800', lineHeight: 22 },
   reference: { color: '#536B91', fontSize: 12, fontWeight: '700' },
   location: { color: '#536B91', fontSize: 13, fontWeight: '700', lineHeight: 18 },
   statusBadge: { alignSelf: 'flex-start', borderRadius: 12, flexShrink: 1, paddingHorizontal: 8, paddingVertical: 4 },
-  statusText: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   upcomingStatus: { backgroundColor: '#EAF4FF' }, paymentRequiredStatus: { backgroundColor: '#FFF7D6' }, awaitingHostStatus: { backgroundColor: '#EAF4FF' }, activeStatus: { backgroundColor: '#DCFCE7' }, returnStatus: { backgroundColor: '#FFF7D6' }, completedStatus: { backgroundColor: '#E6F8F2' }, cancelledStatus: { backgroundColor: '#FEECEC' }, disputedStatus: { backgroundColor: '#FFF0E5' },
   defaultStatusText: { color: '#0B6FE8' }, paymentRequiredStatusText: { color: '#A16207' }, awaitingHostStatusText: { color: '#0B6FE8' }, returnStatusText: { color: '#A16207' }, cancelledStatusText: { color: '#B91C1C' }, disputedStatusText: { color: '#C2410C' },
   dateRow: { alignItems: 'center', borderTopColor: '#D6E8FF', borderTopWidth: 1, flexDirection: 'row', gap: 10, paddingTop: 12 },
   dateCopy: { flex: 1, minWidth: 0 }, dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#102550', fontSize: 12, fontWeight: '800', lineHeight: 17, marginTop: 2 },
-  footerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, paymentLabel: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'capitalize' }, paymentAmount: { color: '#102550', fontSize: 16, fontWeight: '900' },
-  completePaymentButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 10, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, completePaymentText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  viewBookingButton: { alignItems: 'center', borderColor: '#0B6FE8', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, viewBookingText: { color: '#0B6FE8', fontSize: 14, fontWeight: '900' },
+  footerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, paymentLabel: { color: '#536B91', fontSize: 12, fontWeight: '800', textTransform: 'capitalize' }, paymentAmount: { color: '#102550', fontSize: 16, fontWeight: '800' },
+  completePaymentButton: { alignItems: 'center', backgroundColor: '#0B6FE8', borderRadius: 10, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, completePaymentText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  viewBookingButton: { alignItems: 'center', borderColor: '#0B6FE8', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, viewBookingText: { color: '#0B6FE8', fontSize: 14, fontWeight: '800' },
   pressed: { opacity: 0.75 },
   skeletonList: { gap: 12, paddingTop: 4 }, skeletonCard: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, flexDirection: 'row', gap: 12, padding: 14 }, skeletonImage: { backgroundColor: '#E8EEF7', borderRadius: 12, height: 82, width: 100 }, skeletonCopy: { flex: 1, gap: 10 }, skeletonWide: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 14, width: '80%' }, skeletonMedium: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '65%' }, skeletonShort: { backgroundColor: '#E8EEF7', borderRadius: 5, height: 11, width: '42%' },
-  state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '900', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '800', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center' }, retryButton: { backgroundColor: '#0B6FE8', borderRadius: 12, justifyContent: 'center', marginTop: 4, minHeight: 44, paddingHorizontal: 18 }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 });
