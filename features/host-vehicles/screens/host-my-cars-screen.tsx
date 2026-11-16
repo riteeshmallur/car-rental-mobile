@@ -309,6 +309,25 @@ function HostCarCard({
         </View>
       </View>
 
+      {vehicle.status === 'CHANGES_REQUIRED' ? (
+        <View accessibilityLabel="Listing review feedback" style={styles.changeRequest}>
+          <Text style={styles.changeRequestTitle}>Changes requested</Text>
+          <Text style={styles.changeRequestBody}>
+            {vehicle.changeRequest?.reason ??
+              'Review each listing section and update the information requested by the HopIn review team before resubmitting.'}
+          </Text>
+          <Pressable
+            accessibilityLabel="Edit requested listing changes"
+            accessibilityRole="button"
+            onPress={onEdit}
+            style={({ pressed }) => [styles.changeRequestAction, pressed && styles.pressed]}
+          >
+            <Pencil color="#0B6FE8" size={16} />
+            <Text style={styles.changeRequestActionText}>Edit requested changes</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.actionGrid}>
         <ActionButton icon={<Pencil color="#102550" size={16} />} label="Edit" onPress={onEdit} />
         {vehicle.status === 'PUBLISHED' ? (
@@ -338,7 +357,13 @@ function HostCarCard({
           <ActionButton
             disabled={isSubmitting}
             icon={<Check color="#047857" size={16} />}
-            label={isSubmitting ? 'Submitting' : 'Submit listing'}
+            label={
+              isSubmitting
+                ? 'Submitting'
+                : vehicle.status === 'CHANGES_REQUIRED'
+                  ? 'Resubmit for review'
+                  : 'Submit listing'
+            }
             onPress={onSubmit}
           />
         ) : null}
@@ -626,6 +651,40 @@ const styles = StyleSheet.create({
   },
   availability: {
     color: '#536B91',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  changeRequest: {
+    gap: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+    padding: 12,
+  },
+  changeRequestTitle: {
+    color: '#92400E',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  changeRequestBody: {
+    color: '#78350F',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  changeRequestAction: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+  },
+  changeRequestActionText: {
+    color: '#0B6FE8',
     fontSize: 12,
     fontWeight: '900',
   },

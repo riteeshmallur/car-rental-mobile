@@ -224,6 +224,10 @@ export type HostVehicleListing = {
   imageUrls: string[];
   listingDocuments: Record<string, unknown>;
   availabilitySettings: Record<string, unknown>;
+  changeRequest: {
+    reason: string;
+    requestedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
