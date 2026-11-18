@@ -11,11 +11,12 @@ import {
   Power,
   SlidersHorizontal,
 } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -66,6 +67,8 @@ export function HostMyCarsScreen() {
     ? (requestedTab as MyCarsTab)
     : 'all';
   const goBack = useSafeBack({ fallback: '/(host)/profile' });
+  const [pauseConfirmationVehicle, setPauseConfirmationVehicle] = useState<HostVehicleListing | null>(null);
+  const [pauseError, setPauseError] = useState<string | null>(null);
 
   const vehiclesQuery = useQuery({
     queryKey: ['host', 'vehicles'],
@@ -76,16 +79,21 @@ export function HostMyCarsScreen() {
     mutationFn: ({ id, operation }: { id: string; operation: 'pause' | 'resume' }) =>
       operation === 'pause' ? vehiclesApi.pause(id) : vehiclesApi.resume(id),
     onSuccess: (_, variables) => {
+      if (variables.operation === 'pause') {
+        setPauseConfirmationVehicle(null);
+        setPauseError(null);
+      }
       void queryClient.invalidateQueries({ queryKey: ['host', 'vehicles'] });
       void queryClient.invalidateQueries({ queryKey: ['host', 'dashboard'] });
-      Alert.alert(
-        variables.operation === 'pause' ? 'Listing paused' : 'Listing resumed',
-        variables.operation === 'pause'
-          ? 'Customers can no longer book this vehicle.'
-          : 'Customers can book this vehicle again.',
-      );
     },
-    onError: (error) => Alert.alert('Listing update failed', normalizeApiError(error).message),
+    onError: (error, variables) => {
+      const message = normalizeApiError(error).message;
+      if (variables.operation === 'pause') {
+        setPauseError(message);
+        return;
+      }
+      Alert.alert('Listing update failed', message);
+    },
   });
   const submitMutation = useMutation({
     mutationFn: vehiclesApi.submit,
@@ -124,18 +132,14 @@ export function HostMyCarsScreen() {
   const isRefreshing = vehiclesQuery.isRefetching && !vehiclesQuery.isLoading;
 
   const pauseVehicle = (vehicle: HostVehicleListing) => {
-    Alert.alert(
-      'Pause listing',
-      `Pause ${getVehicleName(vehicle)}? Customers will not be able to book it.`,
-      [
-        { text: 'Keep active', style: 'cancel' },
-        {
-          text: 'Pause',
-          style: 'destructive',
-          onPress: () => statusMutation.mutate({ id: vehicle.id, operation: 'pause' }),
-        },
-      ],
-    );
+    setPauseError(null);
+    setPauseConfirmationVehicle(vehicle);
+  };
+
+  const confirmPauseVehicle = () => {
+    if (pauseConfirmationVehicle) {
+      statusMutation.mutate({ id: pauseConfirmationVehicle.id, operation: 'pause' });
+    }
   };
 
   const resumeVehicle = (vehicle: HostVehicleListing) => {
@@ -251,7 +255,58 @@ export function HostMyCarsScreen() {
         </Pressable>
       </View>
       <HostBottomNavigation />
+      <PauseListingDialog
+        error={pauseError}
+        isPausing={statusMutation.isPending}
+        onClose={() => {
+          if (!statusMutation.isPending) {
+            setPauseConfirmationVehicle(null);
+            setPauseError(null);
+          }
+        }}
+        onConfirm={confirmPauseVehicle}
+        vehicle={pauseConfirmationVehicle}
+      />
     </SafeAreaView>
+  );
+}
+
+function PauseListingDialog({
+  error,
+  isPausing,
+  onClose,
+  onConfirm,
+  vehicle,
+}: {
+  error: string | null;
+  isPausing: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  vehicle: HostVehicleListing | null;
+}) {
+  if (!vehicle) return null;
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible>
+      <View style={styles.modalOverlay}>
+        <Pressable accessible={false} disabled={isPausing} onPress={onClose} style={styles.modalBackdrop} />
+        <View accessibilityLabel="Pause listing confirmation" accessibilityViewIsModal style={styles.pauseDialog}>
+          <Text accessibilityRole="header" style={styles.pauseDialogTitle}>Pause listing?</Text>
+          <Text style={styles.pauseDialogBody}>
+            Pause {getVehicleName(vehicle)}? Customers will not be able to book it until you resume the listing.
+          </Text>
+          {error ? <Text accessibilityRole="alert" style={styles.pauseDialogError}>{error}</Text> : null}
+          <View style={styles.pauseDialogActions}>
+            <Pressable accessibilityLabel="Keep listing active" accessibilityRole="button" disabled={isPausing} onPress={onClose} style={[styles.pauseDialogButton, styles.pauseDialogCancel, isPausing && styles.disabled]}>
+              <Text style={styles.pauseDialogCancelText}>Keep active</Text>
+            </Pressable>
+            <Pressable accessibilityLabel="Confirm pause listing" accessibilityRole="button" disabled={isPausing} onPress={onConfirm} style={[styles.pauseDialogButton, styles.pauseDialogConfirm, isPausing && styles.disabled]}>
+              <Text style={styles.pauseDialogConfirmText}>{isPausing ? 'Pausing' : 'Pause listing'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -806,5 +861,71 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.45,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(15, 37, 80, 0.42)',
+  },
+  pauseDialog: {
+    width: '100%',
+    maxWidth: 420,
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+  },
+  pauseDialogTitle: {
+    color: '#102550',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  pauseDialogBody: {
+    color: '#536B91',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 21,
+  },
+  pauseDialogError: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  pauseDialogActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  pauseDialogButton: {
+    minHeight: 44,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+  pauseDialogCancel: {
+    borderWidth: 1,
+    borderColor: '#D6E8FF',
+    backgroundColor: '#FFFFFF',
+  },
+  pauseDialogConfirm: {
+    backgroundColor: '#B91C1C',
+  },
+  pauseDialogCancelText: {
+    color: '#102550',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  pauseDialogConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });
