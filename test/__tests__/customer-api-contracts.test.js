@@ -39,7 +39,12 @@ describe('customer live API contracts', () => {
   });
 
   it('creates quote, booking, payment, and trip requests with backend-authoritative payment data', () => {
-    quotesApi.create({ carId: 'vehicle-1', pickupAt: '2026-10-20T10:00:00.000Z', returnAt: '2026-10-22T18:00:00.000Z' });
+    quotesApi.create({
+      carId: 'vehicle-1',
+      locationId: '3e4da1b4-8eb5-4eb7-891e-0f29c8d32fa1',
+      pickupAt: '2026-10-20T10:00:00.000Z',
+      returnAt: '2026-10-22T18:00:00.000Z',
+    });
     bookingsApi.create({ idempotencyKey: 'booking-1', quoteId: 'quote-1' });
     bookingsApi.createPayment('booking-1', { idempotencyKey: 'payment-booking-1' });
     bookingsApi.findPayment('booking-1');
@@ -55,7 +60,16 @@ describe('customer live API contracts', () => {
       razorpaySignature: 'signature',
     });
 
-    expect(mockApiRequest).toHaveBeenNthCalledWith(1, expect.objectContaining({ method: 'POST', url: '/quotes' }));
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, {
+      data: {
+        carId: 'vehicle-1',
+        locationId: '3e4da1b4-8eb5-4eb7-891e-0f29c8d32fa1',
+        pickupAt: '2026-10-20T10:00:00.000Z',
+        returnAt: '2026-10-22T18:00:00.000Z',
+      },
+      method: 'POST',
+      url: '/quotes',
+    });
     expect(mockApiRequest).toHaveBeenNthCalledWith(2, {
       data: { quoteId: 'quote-1' },
       headers: { 'Idempotency-Key': 'booking-1' },

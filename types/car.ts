@@ -690,6 +690,7 @@ export type PricingRule = {
 
 export type CreateQuotePayload = {
   carId: string;
+  locationId: string;
   pickupAt: string;
   returnAt: string;
 };

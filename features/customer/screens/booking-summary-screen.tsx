@@ -41,6 +41,7 @@ export function BookingSummaryScreen() {
   const vehicleId = getParam(params.vehicleId);
   const searchRouteState = readSearchRouteState(params);
   const origin = getParam(params.origin);
+  const locationId = searchRouteState.locationId;
   const pickupDateTime = searchRouteState.pickupDateTime;
   const returnDateTime = searchRouteState.returnDateTime;
   const setQuote = useBookingFlowStore((state) => state.setQuote);
@@ -77,6 +78,7 @@ export function BookingSummaryScreen() {
     mutationFn: () =>
       quotesApi.create({
         carId: vehicleId ?? '',
+        locationId: locationId ?? '',
         pickupAt: pickupDateTime ?? '',
         returnAt: returnDateTime ?? '',
       }),
@@ -84,14 +86,14 @@ export function BookingSummaryScreen() {
   });
 
   useEffect(() => {
-    if (!vehicleId || !pickupDateTime || !returnDateTime || didRequestQuote.current) {
+    if (!vehicleId || !locationId || !pickupDateTime || !returnDateTime || didRequestQuote.current) {
       return;
     }
 
     didRequestQuote.current = true;
     setQuote(null);
     quoteMutation.mutate();
-  }, [pickupDateTime, quoteMutation, returnDateTime, setQuote, vehicleId]);
+  }, [locationId, pickupDateTime, quoteMutation, returnDateTime, setQuote, vehicleId]);
 
   const retryQuote = () => {
     didRequestQuote.current = true;
@@ -99,11 +101,11 @@ export function BookingSummaryScreen() {
     quoteMutation.mutate();
   };
 
-  if (!vehicleId || !pickupDateTime || !returnDateTime) {
+  if (!vehicleId || !locationId || !pickupDateTime || !returnDateTime) {
     return (
       <BookingShell fallback={backFallback} title="Booking summary">
         <StateMessage
-          body="Return to vehicle details and continue with selected rental dates."
+          body="Return to the vehicle details and select a pickup location and rental dates before continuing."
           title="Booking details missing"
         />
       </BookingShell>
