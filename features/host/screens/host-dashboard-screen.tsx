@@ -137,9 +137,9 @@ export function HostDashboardScreen() {
               />
               <MetricCard
                 icon={<CalendarCheck2 color="#0B6FE8" size={20} />}
-                label="Booking requests"
+                label="Upcoming bookings"
                 value={String(dashboardQuery.data.bookingRequests)}
-                onPress={() => router.push({ pathname: '/(host)/bookings', params: { tab: 'requests' } } as never)}
+                onPress={() => router.push({ pathname: '/(host)/bookings', params: { tab: 'current' } } as never)}
               />
               <MetricCard
                 icon={<Clock3 color="#536B91" size={20} />}

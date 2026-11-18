@@ -20,8 +20,8 @@ type HostBookingsTab = 'requests' | 'current' | 'history';
 type BookingDecision = { action: 'approve' | 'reject'; booking: HostBooking };
 
 const tabs: Array<{ label: string; value: HostBookingsTab }> = [
-  { label: 'Requests', value: 'requests' },
-  { label: 'Current', value: 'current' },
+  { label: 'Legacy requests', value: 'requests' },
+  { label: 'Upcoming', value: 'current' },
   { label: 'History', value: 'history' },
 ];
 
