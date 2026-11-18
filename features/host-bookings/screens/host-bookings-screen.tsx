@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CalendarClock, CarFront, Check, User, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
@@ -17,6 +17,7 @@ import { getBookingStatusLabel, getBookingTotal } from '@/utils/booking-presenta
 import { normalizeApiError } from '@/utils/errors';
 
 type HostBookingsTab = 'requests' | 'current' | 'history';
+type BookingDecision = { action: 'approve' | 'reject'; booking: HostBooking };
 
 const tabs: Array<{ label: string; value: HostBookingsTab }> = [
   { label: 'Requests', value: 'requests' },
@@ -24,7 +25,11 @@ const tabs: Array<{ label: string; value: HostBookingsTab }> = [
   { label: 'History', value: 'history' },
 ];
 
-const formatDateTime = (value: string) => new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 const label = (value: string | null | undefined) => (value ?? 'Pending').replace(/_/g, ' ');
 
 export function HostBookingsScreen() {
@@ -33,44 +38,244 @@ export function HostBookingsScreen() {
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeTab = getActiveTab(requestedTab);
   const [selectedBooking, setSelectedBooking] = useState<HostBooking | null>(null);
+  const [bookingDecision, setBookingDecision] = useState<BookingDecision | null>(null);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const goBack = useSafeBack({ fallback: '/(host)/profile' });
-  const bookingsQuery = useQuery({ queryKey: ['host', 'bookings'], queryFn: hostsApi.listBookings, refetchOnMount: 'always', refetchOnReconnect: true, staleTime: 0 });
-  const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['host', 'bookings'] }); void queryClient.invalidateQueries({ queryKey: ['host', 'dashboard'] }); };
-  const approveMutation = useMutation({ mutationFn: (id: string) => bookingsApi.approve(id), onSuccess: () => { setSelectedBooking(null); invalidate(); Alert.alert('Booking accepted', 'The renter can now continue with their trip.'); }, onError: (error) => actionError(error) });
-  const rejectMutation = useMutation({ mutationFn: (id: string) => bookingsApi.reject(id), onSuccess: () => { setSelectedBooking(null); invalidate(); Alert.alert('Booking declined', 'The renter will be notified that the request was declined.'); }, onError: (error) => actionError(error) });
+  const bookingsQuery = useQuery({
+    queryKey: ['host', 'bookings'],
+    queryFn: hostsApi.listBookings,
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
+    staleTime: 0,
+  });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['host', 'bookings'] });
+    void queryClient.invalidateQueries({ queryKey: ['host', 'dashboard'] });
+  };
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => bookingsApi.approve(id),
+    onSuccess: () => {
+      setBookingDecision(null);
+      setDecisionError(null);
+      setSelectedBooking(null);
+      invalidate();
+    },
+    onError: (error) => setDecisionError(normalizeApiError(error).message),
+  });
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => bookingsApi.reject(id),
+    onSuccess: () => {
+      setBookingDecision(null);
+      setDecisionError(null);
+      setSelectedBooking(null);
+      invalidate();
+    },
+    onError: (error) => setDecisionError(normalizeApiError(error).message),
+  });
   const isUpdating = approveMutation.isPending || rejectMutation.isPending;
   const groups = useMemo(() => {
-    const result: Record<HostBookingsTab, HostBooking[]> = { requests: [], current: [], history: [] };
+    const result: Record<HostBookingsTab, HostBooking[]> = {
+      requests: [],
+      current: [],
+      history: [],
+    };
     for (const booking of bookingsQuery.data ?? []) result[getBookingTab(booking.hostPhase)].push(booking);
     return result;
   }, [bookingsQuery.data]);
-  const confirm = (booking: HostBooking, action: 'approve' | 'reject') => {
-    Alert.alert(action === 'approve' ? 'Accept booking request' : 'Decline booking request', `${action === 'approve' ? 'Accept' : 'Decline'} ${booking.customer.name}'s request for ${booking.vehicle.make} ${booking.vehicle.model}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: action === 'approve' ? 'Accept' : 'Decline', style: action === 'reject' ? 'destructive' : 'default', onPress: () => action === 'approve' ? approveMutation.mutate(booking.id) : rejectMutation.mutate(booking.id) },
-    ]);
+  const requestDecision = (booking: HostBooking, action: BookingDecision['action']) => {
+    setDecisionError(null);
+    setBookingDecision({ booking, action });
   };
-  return <SafeAreaView edges={['top']} style={styles.safeArea}><View style={styles.container}>
-    <View style={styles.header}><View style={styles.headerLead}><Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={goBack} style={styles.iconButton}><ArrowLeft color="#102550" size={20} /></Pressable><View><Text style={styles.eyebrow}>Host</Text><Text style={styles.title}>Bookings</Text></View></View></View>
-    <View accessibilityRole="tablist" style={styles.tabs}>{tabs.map((tab) => { const active = tab.value === activeTab; return <Pressable accessibilityLabel={`${tab.label}, ${groups[tab.value].length} bookings`} accessibilityRole="tab" accessibilityState={{ selected: active }} key={tab.value} onPress={() => router.setParams({ tab: tab.value })} style={[styles.tab, active && styles.activeTab]}><Text numberOfLines={1} style={[styles.tabText, active && styles.activeTabText]}>{tab.label}</Text><Text style={[styles.tabCount, active && styles.activeTabText]}>{groups[tab.value].length}</Text></Pressable>; })}</View>
-    {bookingsQuery.isLoading ? <LoadingState /> : bookingsQuery.isError ? <StateMessage actionLabel="Try again" body={normalizeApiError(bookingsQuery.error).message} onAction={() => void bookingsQuery.refetch()} title="Bookings could not load" /> : <FlatList contentContainerStyle={styles.listContent} data={groups[activeTab]} keyExtractor={(item) => item.id} ListEmptyComponent={<StateMessage body={`No ${tabs.find((item) => item.value === activeTab)?.label.toLowerCase()} bookings.`} title="Nothing here" />} refreshControl={<RefreshControl refreshing={bookingsQuery.isRefetching && !bookingsQuery.isLoading} onRefresh={() => void bookingsQuery.refetch()} />} renderItem={({ item }) => <BookingCard booking={item} disabled={isUpdating} onApprove={() => confirm(item, 'approve')} onReject={() => confirm(item, 'reject')} onView={() => setSelectedBooking(item)} />} showsVerticalScrollIndicator={false} style={styles.list} />}
-  </View><HostBottomNavigation /><BookingDetailSheet booking={selectedBooking} isUpdating={isUpdating} onApprove={() => selectedBooking && confirm(selectedBooking, 'approve')} onClose={() => setSelectedBooking(null)} onReject={() => selectedBooking && confirm(selectedBooking, 'reject')} /></SafeAreaView>;
+  const submitDecision = () => {
+    if (!bookingDecision) return;
+    if (bookingDecision.action === 'approve') approveMutation.mutate(bookingDecision.booking.id);
+    else rejectMutation.mutate(bookingDecision.booking.id);
+  };
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerLead}>
+            <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={goBack} style={styles.iconButton}>
+              <ArrowLeft color="#102550" size={20} />
+            </Pressable>
+            <View>
+              <Text style={styles.eyebrow}>Host</Text>
+              <Text style={styles.title}>Bookings</Text>
+            </View>
+          </View>
+        </View>
+        <View accessibilityRole="tablist" style={styles.tabs}>
+          {tabs.map((tab) => {
+            const active = tab.value === activeTab;
+            return (
+              <Pressable accessibilityLabel={`${tab.label}, ${groups[tab.value].length} bookings`} accessibilityRole="tab" accessibilityState={{ selected: active }} key={tab.value} onPress={() => router.setParams({ tab: tab.value })} style={[styles.tab, active && styles.activeTab]}>
+                <Text numberOfLines={1} style={[styles.tabText, active && styles.activeTabText]}>
+                  {tab.label}
+                </Text>
+                <Text style={[styles.tabCount, active && styles.activeTabText]}>{groups[tab.value].length}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {bookingsQuery.isLoading ? <LoadingState /> : bookingsQuery.isError ? <StateMessage actionLabel="Try again" body={normalizeApiError(bookingsQuery.error).message} onAction={() => void bookingsQuery.refetch()} title="Bookings could not load" /> : <FlatList contentContainerStyle={styles.listContent} data={groups[activeTab]} keyExtractor={(item) => item.id} ListEmptyComponent={<StateMessage body={`No ${tabs.find((item) => item.value === activeTab)?.label.toLowerCase()} bookings.`} title="Nothing here" />} refreshControl={<RefreshControl refreshing={bookingsQuery.isRefetching && !bookingsQuery.isLoading} onRefresh={() => void bookingsQuery.refetch()} />} renderItem={({ item }) => <BookingCard booking={item} disabled={isUpdating} onApprove={() => requestDecision(item, 'approve')} onReject={() => requestDecision(item, 'reject')} onView={() => setSelectedBooking(item)} />} showsVerticalScrollIndicator={false} style={styles.list} />}
+      </View>
+      <HostBottomNavigation />
+      <BookingDetailSheet booking={selectedBooking} isUpdating={isUpdating} onApprove={() => selectedBooking && requestDecision(selectedBooking, 'approve')} onClose={() => setSelectedBooking(null)} onReject={() => selectedBooking && requestDecision(selectedBooking, 'reject')} />
+      <BookingDecisionDialog
+        decision={bookingDecision}
+        error={decisionError}
+        isUpdating={isUpdating}
+        onClose={() => {
+          if (!isUpdating) setBookingDecision(null);
+        }}
+        onConfirm={submitDecision}
+      />
+    </SafeAreaView>
+  );
 }
 
 function BookingCard({ booking, disabled, onApprove, onReject, onView }: { booking: HostBooking; disabled: boolean; onApprove: () => void; onReject: () => void; onView: () => void }) {
   const imageUrl = getVehicleImageVariantUrl(booking.vehicle.imageUrl, 'thumbnail');
   const canRespond = booking.hostPhase === 'requests' && booking.manualApprovalRequired;
-  return <View style={styles.card}><Pressable accessibilityRole="button" onPress={onView} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>{imageUrl ? <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} /> : <View style={styles.imageFallback}><CarFront color="#102550" size={28} /></View>}<View style={styles.cardCopy}><View style={styles.titleRow}><Text numberOfLines={1} style={styles.vehicleName}>{booking.vehicle.make} {booking.vehicle.model}</Text><Text style={[styles.status, statusStyle(booking.hostPhase)]}>{getBookingStatusLabel(booking)}</Text></View><View style={styles.customerRow}><User color="#536B91" size={15} /><Text numberOfLines={1} style={styles.customer}>{booking.customer.name}</Text></View><Text style={styles.reference}>Ref {booking.reference.slice(0, 8).toUpperCase()}</Text></View></Pressable><View style={styles.window}><DateLine label="Pickup" value={formatDateTime(booking.pickupAt)} /><DateLine label="Return" value={formatDateTime(booking.returnAt)} /></View><View style={styles.amountRow}><Text style={styles.muted}>Booking total</Text><Text style={styles.amount}>{formatMoney(getBookingTotal(booking))}</Text></View><View style={styles.actions}>{canRespond ? <><ActionButton disabled={disabled} icon={<Check color="#15803D" size={17} />} label="Accept" onPress={onApprove} variant="success" /><ActionButton disabled={disabled} icon={<X color="#B91C1C" size={17} />} label="Decline" onPress={onReject} variant="danger" /></> : null}<ActionButton label="View details" onPress={onView} /></View></View>;
+  return (
+    <View style={styles.card}>
+      <Pressable accessibilityRole="button" onPress={onView} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>
+        {imageUrl ? (
+          <CachedVehicleImage style={styles.vehicleImage} uri={imageUrl} />
+        ) : (
+          <View style={styles.imageFallback}>
+            <CarFront color="#102550" size={28} />
+          </View>
+        )}
+        <View style={styles.cardCopy}>
+          <View style={styles.titleRow}>
+            <Text numberOfLines={1} style={styles.vehicleName}>
+              {booking.vehicle.make} {booking.vehicle.model}
+            </Text>
+            <Text style={[styles.status, statusStyle(booking.hostPhase)]}>{getBookingStatusLabel(booking)}</Text>
+          </View>
+          <View style={styles.customerRow}>
+            <User color="#536B91" size={15} />
+            <Text numberOfLines={1} style={styles.customer}>
+              {booking.customer.name}
+            </Text>
+          </View>
+          <Text style={styles.reference}>Ref {booking.reference.slice(0, 8).toUpperCase()}</Text>
+        </View>
+      </Pressable>
+      <View style={styles.window}>
+        <DateLine label="Pickup" value={formatDateTime(booking.pickupAt)} />
+        <DateLine label="Return" value={formatDateTime(booking.returnAt)} />
+      </View>
+      <View style={styles.amountRow}>
+        <Text style={styles.muted}>Booking total</Text>
+        <Text style={styles.amount}>{formatMoney(getBookingTotal(booking))}</Text>
+      </View>
+      <View style={styles.actions}>
+        {canRespond ? (
+          <>
+            <ActionButton disabled={disabled} icon={<Check color="#15803D" size={17} />} label="Accept" onPress={onApprove} variant="success" />
+            <ActionButton disabled={disabled} icon={<X color="#B91C1C" size={17} />} label="Decline" onPress={onReject} variant="danger" />
+          </>
+        ) : null}
+        <ActionButton label="View details" onPress={onView} />
+      </View>
+    </View>
+  );
 }
 
 function BookingDetailSheet({ booking, isUpdating, onApprove, onClose, onReject }: { booking: HostBooking | null; isUpdating: boolean; onApprove: () => void; onClose: () => void; onReject: () => void }) {
   if (!booking) return null;
   const canRespond = booking.hostPhase === 'requests' && booking.manualApprovalRequired;
-  return <Modal animationType="slide" onRequestClose={onClose} transparent visible><View accessibilityViewIsModal style={styles.modal}><Pressable accessible={false} onPress={onClose} style={styles.backdrop} /><SafeAreaView accessibilityLabel="Booking details" edges={['bottom']} style={styles.sheet}><View style={styles.handle} /><View style={styles.sheetHeader}><Text accessibilityRole="header" style={styles.sheetTitle}>Booking details</Text><Pressable accessibilityLabel="Close booking details" accessibilityRole="button" accessibilityState={{ disabled: isUpdating }} disabled={isUpdating} onPress={onClose}><Text style={styles.closeText}>Close</Text></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent}><Info label="Customer" value={booking.customer.name} /><Info label="Vehicle" value={`${booking.vehicle.make} ${booking.vehicle.model}`} /><Info label="Pickup" value={formatDateTime(booking.pickupAt)} /><Info label="Return" value={formatDateTime(booking.returnAt)} /><Info label="Booking status" value={getBookingStatusLabel(booking)} /><Info label="Payment" value={label(booking.paymentStatus)} /><Info label="Booking total" value={formatMoney(getBookingTotal(booking))} />{canRespond ? <View style={styles.sheetActions}><ActionButton disabled={isUpdating} label={isUpdating ? 'Updating' : 'Accept request'} onPress={onApprove} variant="success" /><ActionButton disabled={isUpdating} label="Decline request" onPress={onReject} variant="danger" /></View> : null}</ScrollView></SafeAreaView></View></Modal>;
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible>
+      <View accessibilityViewIsModal style={styles.modal}>
+        <Pressable accessible={false} onPress={onClose} style={styles.backdrop} />
+        <SafeAreaView accessibilityLabel="Booking details" edges={['bottom']} style={styles.sheet}>
+          <View style={styles.handle} />
+          <View style={styles.sheetHeader}>
+            <Text accessibilityRole="header" style={styles.sheetTitle}>
+              Booking details
+            </Text>
+            <Pressable accessibilityLabel="Close booking details" accessibilityRole="button" accessibilityState={{ disabled: isUpdating }} disabled={isUpdating} onPress={onClose}>
+              <Text style={styles.closeText}>Close</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.sheetContent}>
+            <Info label="Customer" value={booking.customer.name} />
+            <Info label="Vehicle" value={`${booking.vehicle.make} ${booking.vehicle.model}`} />
+            <Info label="Pickup" value={formatDateTime(booking.pickupAt)} />
+            <Info label="Return" value={formatDateTime(booking.returnAt)} />
+            <Info label="Booking status" value={getBookingStatusLabel(booking)} />
+            <Info label="Payment" value={label(booking.paymentStatus)} />
+            <Info label="Booking total" value={formatMoney(getBookingTotal(booking))} />
+            {canRespond ? (
+              <View style={styles.sheetActions}>
+                <ActionButton disabled={isUpdating} label={isUpdating ? 'Updating' : 'Accept request'} onPress={onApprove} variant="success" />
+                <ActionButton disabled={isUpdating} label="Decline request" onPress={onReject} variant="danger" />
+              </View>
+            ) : null}
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
 }
 
-function DateLine({ label: title, value }: { label: string; value: string }) { return <View style={styles.dateLine}><CalendarClock color="#536B91" size={16} /><View><Text style={styles.dateLabel}>{title}</Text><Text style={styles.dateValue}>{value}</Text></View></View>; }
-function Info({ label: title, value }: { label: string; value: string }) { return <View style={styles.info}><Text style={styles.infoLabel}>{title}</Text><Text style={styles.infoValue}>{value}</Text></View>; }
+function BookingDecisionDialog({ decision, error, isUpdating, onClose, onConfirm }: { decision: BookingDecision | null; error: string | null; isUpdating: boolean; onClose: () => void; onConfirm: () => void }) {
+  if (!decision) return null;
+  const accepting = decision.action === 'approve';
+  const action = accepting ? 'Accept' : 'Decline';
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible>
+      <View accessibilityViewIsModal style={styles.decisionModal}>
+        <Pressable accessible={false} disabled={isUpdating} onPress={onClose} style={styles.backdrop} />
+        <View style={styles.decisionCard}>
+          <Text accessibilityRole="header" style={styles.decisionTitle}>
+            {action} booking request?
+          </Text>
+          <Text style={styles.decisionBody}>
+            {action} {decision.booking.customer.name}'s request for {decision.booking.vehicle.make} {decision.booking.vehicle.model}?
+          </Text>
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.decisionError}>
+              {error}
+            </Text>
+          ) : null}
+          <View style={styles.decisionActions}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: isUpdating }} disabled={isUpdating} onPress={onClose} style={[styles.decisionButton, styles.decisionCancel]}>
+              <Text style={styles.decisionCancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: isUpdating }} disabled={isUpdating} onPress={onConfirm} style={[styles.decisionButton, accepting ? styles.decisionAccept : styles.decisionDecline]}>
+              <Text style={styles.decisionConfirmText}>{isUpdating ? `${action}ing` : action}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function DateLine({ label: title, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.dateLine}>
+      <CalendarClock color="#536B91" size={16} />
+      <View>
+        <Text style={styles.dateLabel}>{title}</Text>
+        <Text style={styles.dateValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+function Info({ label: title, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.info}>
+      <Text style={styles.infoLabel}>{title}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
 function getActiveTab(tab: string | undefined): HostBookingsTab {
   if (tab === 'upcoming' || tab === 'active' || tab === 'current') return 'current';
   if (tab === 'completed' || tab === 'cancelled' || tab === 'history') return 'history';
@@ -81,12 +286,301 @@ function getBookingTab(phase: HostBookingPhase): HostBookingsTab {
   if (phase === 'completed' || phase === 'cancelled') return 'history';
   return 'requests';
 }
-function ActionButton({ disabled, icon, label: title, onPress, variant = 'default' }: { disabled?: boolean; icon?: React.ReactNode; label: string; onPress: () => void; variant?: 'default' | 'success' | 'danger' }) { return <Pressable accessibilityLabel={title} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.actionButton, variant === 'success' && styles.successButton, variant === 'danger' && styles.dangerButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>{icon}<Text style={[styles.actionText, variant === 'success' && styles.successText, variant === 'danger' && styles.dangerText]}>{title}</Text></Pressable>; }
-function LoadingState() { return <View style={styles.loading}><ActivityIndicator color="#0B6FE8" /><Text style={styles.muted}>Loading bookings</Text></View>; }
-function StateMessage({ actionLabel, body, onAction, title }: { actionLabel?: string; body: string; onAction?: () => void; title: string }) { return <View style={styles.state}><Text style={styles.stateTitle}>{title}</Text><Text style={styles.stateBody}>{body}</Text>{actionLabel && onAction ? <Pressable accessibilityRole="button" onPress={onAction} style={styles.retry}><Text style={styles.retryText}>{actionLabel}</Text></Pressable> : null}</View>; }
-function actionError(error: unknown) { Alert.alert('Booking update failed', normalizeApiError(error).message); }
-function statusStyle(phase: HostBookingPhase) { if (phase === 'requests') return styles.requestStatus; if (phase === 'active') return styles.activeStatus; if (phase === 'completed') return styles.completeStatus; if (phase === 'cancelled') return styles.cancelStatus; return styles.upcomingStatus; }
+function ActionButton({ disabled, icon, label: title, onPress, variant = 'default' }: { disabled?: boolean; icon?: React.ReactNode; label: string; onPress: () => void; variant?: 'default' | 'success' | 'danger' }) {
+  return (
+    <Pressable accessibilityLabel={title} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.actionButton, variant === 'success' && styles.successButton, variant === 'danger' && styles.dangerButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      {icon}
+      <Text style={[styles.actionText, variant === 'success' && styles.successText, variant === 'danger' && styles.dangerText]}>{title}</Text>
+    </Pressable>
+  );
+}
+function LoadingState() {
+  return (
+    <View style={styles.loading}>
+      <ActivityIndicator color="#0B6FE8" />
+      <Text style={styles.muted}>Loading bookings</Text>
+    </View>
+  );
+}
+function StateMessage({ actionLabel, body, onAction, title }: { actionLabel?: string; body: string; onAction?: () => void; title: string }) {
+  return (
+    <View style={styles.state}>
+      <Text style={styles.stateTitle}>{title}</Text>
+      <Text style={styles.stateBody}>{body}</Text>
+      {actionLabel && onAction ? (
+        <Pressable accessibilityRole="button" onPress={onAction} style={styles.retry}>
+          <Text style={styles.retryText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+function statusStyle(phase: HostBookingPhase) {
+  if (phase === 'requests') return styles.requestStatus;
+  if (phase === 'active') return styles.activeStatus;
+  if (phase === 'completed') return styles.completeStatus;
+  if (phase === 'cancelled') return styles.cancelStatus;
+  return styles.upcomingStatus;
+}
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F9FF' }, container: { flex: 1, minHeight: 0, paddingHorizontal: 16 }, header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 76 }, headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12 }, iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 }, eyebrow: { color: '#536B91', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }, title: { color: '#102550', fontSize: 24, fontWeight: '800' }, tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 }, tab: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 12, borderWidth: 1, flex: 1, gap: 2, justifyContent: 'center', minHeight: 52, minWidth: 0, paddingHorizontal: 6 }, activeTab: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' }, tabText: { color: '#536B91', fontSize: 12, fontWeight: '800' }, tabCount: { color: '#536B91', fontSize: 12, fontWeight: '800' }, activeTabText: { color: '#FFFFFF' }, list: { flex: 1, minHeight: 0 }, listContent: { gap: 12, paddingBottom: 24 }, card: { backgroundColor: '#FFFFFF', borderColor: '#D6E8FF', borderRadius: 16, borderWidth: 1, gap: 12, padding: 14 }, cardTop: { flexDirection: 'row', gap: 12 }, vehicleImage: { backgroundColor: '#F3F9FF', borderRadius: 12, height: 78, width: 94 }, imageFallback: { alignItems: 'center', backgroundColor: '#EAF4FF', borderRadius: 12, height: 78, justifyContent: 'center', width: 94 }, cardCopy: { flex: 1, gap: 5, minWidth: 0 }, titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 }, vehicleName: { color: '#102550', flex: 1, fontSize: 16, fontWeight: '800' }, status: { borderRadius: 10, fontSize: 10, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 4, textTransform: 'uppercase' }, requestStatus: { backgroundColor: '#FFF7D6', color: '#A16207' }, activeStatus: { backgroundColor: '#DCFCE7', color: '#15803D' }, completeStatus: { backgroundColor: '#E6F8F2', color: '#047857' }, cancelStatus: { backgroundColor: '#FEECEC', color: '#B91C1C' }, upcomingStatus: { backgroundColor: '#EAF4FF', color: '#0B6FE8' }, customerRow: { alignItems: 'center', flexDirection: 'row', gap: 5 }, customer: { color: '#536B91', fontSize: 13, fontWeight: '700' }, reference: { color: '#536B91', fontSize: 12, fontWeight: '700' }, window: { borderTopColor: '#D6E8FF', borderTopWidth: 1, flexDirection: 'row', gap: 8, paddingTop: 10 }, dateLine: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 6, minWidth: 0 }, dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' }, dateValue: { color: '#102550', fontSize: 12, fontWeight: '800', lineHeight: 17 }, amountRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, muted: { color: '#536B91', fontSize: 13, fontWeight: '700' }, amount: { color: '#102550', fontSize: 16, fontWeight: '800' }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, actionButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#BFDBFE', borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', minHeight: 42, paddingHorizontal: 12 }, actionText: { color: '#0B6FE8', fontSize: 13, fontWeight: '800' }, successButton: { backgroundColor: '#ECFDF3', borderColor: '#BBF7D0' }, successText: { color: '#15803D' }, dangerButton: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }, dangerText: { color: '#B91C1C' }, disabled: { opacity: 0.5 }, pressed: { opacity: 0.75 }, loading: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' }, state: { alignItems: 'center', flexGrow: 1, gap: 10, justifyContent: 'center', padding: 28 }, stateTitle: { color: '#102550', fontSize: 20, fontWeight: '800', textAlign: 'center' }, stateBody: { color: '#536B91', fontSize: 14, fontWeight: '600', lineHeight: 20, textAlign: 'center' }, retry: { backgroundColor: '#0B6FE8', borderRadius: 12, marginTop: 4, minHeight: 44, paddingHorizontal: 18, justifyContent: 'center' }, retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' }, modal: { flex: 1, justifyContent: 'flex-end' }, backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(15,23,42,0.42)' }, sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '82%' }, handle: { alignSelf: 'center', backgroundColor: '#D6E8FF', borderRadius: 3, height: 5, marginTop: 10, width: 42 }, sheetHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }, sheetTitle: { color: '#102550', fontSize: 20, fontWeight: '800' }, closeText: { color: '#0B6FE8', fontSize: 14, fontWeight: '800' }, sheetContent: { gap: 10, padding: 20, paddingBottom: 28 }, info: { borderTopColor: '#D6E8FF', borderTopWidth: 1, gap: 4, paddingTop: 10 }, infoLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' }, infoValue: { color: '#102550', fontSize: 15, fontWeight: '800', lineHeight: 21 }, sheetActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  safeArea: { flex: 1, backgroundColor: '#F3F9FF' },
+  container: { flex: 1, minHeight: 0, paddingHorizontal: 16 },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 76,
+  },
+  headerLead: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D6E8FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  eyebrow: {
+    color: '#536B91',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  title: { color: '#102550', fontSize: 24, fontWeight: '800' },
+  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tab: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D6E8FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    gap: 2,
+    justifyContent: 'center',
+    minHeight: 52,
+    minWidth: 0,
+    paddingHorizontal: 6,
+  },
+  activeTab: { backgroundColor: '#0B6FE8', borderColor: '#0B6FE8' },
+  tabText: { color: '#536B91', fontSize: 12, fontWeight: '800' },
+  tabCount: { color: '#536B91', fontSize: 12, fontWeight: '800' },
+  activeTabText: { color: '#FFFFFF' },
+  list: { flex: 1, minHeight: 0 },
+  listContent: { gap: 12, paddingBottom: 24 },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D6E8FF',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  cardTop: { flexDirection: 'row', gap: 12 },
+  vehicleImage: {
+    backgroundColor: '#F3F9FF',
+    borderRadius: 12,
+    height: 78,
+    width: 94,
+  },
+  imageFallback: {
+    alignItems: 'center',
+    backgroundColor: '#EAF4FF',
+    borderRadius: 12,
+    height: 78,
+    justifyContent: 'center',
+    width: 94,
+  },
+  cardCopy: { flex: 1, gap: 5, minWidth: 0 },
+  titleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
+  vehicleName: { color: '#102550', flex: 1, fontSize: 16, fontWeight: '800' },
+  status: {
+    borderRadius: 10,
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    textTransform: 'uppercase',
+  },
+  requestStatus: { backgroundColor: '#FFF7D6', color: '#A16207' },
+  activeStatus: { backgroundColor: '#DCFCE7', color: '#15803D' },
+  completeStatus: { backgroundColor: '#E6F8F2', color: '#047857' },
+  cancelStatus: { backgroundColor: '#FEECEC', color: '#B91C1C' },
+  upcomingStatus: { backgroundColor: '#EAF4FF', color: '#0B6FE8' },
+  customerRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
+  customer: { color: '#536B91', fontSize: 13, fontWeight: '700' },
+  reference: { color: '#536B91', fontSize: 12, fontWeight: '700' },
+  window: {
+    borderTopColor: '#D6E8FF',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 10,
+  },
+  dateLine: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minWidth: 0,
+  },
+  dateLabel: { color: '#536B91', fontSize: 11, fontWeight: '800' },
+  dateValue: {
+    color: '#102550',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
+  amountRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  muted: { color: '#536B91', fontSize: 13, fontWeight: '700' },
+  amount: { color: '#102550', fontSize: 16, fontWeight: '800' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actionButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 12,
+  },
+  actionText: { color: '#0B6FE8', fontSize: 13, fontWeight: '800' },
+  successButton: { backgroundColor: '#ECFDF3', borderColor: '#BBF7D0' },
+  successText: { color: '#15803D' },
+  dangerButton: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  dangerText: { color: '#B91C1C' },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.75 },
+  loading: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' },
+  state: {
+    alignItems: 'center',
+    flexGrow: 1,
+    gap: 10,
+    justifyContent: 'center',
+    padding: 28,
+  },
+  stateTitle: {
+    color: '#102550',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  stateBody: {
+    color: '#536B91',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  retry: {
+    backgroundColor: '#0B6FE8',
+    borderRadius: 12,
+    marginTop: 4,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    justifyContent: 'center',
+  },
+  retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  modal: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(15,23,42,0.42)',
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '82%',
+  },
+  handle: {
+    alignSelf: 'center',
+    backgroundColor: '#D6E8FF',
+    borderRadius: 3,
+    height: 5,
+    marginTop: 10,
+    width: 42,
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  sheetTitle: { color: '#102550', fontSize: 20, fontWeight: '800' },
+  closeText: { color: '#0B6FE8', fontSize: 14, fontWeight: '800' },
+  sheetContent: { gap: 10, padding: 20, paddingBottom: 28 },
+  info: {
+    borderTopColor: '#D6E8FF',
+    borderTopWidth: 1,
+    gap: 4,
+    paddingTop: 10,
+  },
+  infoLabel: { color: '#536B91', fontSize: 12, fontWeight: '800' },
+  infoValue: {
+    color: '#102550',
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 21,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  decisionModal: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  decisionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    gap: 12,
+    maxWidth: 440,
+    padding: 22,
+    width: '100%',
+  },
+  decisionTitle: { color: '#102550', fontSize: 20, fontWeight: '800' },
+  decisionBody: {
+    color: '#536B91',
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  decisionError: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  decisionActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  decisionButton: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  decisionCancel: {
+    backgroundColor: '#F3F9FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+  },
+  decisionAccept: { backgroundColor: '#15803D' },
+  decisionDecline: { backgroundColor: '#B91C1C' },
+  decisionCancelText: { color: '#0B6FE8', fontSize: 14, fontWeight: '800' },
+  decisionConfirmText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 });

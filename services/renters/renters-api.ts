@@ -26,6 +26,15 @@ export type RenterFavouritesResponse = {
   };
 };
 
+type RenterFavouritesApiResponse = {
+  items: RenterFavourite[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+};
+
 export type RenterNotification = {
   id: string;
   type: string;
@@ -63,12 +72,23 @@ export type RenterReviewsResponse = {
 };
 
 export const rentersApi = {
-  getFavourites(page = 1, limit = 20) {
-    return apiRequest<RenterFavouritesResponse>({
+  async getFavourites(page = 1, limit = 20): Promise<RenterFavouritesResponse> {
+    const response = await apiRequest<RenterFavouritesApiResponse>({
       method: 'GET',
       url: '/renters/me/favourites',
       params: { page, limit },
     });
+
+    return {
+      items: response.items,
+      meta: {
+        page: response.page,
+        limit: response.limit,
+        total: response.total,
+        totalPages: response.totalPages,
+        hasNextPage: response.hasNextPage,
+      },
+    };
   },
   addFavourite(vehicleId: string) {
     return apiRequest<{ vehicleId: string; favourited: boolean }>({

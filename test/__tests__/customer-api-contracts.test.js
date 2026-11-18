@@ -11,8 +11,17 @@ const { vehiclesApi } = require('@/services/vehicles/vehicles-api');
 describe('customer live API contracts', () => {
   beforeEach(() => mockApiRequest.mockReset());
 
-  it('covers favourites, notifications, reviews, and vehicle details', () => {
-    rentersApi.getFavourites(2, 10);
+  it('covers favourites, notifications, reviews, and vehicle details', async () => {
+    mockApiRequest.mockResolvedValueOnce({
+      hasNextPage: false,
+      items: [],
+      limit: 10,
+      page: 2,
+      total: 0,
+      totalPages: 0,
+    });
+
+    await rentersApi.getFavourites(2, 10);
     rentersApi.addFavourite('vehicle-1');
     rentersApi.removeFavourite('vehicle-1');
     rentersApi.getNotifications(3, 5);
@@ -100,6 +109,28 @@ describe('customer live API contracts', () => {
       },
       method: 'POST',
       url: '/payments/payment-1/confirm',
+    });
+  });
+
+  it('normalizes the backend favourites pagination for infinite scrolling', async () => {
+    mockApiRequest.mockResolvedValueOnce({
+      hasNextPage: false,
+      items: [],
+      limit: 20,
+      page: 1,
+      total: 0,
+      totalPages: 0,
+    });
+
+    await expect(rentersApi.getFavourites()).resolves.toEqual({
+      items: [],
+      meta: {
+        hasNextPage: false,
+        limit: 20,
+        page: 1,
+        total: 0,
+        totalPages: 0,
+      },
     });
   });
 
