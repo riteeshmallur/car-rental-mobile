@@ -1703,7 +1703,6 @@ function PricingStep({
         error={errors.securityDeposit?.message}
         label="Security deposit"
         name="securityDeposit"
-        placeholder="Optional"
       />
       <View style={styles.extrasCard}>
         <Pressable
@@ -2302,13 +2301,11 @@ function CurrencyField({
   error,
   label,
   name,
-  placeholder,
 }: {
   control: ReturnType<typeof useForm<HostVehicleFormValues>>['control'];
   error?: string;
   label: string;
   name: 'pricePerDay' | 'securityDeposit';
-  placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -2326,7 +2323,6 @@ function CurrencyField({
             <View style={[styles.input, styles.inputWithSuffix, error && styles.inputError]}>
               <Text style={styles.currencyPrefix}>₹</Text>
               <TextInput
-                accessibilityHint={placeholder}
                 accessibilityLabel={label}
                 keyboardType="decimal-pad"
                 onBlur={() => {
@@ -2335,8 +2331,6 @@ function CurrencyField({
                 }}
                 onChangeText={(nextValue) => onChange(nextValue.replace(/,/g, ''))}
                 onFocus={() => setFocused(true)}
-                placeholder={placeholder}
-                placeholderTextColor="#536B91"
                 style={styles.inputWithSuffixText}
                 value={displayValue}
               />
