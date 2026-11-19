@@ -107,7 +107,7 @@ export function OtpVerificationScreen() {
   return (
     <AuthShell
       footer={<Text style={styles.devHint}>Development OTP: 123456</Text>}
-      subtitle={`Enter the verification code sent to ${countryCode} ${phoneNumber.replace(countryCode, '')}.`}
+      subtitle={`Enter the verification code sent to\n${countryCode}\u00A0${phoneNumber.replace(countryCode, '')}.`}
       title="Verify OTP"
     >
       <View style={styles.form}>
