@@ -12,15 +12,6 @@ export type PaymentMethod = {
   createdAt: string;
 };
 
-export type AccountDataExport = {
-  id: string;
-  status: 'pending' | 'ready' | 'failed' | 'expired';
-  requestedAt: string;
-  completedAt: string | null;
-  expiresAt: string;
-  failureMessage: string | null;
-};
-
 export type AccountDeletionRequest = {
   id: string;
   status: 'requested' | 'cancelled' | 'completed';
@@ -58,15 +49,6 @@ export const usersApi = {
       method: 'PATCH',
       url: `/users/me/payment-methods/${paymentMethodId}/default`,
     });
-  },
-  latestDataExport() {
-    return apiRequest<AccountDataExport | null>({
-      method: 'GET',
-      url: '/users/me/data-exports/latest',
-    });
-  },
-  requestDataExport() {
-    return apiRequest<AccountDataExport>({ method: 'POST', url: '/users/me/data-exports' });
   },
   latestDeletionRequest() {
     return apiRequest<AccountDeletionRequest | null>({

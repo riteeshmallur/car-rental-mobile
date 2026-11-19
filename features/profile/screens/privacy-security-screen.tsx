@@ -1,12 +1,6 @@
 import { AppText as Text } from '@/components/typography/app-text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  Download,
-  FileDown,
-  ShieldCheck,
-  Trash2,
-} from 'lucide-react-native';
+import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,7 +9,6 @@ import { usersApi } from '@/services/users/users-api';
 import { normalizeApiError } from '@/utils/errors';
 import { colors, radii } from '@/utils/theme';
 
-const exportKey = ['users', 'data-export', 'latest'] as const;
 const deletionKey = ['users', 'deletion-request', 'latest'] as const;
 
 function formatDate(value: string) {
@@ -32,20 +25,14 @@ function label(value: string) {
 export function PrivacySecurityScreen() {
   const goBack = useSafeBack({ fallback: '/(customer)/profile' });
   const queryClient = useQueryClient();
-  const exportQuery = useQuery({ queryKey: exportKey, queryFn: usersApi.latestDataExport });
   const deletionQuery = useQuery({ queryKey: deletionKey, queryFn: usersApi.latestDeletionRequest });
-  const requestExport = useMutation({
-    mutationFn: usersApi.requestDataExport,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: exportKey }),
-  });
   const requestDeletion = useMutation({
     mutationFn: usersApi.requestDeletion,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: deletionKey }),
   });
-  const isLoading = exportQuery.isLoading || deletionQuery.isLoading;
-  const error = exportQuery.error ?? deletionQuery.error;
+  const isLoading = deletionQuery.isLoading;
+  const error = deletionQuery.error;
   const refresh = () => {
-    void exportQuery.refetch();
     void deletionQuery.refetch();
   };
   const confirmDeletion = () => Alert.alert(
@@ -73,28 +60,6 @@ export function PrivacySecurityScreen() {
             <Text style={styles.intro}>
               These controls apply to the same HopIn account used for customer and host mode.
             </Text>
-            <Section icon={<FileDown color={colors.brand} size={21} />} title="Download your data">
-              <Text style={styles.body}>
-                Request a copy of your account profile, bookings, saved vehicles, notifications, and reviews.
-              </Text>
-              <ExportStatus exportData={exportQuery.data ?? null} />
-              {requestExport.isError ? <InlineError message={normalizeApiError(requestExport.error).message} /> : null}
-              <Pressable
-                accessibilityRole="button"
-                disabled={requestExport.isPending}
-                onPress={() => requestExport.mutate()}
-                style={[styles.primaryButton, requestExport.isPending && styles.disabled]}
-              >
-                {requestExport.isPending ? (
-                  <ActivityIndicator color={colors.surface} />
-                ) : (
-                  <>
-                    <Download color={colors.surface} size={18} />
-                    <Text style={styles.primaryText}>Request data export</Text>
-                  </>
-                )}
-              </Pressable>
-            </Section>
             <Section icon={<Trash2 color={colors.error} size={21} />} title="Delete account">
               <Text style={styles.body}>
                 A deletion request is reviewed before your account is deactivated. This applies to both customer and host access.
@@ -144,11 +109,6 @@ function Header({ onBack }: { onBack: () => void }) {
 
 function Section({ children, icon, title }: { children: React.ReactNode; icon: React.ReactNode; title: string }) {
   return <View style={styles.section}><View style={styles.sectionHeader}>{icon}<Text style={styles.sectionTitle}>{title}</Text></View>{children}</View>;
-}
-
-function ExportStatus({ exportData }: { exportData: Awaited<ReturnType<typeof usersApi.latestDataExport>> }) {
-  if (!exportData) return null;
-  return <View style={styles.status}><ShieldCheck color={colors.success} size={18} /><View style={styles.statusCopy}><Text style={styles.statusTitle}>Export {label(exportData.status)}</Text><Text style={styles.statusText}>{exportData.status === 'ready' ? `Ready until ${formatDate(exportData.expiresAt)}` : `Requested ${formatDate(exportData.requestedAt)}`}</Text></View></View>;
 }
 
 function DeletionStatus({ request }: { request: Awaited<ReturnType<typeof usersApi.latestDeletionRequest>> }) {

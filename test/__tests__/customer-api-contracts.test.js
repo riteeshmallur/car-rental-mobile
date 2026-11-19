@@ -160,14 +160,12 @@ describe('customer live API contracts', () => {
   it('keeps payment methods and privacy account actions behind live endpoints', () => {
     usersApi.paymentMethods();
     usersApi.setDefaultPaymentMethod('payment-1');
-    usersApi.latestDataExport();
-    usersApi.requestDataExport();
     usersApi.latestDeletionRequest();
     usersApi.requestDeletion();
 
     expect(mockApiRequest).toHaveBeenNthCalledWith(1, { method: 'GET', url: '/users/me/payment-methods' });
     expect(mockApiRequest).toHaveBeenNthCalledWith(2, { method: 'PATCH', url: '/users/me/payment-methods/payment-1/default' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(4, { method: 'POST', url: '/users/me/data-exports' });
-    expect(mockApiRequest).toHaveBeenNthCalledWith(6, { method: 'POST', url: '/users/me/deletion-requests' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(3, { method: 'GET', url: '/users/me/deletion-requests/latest' });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(4, { method: 'POST', url: '/users/me/deletion-requests' });
   });
 });
