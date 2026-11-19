@@ -47,6 +47,11 @@ import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { rentersApi } from '@/services/renters/renters-api';
 import { useSafeBack } from '@/hooks/use-safe-back';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
+import {
+  DateTimePickerSheet,
+  type DateTimeField,
+} from '@/features/customer/components/date-time-picker-sheet';
+import { getRentalWindowError } from '@/features/customer/utils/rental-window';
 import { type VehicleDetail } from '@/types/car';
 import { colors, radii, shadows } from '@/utils/theme';
 
@@ -67,11 +72,35 @@ export function VehicleDetailsScreen() {
   const searchRouteState = readSearchRouteState(params);
   const locationId = searchRouteState.locationId;
   const origin = getParam(params.origin);
+  const rentalDetailsStep = getParam(params.rentalDetailsStep);
+  const selectedLocation = useCustomerSearchStore((state) => state.selectedLocation);
   const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
-  const pickupDateTime =
-    searchRouteState.pickupDateTime ?? rentalWindow.pickupAt.toISOString();
-  const returnDateTime =
-    searchRouteState.returnDateTime ?? rentalWindow.returnAt.toISOString();
+  const setRentalWindow = useCustomerSearchStore((state) => state.setRentalWindow);
+  const isDiscoveryVehicle = origin === 'discovery';
+  const requestedPickupDateTime = searchRouteState.pickupDateTime;
+  const requestedReturnDateTime = searchRouteState.returnDateTime;
+  const hasRentalDetails = useMemo(() => {
+    if (!locationId || !requestedPickupDateTime || !requestedReturnDateTime) {
+      return false;
+    }
+
+    const pickupAt = new Date(requestedPickupDateTime);
+    const returnAt = new Date(requestedReturnDateTime);
+
+    return (
+      !Number.isNaN(pickupAt.getTime()) &&
+      !Number.isNaN(returnAt.getTime()) &&
+      getRentalWindowError({ pickupAt, returnAt }) === null
+    );
+  }, [locationId, requestedPickupDateTime, requestedReturnDateTime]);
+  const pickupDateTime = isDiscoveryVehicle
+    ? (hasRentalDetails ? requestedPickupDateTime : undefined)
+    : (requestedPickupDateTime ?? rentalWindow.pickupAt.toISOString());
+  const returnDateTime = isDiscoveryVehicle
+    ? (hasRentalDetails ? requestedReturnDateTime : undefined)
+    : (requestedReturnDateTime ?? rentalWindow.returnAt.toISOString());
+  const [activeDateTimeField, setActiveDateTimeField] =
+    useState<DateTimeField | null>(null);
   const [favoriteOverride, setFavoriteOverride] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
   const backFallback = useMemo<Href>(() => {
@@ -112,6 +141,17 @@ export function VehicleDetailsScreen() {
         endsAt: returnDateTime,
       }),
   });
+
+  useEffect(() => {
+    if (
+      isDiscoveryVehicle &&
+      rentalDetailsStep === 'dates' &&
+      locationId &&
+      !hasRentalDetails
+    ) {
+      setActiveDateTimeField('pickupDate');
+    }
+  }, [hasRentalDetails, isDiscoveryVehicle, locationId, rentalDetailsStep]);
 
   const reviewsQuery = useQuery({
     enabled: Boolean(vehicleId),
@@ -167,7 +207,7 @@ export function VehicleDetailsScreen() {
   };
 
   const continueBooking = () => {
-    if (!vehicleId) {
+    if (!vehicleId || !locationId || !pickupDateTime || !returnDateTime) {
       return;
     }
 
@@ -184,6 +224,60 @@ export function VehicleDetailsScreen() {
       },
     });
   };
+
+  const requestRentalDetails = () => {
+    if (!vehicleId) {
+      return;
+    }
+
+    router.push({
+      pathname: '/(customer)/location',
+      params: {
+        returnTo: 'vehicle-details',
+        vehicleId,
+      },
+    });
+  };
+
+  const applyRentalWindow = (nextWindow: typeof rentalWindow) => {
+    setRentalWindow(nextWindow);
+    router.setParams({
+      pickupDateTime: nextWindow.pickupAt.toISOString(),
+      returnDateTime: nextWindow.returnAt.toISOString(),
+      rentalDetailsStep: '',
+    });
+    setActiveDateTimeField(null);
+  };
+
+  const viewOtherCars = () => {
+    if (!locationId || !pickupDateTime || !returnDateTime) {
+      return;
+    }
+
+    router.replace({
+      pathname: '/(customer)/results',
+      params: toSearchRouteParams({
+        ...searchRouteState,
+        pickupDateTime,
+        returnDateTime,
+      }),
+    });
+  };
+
+  const availability = useMemo(() => {
+    if (!detailsQuery.data || !hasRentalDetails) {
+      return null;
+    }
+
+    if (detailsQuery.data.pickupLocation.id !== locationId) {
+      return {
+        available: false,
+        reason: 'This car is not offered at your selected pickup location.',
+      };
+    }
+
+    return detailsQuery.data.availability;
+  }, [detailsQuery.data, hasRentalDetails, locationId]);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -235,6 +329,10 @@ export function VehicleDetailsScreen() {
                 vehicle={detailsQuery.data}
               />
 
+              {isDiscoveryVehicle && !hasRentalDetails ? (
+                <RentalDetailsPrompt onPress={requestRentalDetails} />
+              ) : null}
+
               <InfoSection title="Features">
                 <FeatureList features={detailsQuery.data.features} />
               </InfoSection>
@@ -271,7 +369,7 @@ export function VehicleDetailsScreen() {
               </InfoSection>
 
               <InfoSection title="Availability">
-                <AvailabilityBlock vehicle={detailsQuery.data} />
+                <AvailabilityBlock availability={availability} />
               </InfoSection>
 
               <InfoSection title="Rental rules">
@@ -317,11 +415,22 @@ export function VehicleDetailsScreen() {
 
             <StickyBookingBar
               onContinue={continueBooking}
+              onRequestRentalDetails={requestRentalDetails}
+              onViewOthers={viewOtherCars}
+              availability={availability}
+              hasRentalDetails={hasRentalDetails}
               vehicle={detailsQuery.data}
             />
           </>
         ) : null}
       </View>
+      <DateTimePickerSheet
+        field={activeDateTimeField}
+        location={selectedLocation}
+        onApplyRentalWindow={applyRentalWindow}
+        onClose={() => setActiveDateTimeField(null)}
+        rentalWindow={rentalWindow}
+      />
     </SafeAreaView>
   );
 }
@@ -468,8 +577,8 @@ function VehicleSummary({
   returnDateTime,
   vehicle,
 }: {
-  pickupDateTime: string;
-  returnDateTime: string;
+  pickupDateTime?: string;
+  returnDateTime?: string;
   vehicle: VehicleDetail;
 }) {
   return (
@@ -498,6 +607,7 @@ function VehicleSummary({
         <Spec icon={Users} label="Seats" value={`${vehicle.seats}`} />
       </View>
 
+      {pickupDateTime && returnDateTime ? (
       <View style={styles.tripWindow}>
         <CalendarClock color="#102550" size={19} />
         <View style={styles.tripCopy}>
@@ -506,6 +616,29 @@ function VehicleSummary({
           <Text style={styles.mutedText}>{formatDateTime(returnDateTime)}</Text>
         </View>
       </View>
+      ) : null}
+    </View>
+  );
+}
+
+function RentalDetailsPrompt({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={styles.rentalDetailsPrompt}>
+      <CalendarClock color={colors.brand} size={22} />
+      <View style={styles.rentalDetailsCopy}>
+        <Text style={styles.rentalDetailsTitle}>Choose your rental details</Text>
+        <Text style={styles.mutedText}>
+          Add your pickup location, dates and times to check availability.
+        </Text>
+      </View>
+      <Pressable
+        accessibilityLabel="Add rental details"
+        accessibilityRole="button"
+        onPress={onPress}
+        style={styles.rentalDetailsButton}
+      >
+        <Text style={styles.rentalDetailsButtonText}>Add details</Text>
+      </Pressable>
     </View>
   );
 }
@@ -583,30 +716,35 @@ function HostCard({ vehicle }: { vehicle: VehicleDetail }) {
   );
 }
 
-function AvailabilityBlock({ vehicle }: { vehicle: VehicleDetail }) {
+function AvailabilityBlock({ availability }: { availability: VehicleDetail['availability'] | null }) {
+  const isAvailable = availability?.available;
+  const isSoldOut = availability !== null && !isAvailable;
+
   return (
     <View
       style={[
         styles.availability,
-        !vehicle.availability.available && styles.availabilityBlocked,
+        isSoldOut && styles.availabilityBlocked,
       ]}
     >
       <ShieldCheck
-        color={vehicle.availability.available ? '#047857' : '#B91C1C'}
+        color={isAvailable ? '#047857' : isSoldOut ? '#B91C1C' : colors.brand}
         size={20}
       />
       <View style={styles.availabilityCopy}>
         <Text
           style={[
             styles.availabilityTitle,
-            !vehicle.availability.available && styles.availabilityTitleBlocked,
+            isSoldOut && styles.availabilityTitleBlocked,
           ]}
         >
-          {vehicle.availability.available ? 'Available' : 'Unavailable'}
+          {availability === null ? 'Enter rental details' : isAvailable ? 'Available' : 'Sold Out'}
         </Text>
         <Text style={styles.mutedText}>
-          {vehicle.availability.reason ??
-            'This vehicle is available for the selected rental dates.'}
+          {availability?.reason ??
+            (availability === null
+              ? 'Choose a pickup location, dates and times to check this car.'
+              : 'This vehicle is available for the selected rental dates.')}
         </Text>
       </View>
     </View>
@@ -638,12 +776,32 @@ function RulesList({ vehicle }: { vehicle: VehicleDetail }) {
 }
 
 function StickyBookingBar({
+  availability,
   onContinue,
+  onRequestRentalDetails,
+  onViewOthers,
+  hasRentalDetails,
   vehicle,
 }: {
+  availability: VehicleDetail['availability'] | null;
   onContinue: () => void;
+  onRequestRentalDetails: () => void;
+  onViewOthers: () => void;
+  hasRentalDetails: boolean;
   vehicle: VehicleDetail;
 }) {
+  const isSoldOut = hasRentalDetails && availability !== null && !availability.available;
+  const action = !hasRentalDetails
+    ? onRequestRentalDetails
+    : isSoldOut
+      ? onViewOthers
+      : onContinue;
+  const label = !hasRentalDetails
+    ? 'Add rental details'
+    : isSoldOut
+      ? 'View others'
+      : 'Continue';
+
   return (
     <View style={styles.stickyBar}>
       <View style={styles.stickyCopy}>
@@ -658,16 +816,14 @@ function StickyBookingBar({
       </View>
       <Pressable
         accessibilityRole="button"
-        disabled={!vehicle.availability.available}
-        onPress={onContinue}
+        onPress={action}
         testID="vehicle-details-continue"
         style={({ pressed }) => [
           styles.continueButton,
-          !vehicle.availability.available && styles.continueButtonDisabled,
           pressed && styles.pressed,
         ]}
       >
-        <Text style={styles.continueText}>Continue</Text>
+        <Text style={styles.continueText}>{label}</Text>
       </Pressable>
     </View>
   );
@@ -941,6 +1097,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  rentalDetailsPrompt: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.brandSoft,
+    padding: 14,
+  },
+  rentalDetailsCopy: { flex: 1, gap: 3 },
+  rentalDetailsTitle: { color: colors.ink, fontSize: 15, fontWeight: '800' },
+  rentalDetailsButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 38,
+    borderRadius: radii.sm,
+    backgroundColor: colors.brand,
+    paddingHorizontal: 10,
+  },
+  rentalDetailsButtonText: { color: colors.surface, fontSize: 12, fontWeight: '800' },
   section: {
     gap: 12,
     borderWidth: 1,

@@ -26,6 +26,7 @@ export function LocationSelectionScreen() {
   const [query, setQuery] = useState('');
   const params = useLocalSearchParams();
   const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
+  const vehicleId = Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId;
   const searchRouteState = readSearchRouteState(params);
   const setSelectedLocation = useCustomerSearchStore(
     (state) => state.setSelectedLocation,
@@ -53,6 +54,25 @@ export function LocationSelectionScreen() {
           locationName: location.name,
           locationCity: location.city,
         }),
+      });
+      return;
+    }
+
+    if (returnTo === 'vehicle-details' && vehicleId) {
+      router.replace({
+        pathname: '/(customer)/vehicles/[id]',
+        params: {
+          id: vehicleId,
+          origin: 'discovery',
+          rentalDetailsStep: 'dates',
+          ...toSearchRouteParams({
+            locationId: location.id,
+            locationName: location.name,
+            locationCity: location.city,
+            filters: {},
+            sort: 'recommended',
+          }),
+        },
       });
       return;
     }

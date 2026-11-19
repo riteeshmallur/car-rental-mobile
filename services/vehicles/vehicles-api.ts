@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import {
   type AvailabilityBlock,
   type VehicleAvailability,
+  type VehicleDiscoveryApiResponse,
+  type VehicleDiscoveryResponse,
   type VehicleDetail,
   type VehicleDetailsParams,
   type VehicleReviewsResponse,
@@ -12,6 +14,39 @@ import {
 } from '@/types/car';
 
 export const vehiclesApi = {
+  async discover(page = 1, limit = 24): Promise<VehicleDiscoveryResponse> {
+    const response = await apiRequest<VehicleDiscoveryApiResponse>({
+      method: 'GET',
+      url: '/vehicles/discover',
+      params: { page, limit },
+    });
+
+    return {
+      ...response,
+      items: response.items.map(({ dailyPrice, ...vehicle }) => ({
+        ...vehicle,
+        pricePerDay: dailyPrice,
+      })),
+    };
+  },
+  async discoverAll() {
+    const firstPage = await this.discover(1, 24);
+
+    if (!firstPage.meta.hasNextPage) {
+      return firstPage.items;
+    }
+
+    const remainingPages = Array.from(
+      { length: firstPage.meta.totalPages - 1 },
+      (_, index) => this.discover(index + 2, 24),
+    );
+    const pages = await Promise.all(remainingPages);
+
+    return [
+      ...firstPage.items,
+      ...pages.flatMap((page) => page.items),
+    ];
+  },
   findById(vehicleId: string, params: VehicleDetailsParams) {
     return apiRequest<VehicleDetail>({
       method: 'GET',

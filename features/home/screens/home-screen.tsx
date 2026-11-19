@@ -1,12 +1,11 @@
 import { AppText as Text } from '@/components/typography/app-text';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { carsApi } from '@/services/cars/cars-api';
-import { locationsApi } from '@/services/locations/locations-api';
+import { vehiclesApi } from '@/services/vehicles/vehicles-api';
 import { BottomNavigation } from '@/features/customer/components/bottom-navigation';
 import { CustomerHeader } from '@/features/customer/components/customer-header';
 import { FeaturedCarList } from '@/features/customer/components/featured-car-list';
@@ -24,6 +23,7 @@ import {
   type HomeIntent,
 } from '@/features/home/components/home-intent-carousel';
 import { HomeHero } from '@/features/home/components/home-hero';
+import { DiscoveryCarsSheet } from '@/features/home/components/discovery-cars-sheet';
 import { useAuthStore } from '@/store/auth-store';
 import { useCustomerSearchStore } from '@/store/customer-search-store';
 import { useSafeBack } from '@/hooks/use-safe-back';
@@ -70,13 +70,15 @@ export function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const selectedLocation = useCustomerSearchStore((state) => state.selectedLocation);
   const rentalWindow = useCustomerSearchStore((state) => state.rentalWindow);
-  const setSelectedLocation = useCustomerSearchStore(
-    (state) => state.setSelectedLocation,
-  );
   const setRentalWindow = useCustomerSearchStore((state) => state.setRentalWindow);
   const [activeDateTimeField, setActiveDateTimeField] =
     useState<DateTimeField | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [discoveryRequest, setDiscoveryRequest] = useState<{
+    filters: SearchFilters;
+    sort?: VehicleSearchSort;
+    title: string;
+  } | null>(null);
   const closePickerBeforeBack = useCallback(() => {
     if (!activeDateTimeField) {
       return false;
@@ -87,45 +89,20 @@ export function HomeScreen() {
   }, [activeDateTimeField]);
   useSafeBack({ onBeforeBack: closePickerBeforeBack });
 
-  const defaultLocationQuery = useQuery({
-    queryKey: ['locations', 'default', 'bengaluru'],
-    queryFn: () => locationsApi.search('bengaluru', 1),
-    select: (locations) => locations[0] ?? null,
-  });
-
-  useEffect(() => {
-    if (!selectedLocation && defaultLocationQuery.data) {
-      setSelectedLocation(defaultLocationQuery.data);
-    }
-  }, [defaultLocationQuery.data, selectedLocation, setSelectedLocation]);
-
-  const location = selectedLocation ?? defaultLocationQuery.data ?? null;
+  const location = selectedLocation;
   const isSearchReady = Boolean(location?.id) && getRentalWindowError(rentalWindow) === null;
 
-  const carsQuery = useQuery({
-    enabled: Boolean(location?.id),
-    queryKey: [
-      'cars',
-      'available',
-      location?.id,
-      rentalWindow.pickupAt.toISOString(),
-      rentalWindow.returnAt.toISOString(),
-    ],
-    queryFn: () =>
-      carsApi.searchAvailable({
-        locationId: location?.id ?? '',
-        pickupAt: rentalWindow.pickupAt.toISOString(),
-        returnAt: rentalWindow.returnAt.toISOString(),
-      }),
+  const discoveryQuery = useQuery({
+    queryKey: ['vehicles', 'discover'],
+    queryFn: () => vehiclesApi.discoverAll(),
   });
 
-  const availableCars = carsQuery.data ?? [];
-  const popularCars = availableCars.slice(0, 3);
-  const isRefreshing = defaultLocationQuery.isFetching || carsQuery.isFetching;
+  const discoveryCars = discoveryQuery.data ?? [];
+  const popularCars = discoveryCars.slice(0, 3);
+  const isRefreshing = discoveryQuery.isFetching;
 
   const refreshHome = () => {
-    void defaultLocationQuery.refetch();
-    void carsQuery.refetch();
+    void discoveryQuery.refetch();
   };
 
   const openSearchResults = (
@@ -162,41 +139,20 @@ export function HomeScreen() {
   const searchCars = () => openSearchResults();
 
   const handleIntentPress = (intent: HomeIntent) => {
-    const pickupTime = rentalWindow.pickupAt?.getTime();
-    const returnTime = rentalWindow.returnAt?.getTime();
-
-    if (!Number.isFinite(pickupTime) || !Number.isFinite(returnTime)) {
-      setActiveDateTimeField('pickupDate');
-      return;
-    }
-
-    openSearchResults(intent.filters, intent.sort);
+    setDiscoveryRequest({ filters: intent.filters, sort: intent.sort, title: intent.action });
   };
 
   const handleCategoryPress = (category: HomeCategory) => {
-    openSearchResults(category.filters, category.sort);
+    setDiscoveryRequest({ filters: category.filters, sort: category.sort, title: category.label });
   };
 
   const openVehicleDetails = (vehicleId: string) => {
-    if (!location) {
-      setValidationError('Select a pickup location.');
-      return;
-    }
-
+    setDiscoveryRequest(null);
     router.push({
       pathname: '/(customer)/vehicles/[id]',
       params: {
         id: vehicleId,
-        origin: 'home',
-        ...toSearchRouteParams({
-          locationId: location.id,
-          locationName: location.name,
-          locationCity: location.city,
-          pickupDateTime: rentalWindow.pickupAt.toISOString(),
-          returnDateTime: rentalWindow.returnAt.toISOString(),
-          filters: {},
-          sort: 'recommended',
-        }),
+        origin: 'discovery',
       },
     });
   };
@@ -228,7 +184,7 @@ export function HomeScreen() {
           <View style={styles.searchCardOffset}>
             <RentalSearchCard
               isSearchEnabled={isSearchReady}
-              isSearching={carsQuery.isFetching}
+              isSearching={false}
               location={location}
               onDateTimeFieldPress={setActiveDateTimeField}
               onLocationPress={() => router.push('/(customer)/location')}
@@ -238,7 +194,7 @@ export function HomeScreen() {
             />
           </View>
 
-          {carsQuery.isError ? (
+          {discoveryQuery.isError ? (
             <View style={styles.inlineError}>
               <Text style={styles.inlineErrorTitle}>Cars could not be loaded</Text>
               <Text style={styles.inlineErrorBody}>
@@ -259,9 +215,9 @@ export function HomeScreen() {
 
           <FeaturedCarList
             cars={popularCars}
-            isLoading={carsQuery.isLoading}
+            isLoading={discoveryQuery.isLoading}
             onCarPress={openVehicleDetails}
-            onViewAll={searchCars}
+            onViewAll={() => setDiscoveryRequest({ filters: {}, title: 'All cars' })}
             title="Popular cars"
             variant="popular"
           />
@@ -273,6 +229,15 @@ export function HomeScreen() {
         onApplyRentalWindow={setRentalWindow}
         onClose={() => setActiveDateTimeField(null)}
         rentalWindow={rentalWindow}
+      />
+      <DiscoveryCarsSheet
+        cars={discoveryCars}
+        filters={discoveryRequest?.filters}
+        isVisible={discoveryRequest !== null}
+        onCarPress={openVehicleDetails}
+        onClose={() => setDiscoveryRequest(null)}
+        sort={discoveryRequest?.sort}
+        title={discoveryRequest?.title ?? 'All cars'}
       />
       <BottomNavigation />
     </SafeAreaView>

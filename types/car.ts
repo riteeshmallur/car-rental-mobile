@@ -30,6 +30,46 @@ export type Car = {
   updatedAt: string;
 };
 
+/**
+ * The minimum vehicle shape required by cards shown before a renter has
+ * selected a pickup location and rental window. Discovery deliberately does
+ * not claim date-specific availability.
+ */
+export type DiscoverableCar = Pick<
+  Car,
+  | 'id'
+  | 'make'
+  | 'model'
+  | 'manufacturingYear'
+  | 'imageUrl'
+  | 'transmission'
+  | 'seats'
+  | 'vehicleType'
+> & {
+  pricePerDay: number | string;
+  location: {
+    name: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  };
+};
+
+export type VehicleDiscoveryResponse = {
+  items: DiscoverableCar[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+};
+
+export type VehicleDiscoveryApiResponse = Omit<VehicleDiscoveryResponse, 'items'> & {
+  items: Array<Omit<DiscoverableCar, 'pricePerDay'> & { dailyPrice: number }>;
+};
+
 export type SearchCarsParams = {
   locationId: string;
   pickupAt: string;

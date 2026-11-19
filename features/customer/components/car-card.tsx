@@ -7,11 +7,11 @@ import {
   getVehicleImageVariantUrl,
 } from '@/features/customer/utils/car-formatters';
 import { CachedVehicleImage } from '@/features/customer/components/cached-vehicle-image';
-import { type Car } from '@/types/car';
+import { type DiscoverableCar } from '@/types/car';
 import { colors, radii, shadows } from '@/utils/theme';
 
 type CarCardProps = {
-  car: Car;
+  car: DiscoverableCar;
   onPress?: () => void;
   size?: 'compact' | 'large';
 };
@@ -23,7 +23,7 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
   return (
     <Pressable
       accessibilityHint="Opens vehicle details."
-      accessibilityLabel={`${car.make} ${car.model}, ${formatDailyPrice(car.pricePerDay)} per day, available`}
+      accessibilityLabel={`${car.make} ${car.model}, ${formatDailyPrice(car.pricePerDay)} per day. Choose rental details to check availability.`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -56,7 +56,7 @@ export function CarCard({ car, onPress, size = 'compact' }: CarCardProps) {
         </Text>
         <View style={styles.availableChip}>
           <Check color={colors.success} size={12} strokeWidth={3} />
-          <Text style={styles.availableText}>Available</Text>
+          <Text style={styles.availableText}>Check availability</Text>
         </View>
         <View style={styles.footer}>
           <View style={styles.priceRow}>

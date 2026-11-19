@@ -2,12 +2,12 @@ import { AppText as Text } from '@/components/typography/app-text';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CarCard } from '@/features/customer/components/car-card';
-import { type Car } from '@/types/car';
+import { type DiscoverableCar } from '@/types/car';
 import { colors, radii } from '@/utils/theme';
 
 type FeaturedCarListProps = {
   title: string;
-  cars: Car[];
+  cars: DiscoverableCar[];
   isLoading?: boolean;
   onCarPress?: (vehicleId: string) => void;
   onViewAll?: () => void;
@@ -42,8 +42,8 @@ export function FeaturedCarList({
         </View>
       ) : cars.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No cars available</Text>
-          <Text style={styles.emptyBody}>Try another location or rental window.</Text>
+          <Text style={styles.emptyTitle}>No cars to discover yet</Text>
+          <Text style={styles.emptyBody}>Pull to refresh and try again shortly.</Text>
         </View>
       ) : (
         <View style={styles.listContent}>

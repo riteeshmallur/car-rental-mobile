@@ -134,6 +134,29 @@ describe('customer live API contracts', () => {
     });
   });
 
+  it('loads every page of the location-independent discovery catalogue', async () => {
+    mockApiRequest
+      .mockResolvedValueOnce({
+        items: [{ dailyPrice: 1200, id: 'vehicle-1' }],
+        meta: { hasNextPage: true, limit: 24, page: 1, total: 25, totalPages: 2 },
+      })
+      .mockResolvedValueOnce({
+        items: [{ dailyPrice: 2400, id: 'vehicle-2' }],
+        meta: { hasNextPage: false, limit: 24, page: 2, total: 25, totalPages: 2 },
+      });
+
+    await expect(vehiclesApi.discoverAll()).resolves.toEqual([
+      { id: 'vehicle-1', pricePerDay: 1200 },
+      { id: 'vehicle-2', pricePerDay: 2400 },
+    ]);
+    expect(mockApiRequest).toHaveBeenNthCalledWith(1, {
+      method: 'GET', params: { limit: 24, page: 1 }, url: '/vehicles/discover',
+    });
+    expect(mockApiRequest).toHaveBeenNthCalledWith(2, {
+      method: 'GET', params: { limit: 24, page: 2 }, url: '/vehicles/discover',
+    });
+  });
+
   it('keeps payment methods and privacy account actions behind live endpoints', () => {
     usersApi.paymentMethods();
     usersApi.setDefaultPaymentMethod('payment-1');
